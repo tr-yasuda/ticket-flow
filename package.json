@@ -5,7 +5,12 @@
   "private": true,
   "packageManager": "pnpm@10.8.1",
   "scripts": {
-    "test": "sh scripts/verify-setup.sh"
+    "test": "sh scripts/verify-setup.sh",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }
