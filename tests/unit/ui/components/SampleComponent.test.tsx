@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SampleComponent } from "../../../../src/presentation/components/SampleComponent";
+import { SampleComponent } from "../../../../src/ui/components/SampleComponent";
 
 describe("SampleComponent", () => {
   it("タイトルを表示する", () => {

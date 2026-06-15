@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 
 type SampleComponentProps = {
   readonly title: string;
@@ -6,7 +6,7 @@ type SampleComponentProps = {
 
 export function SampleComponent({
   title,
-}: SampleComponentProps): ReactNode {
+}: SampleComponentProps): ReactElement | null {
   return (
     <section>
       <h1>{title}</h1>
