@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { SampleComponent } from "../../../../src/ui/components/SampleComponent";
 
 describe("SampleComponent", () => {
@@ -16,9 +17,7 @@ describe("SampleComponent", () => {
     render(<SampleComponent title="テストタイトル" />);
 
     expect(
-      screen.getByText(
-        "ticket-flow のフロントエンド基盤が動作しています。",
-      ),
+      screen.getByText("ticket-flow のフロントエンド基盤が動作しています。"),
     ).toBeInTheDocument();
   });
 });
