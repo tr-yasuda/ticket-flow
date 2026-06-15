@@ -17,4 +17,8 @@ describe("データベース設定", () => {
   it("DATABASE_URL が空文字の場合はエラーになる", () => {
     expect(() => loadDatabaseConfig({ DATABASE_URL: "" })).toThrow("DATABASE_URL");
   });
+
+  it("DATABASE_URL が空白のみの場合はエラーになる", () => {
+    expect(() => loadDatabaseConfig({ DATABASE_URL: "   " })).toThrow("DATABASE_URL");
+  });
 });
