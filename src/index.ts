@@ -16,5 +16,5 @@ function formatTicket(ticket: Ticket): string {
   return `[${ticket.status}] ${ticket.id}: ${ticket.title}`;
 }
 
-export { createTicket, formatTicket };
 export type { Ticket };
+export { createTicket, formatTicket };
