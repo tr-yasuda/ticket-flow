@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
+import { isDatabaseConfigured, loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
 import { createDatabasePool } from "../../../../src/infrastructure/database/pool";
 import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check";
 
-const hasDatabaseUrl =
-  process.env.DATABASE_URL != null && process.env.DATABASE_URL !== "";
+const hasDatabaseUrl = isDatabaseConfigured(process.env);
 
 describe("データベース接続", () => {
   it.skipIf(!hasDatabaseUrl)("DATABASE_URL が設定されていれば接続できる", async () => {

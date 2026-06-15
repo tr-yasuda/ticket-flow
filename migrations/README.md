@@ -15,8 +15,8 @@ YYYYMMDDHHMMSS_description.sql
 ## 例
 
 ```text
-20260101000000_create_organizations_table.sql
-20260102000000_create_memberships_table.sql
+20260101000000_create-organizations-table.sql
+20260102000000_create-memberships-table.sql
 ```
 
 ## 注意
