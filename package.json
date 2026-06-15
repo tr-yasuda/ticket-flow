@@ -1,0 +1,11 @@
+{
+  "name": "ticket-flow",
+  "version": "0.0.1",
+  "description": "マルチテナント SaaS 向けチケット管理システム",
+  "private": true,
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "test": "sh scripts/verify-setup.sh"
+  },
+  "license": "MIT"
+}
