@@ -1,31 +1,31 @@
 {
-	"name": "ticket-flow",
-	"version": "0.0.1",
-	"description": "マルチテナント SaaS 向けチケット管理システム",
-	"private": true,
-	"packageManager": "pnpm@10.8.1",
-	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
-		"build": "tsc",
-		"typecheck": "tsc --noEmit -p tsconfig.test.json",
-		"lint": "biome lint .",
-		"lint:fix": "biome lint --write .",
-		"format:check": "biome format .",
-		"format": "biome format --write .",
-		"check": "biome check .",
-		"check:fix": "biome check --write ."
-	},
-	"license": "MIT",
-	"engines": {
-		"node": "^20.19.0 || >=22.12.0"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.5.0",
-		"@vitest/coverage-v8": "^4.1.9",
-		"typescript": "^6.0.3",
-		"vite": "^8.0.16",
-		"vitest": "^4.1.9"
-	}
+  "name": "ticket-flow",
+  "version": "0.0.1",
+  "description": "マルチテナント SaaS 向けチケット管理システム",
+  "private": true,
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format:check": "biome format .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
+  },
+  "license": "MIT",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
+  }
 }
