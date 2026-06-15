@@ -5,12 +5,16 @@
   "private": true,
   "packageManager": "pnpm@10.8.1",
   "scripts": {
-    "test": "sh scripts/verify-setup.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "@vitest/coverage-v8": "^4.1.9",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }
