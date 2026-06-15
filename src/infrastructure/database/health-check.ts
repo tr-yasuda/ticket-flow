@@ -7,7 +7,9 @@ export type Queryable = Readonly<{
   query(text: string): Promise<unknown>;
 }>;
 
-export async function checkDatabaseHealth(pool: Queryable): Promise<DatabaseHealth> {
+export async function checkDatabaseHealth(
+  pool: Queryable,
+): Promise<DatabaseHealth> {
   try {
     await pool.query("SELECT 1");
     return { status: "healthy" };
