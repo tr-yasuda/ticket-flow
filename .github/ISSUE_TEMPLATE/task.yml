@@ -1,0 +1,67 @@
+name: 開発タスク
+description: 機能追加・バグ修正・基盤整備などの開発タスクを作成する
+title: ""
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的と背景
+      description: この Issue が解決する問題や背景を簡潔に書く
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 完了とみなす条件を箇条書きで書く
+    validations:
+      required: true
+
+  - type: textarea
+    id: review-focus
+    attributes:
+      label: Review Focus
+      description: レビュワーに特に見てほしい観点
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: 動作確認やテストの実行方法と結果
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of Scope
+      description: この Issue では対応しないこと
+    validations:
+      required: true
+
+  - type: textarea
+    id: enables
+    attributes:
+      label: Enables
+      description: この Issue によって可能になる後続作業
+    validations:
+      required: true
+
+  - type: textarea
+    id: parent-workflow
+    attributes:
+      label: Parent Workflow
+      description: 属するワークフロー名
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 関連ユーザーストーリーや依存関係、その他補足事項があれば書く
+    validations:
+      required: false

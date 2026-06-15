@@ -40,6 +40,67 @@ pnpm install
 5. Conventional Commits に従って commit する
 6. Pull Request を作成し、レビューを受ける
 
+### ブランチ命名規約
+
+ブランチ名は以下の形式とする。
+
+```text
+<type>/<issue-number>-<description>
+```
+
+- `type`: 作業の種類を表す
+- `issue-number`: 関連する Issue 番号（Issue がない場合は省略可）
+- `description`: 作業内容を kebab-case で簡潔に表したもの
+
+#### type の一覧
+
+| type | 用途 |
+| --- | --- |
+| `feature/` | 新機能の開発 |
+| `bugfix/` | バグ修正 |
+| `hotfix/` | 緊急のバグ修正 |
+| `release/` | リリース準備 |
+| `docs/` | ドキュメントの変更 |
+| `style/` | 振る舞いに影響しない整形 |
+| `refactor/` | 機能追加やバグ修正を伴わない構造変更 |
+| `test/` | テストの追加や修正 |
+| `chore/` | 補助ツールや依存関係の更新 |
+
+#### 例
+
+```text
+feature/6-add-workflow-conventions
+bugfix/12-fix-login-redirect
+chore/update-dependencies
+```
+
+### コミットメッセージ規約
+
+コミットメッセージは [Conventional Commits](https://www.conventionalcommits.org/) に従う。
+
+```text
+<type>: <subject>
+```
+
+主要な `type` は以下の通り。
+
+| type | 用途 |
+| --- | --- |
+| `feat` | 新機能の追加 |
+| `fix` | バグ修正 |
+| `docs` | ドキュメントのみの変更 |
+| `style` | 振る舞いに影響しない整形 |
+| `refactor` | 機能追加やバグ修正を伴わない構造変更 |
+| `test` | テストの追加や修正 |
+| `chore` | 補助ツールや依存関係の更新 |
+| `ci` | CI 設定や自動化の変更 |
+
+コミット時には `commitlint` によって形式が検証される。  
+無効な形式のコミットメッセージは拒否される。
+
+```bash
+echo "feat: add user authentication" | pnpm exec commitlint
+```
 ## レイヤーの責務
 
 - `presentation`: 入力を受け、サービスを呼び、返却形式へ写すだけにする
