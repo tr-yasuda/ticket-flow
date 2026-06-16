@@ -24,6 +24,20 @@ describe("ユーザー登録", () => {
     );
   });
 
+  it("大文字のメールアドレスは小文字に正規化される", () => {
+    const user = createUser("USER@EXAMPLE.COM");
+    expect(user.email).toBe("user@example.com");
+  });
+
+  it("大文字小文字が異なる同一メールアドレスは同じ email 値に正規化される", () => {
+    const upperCaseUser = createUser("USER@EXAMPLE.COM");
+    const lowerCaseUser = createUser("user@example.com");
+    const mixedCaseUser = createUser("User@Example.Com");
+
+    expect(upperCaseUser.email).toBe(lowerCaseUser.email);
+    expect(mixedCaseUser.email).toBe(lowerCaseUser.email);
+  });
+
   it.each([
     ["タブと改行", "\tuser@example.com\n"],
     ["全角スペース", "　user@example.com　"],
