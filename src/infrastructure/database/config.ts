@@ -9,44 +9,35 @@ function readConnectionString(env: NodeJS.ProcessEnv): string {
   return env.DATABASE_URL?.trim() ?? "";
 }
 
-function readSslEnabled(env: NodeJS.ProcessEnv): boolean | undefined {
-  const value = env.DATABASE_SSL?.trim().toLowerCase();
-  if (value === "true") {
-    return true;
-  }
-  if (value === "false") {
-    return false;
-  }
-  return undefined;
-}
-
-function readSslRejectUnauthorized(
+function parseBooleanEnv(
   env: NodeJS.ProcessEnv,
+  name: string,
 ): boolean | undefined {
-  const value = env.DATABASE_SSL_REJECT_UNAUTHORIZED?.trim().toLowerCase();
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === "") {
+    return undefined;
+  }
+  const value = raw.trim().toLowerCase();
   if (value === "true") {
     return true;
   }
   if (value === "false") {
     return false;
   }
-  return undefined;
+  throw new Error(`Invalid value for ${name}: ${raw}`);
 }
 
 function buildSslConfig(
-  sslEnabled: boolean | undefined,
-  rejectUnauthorized: boolean | undefined,
+  isSslEnabled: boolean | undefined,
+  shouldRejectUnauthorized: boolean | undefined,
 ): boolean | ConnectionOptions | undefined {
-  if (sslEnabled === undefined) {
+  if (isSslEnabled === undefined) {
     return undefined;
   }
-  if (sslEnabled === false) {
+  if (isSslEnabled === false) {
     return false;
   }
-  if (rejectUnauthorized === undefined) {
-    return true;
-  }
-  return { rejectUnauthorized };
+  return { rejectUnauthorized: shouldRejectUnauthorized ?? true };
 }
 
 export function isDatabaseConfigured(env: NodeJS.ProcessEnv): boolean {
@@ -60,6 +51,9 @@ export function loadDatabaseConfig(env: NodeJS.ProcessEnv): DatabaseConfig {
   }
   return {
     connectionString,
-    ssl: buildSslConfig(readSslEnabled(env), readSslRejectUnauthorized(env)),
+    ssl: buildSslConfig(
+      parseBooleanEnv(env, "DATABASE_SSL"),
+      parseBooleanEnv(env, "DATABASE_SSL_REJECT_UNAUTHORIZED"),
+    ),
   };
 }

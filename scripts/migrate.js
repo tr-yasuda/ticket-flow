@@ -4,6 +4,21 @@ function readConnectionString(env) {
   return env.DATABASE_URL?.trim() ?? "";
 }
 
+function parseBooleanEnv(env, name) {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === "") {
+    return undefined;
+  }
+  const value = raw.trim().toLowerCase();
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  throw new Error(`Invalid value for ${name}: ${raw}`);
+}
+
 function loadDatabaseConfig(env) {
   const connectionString = readConnectionString(env);
   if (connectionString === "") {
@@ -18,10 +33,25 @@ function main() {
 
   loadDatabaseConfig(process.env);
 
+  const isSslEnabled = parseBooleanEnv(process.env, "DATABASE_SSL");
+  const shouldRejectUnauthorized = parseBooleanEnv(
+    process.env,
+    "DATABASE_SSL_REJECT_UNAUTHORIZED",
+  );
+
+  const env = { ...process.env };
+  if (isSslEnabled === true) {
+    env.PGSSLMODE =
+      shouldRejectUnauthorized === false ? "require" : "verify-full";
+  } else if (isSslEnabled === false) {
+    env.PGSSLMODE = "disable";
+  }
+
   execSync(
     `node-pg-migrate ${direction} --config-file node-pg-migrate.config.json ${args}`,
     {
       stdio: "inherit",
+      env,
     },
   );
 }
