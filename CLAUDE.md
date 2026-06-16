@@ -89,7 +89,7 @@ pnpm run migrate:create -- <description>
 - セットアップ: `apps/web/tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
 - カバレッジ: ルートは `src/**/*.ts`、apps/web は `src/**/*.ts` / `src/**/*.tsx` を対象
 - DB 接続系の統合テストは `DATABASE_URL` の設定で有効化される
-- マイグレーション統合テストは `DATABASE_URL` に加えて `MIGRATE_INTEGRATION_TEST=true` が必要
+- マイグレーション統合テストは `DATABASE_URL` が有効であれば常に実行される
 
 ## 開発フロー
 

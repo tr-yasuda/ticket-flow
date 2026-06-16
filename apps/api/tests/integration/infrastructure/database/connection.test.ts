@@ -5,7 +5,7 @@ import { checkDatabaseHealth } from "../../../../src/infrastructure/database/hea
 import { createPrismaClient } from "../../../../src/infrastructure/database/prisma-client";
 
 describe("データベース接続", () => {
-  it("SQLite に接続できる", async () => {
+  it("データベースに接続できる", async () => {
     const config = loadDatabaseConfig(process.env);
     const client = createPrismaClient(config);
 
