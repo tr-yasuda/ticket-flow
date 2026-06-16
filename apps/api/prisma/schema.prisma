@@ -7,7 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// #101 で各種ドメインモデルを定義するまでのプレースホルダー
-model MigrationPlaceholder {
-  id Int @id @default(autoincrement())
+model User {
+  id        String   @id @default(uuid()) @map("id")
+  email     String   @unique @map("email")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+  @@index([email])
+}
+
+model Ticket {
+  id        String   @id @map("id")
+  title     String   @map("title")
+  status    String   @default("open") @map("status")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("tickets")
+  @@index([status])
+  @@index([createdAt])
 }
