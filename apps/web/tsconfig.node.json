@@ -1,5 +1,4 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
@@ -10,6 +9,11 @@
     "moduleDetection": "force",
     "noEmit": true,
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "rootDir": "."
   },
   "include": ["vite.config.ts", "vitest.config.ts"]

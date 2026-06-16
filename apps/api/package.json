@@ -24,11 +24,12 @@
   "dependencies": {
     "@ticket-flow/shared": "workspace:*",
     "bcrypt": "^6.0.0",
+    "jose": "^6.2.3",
     "pg": "^8.21.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/node": "^20.17.30",
+    "@types/node": "^22.13.0",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
     "node-pg-migrate": "^8.0.4",
