@@ -28,4 +28,69 @@ describe("データベース設定", () => {
       "DATABASE_URL",
     );
   });
+
+  it("DATABASE_SSL=true の場合は SSL を有効にする", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      DATABASE_SSL: "true",
+    });
+
+    expect(config.ssl).toEqual({ rejectUnauthorized: true });
+  });
+
+  it("DATABASE_SSL=false の場合は SSL を無効にする", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      DATABASE_SSL: "false",
+    });
+
+    expect(config.ssl).toBe(false);
+  });
+
+  it("DATABASE_SSL_REJECT_UNAUTHORIZED=false の場合は自己署名証明書を許可する", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      DATABASE_SSL: "true",
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "false",
+    });
+
+    expect(config.ssl).toEqual({ rejectUnauthorized: false });
+  });
+
+  it("DATABASE_SSL が未設定の場合は ssl を指定しない", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+    });
+
+    expect(config.ssl).toBeUndefined();
+  });
+
+  it("DATABASE_SSL=false の場合は DATABASE_SSL_REJECT_UNAUTHORIZED を無視する", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      DATABASE_SSL: "false",
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "false",
+    });
+
+    expect(config.ssl).toBe(false);
+  });
+
+  it("DATABASE_SSL に無効な値が設定されている場合はエラーになる", () => {
+    expect(() =>
+      loadDatabaseConfig({
+        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+        DATABASE_SSL: "ture",
+      }),
+    ).toThrow("Invalid value for DATABASE_SSL");
+  });
+
+  it("DATABASE_SSL_REJECT_UNAUTHORIZED に無効な値が設定されている場合はエラーになる", () => {
+    expect(() =>
+      loadDatabaseConfig({
+        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+        DATABASE_SSL: "true",
+        DATABASE_SSL_REJECT_UNAUTHORIZED: "maybe",
+      }),
+    ).toThrow("Invalid value for DATABASE_SSL_REJECT_UNAUTHORIZED");
+  });
 });
