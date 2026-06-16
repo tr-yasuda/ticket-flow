@@ -1,13 +1,21 @@
+import { randomUUID } from "node:crypto";
+
 export type User = Readonly<{
+  id: string;
   email: string;
+  passwordHash: string;
 }>;
 
-export function createUser(email: string): User {
+export function createUser(email: string, passwordHash: string): User {
   const normalizedEmail = email.toLowerCase();
   if (!isValidEmail(normalizedEmail)) {
     throw new Error("Invalid email address");
   }
-  return { email: normalizedEmail };
+  return {
+    id: randomUUID(),
+    email: normalizedEmail,
+    passwordHash,
+  };
 }
 
 function isValidEmail(email: string): boolean {

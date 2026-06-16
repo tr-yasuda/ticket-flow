@@ -7,7 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// #101 で各種ドメインモデルを定義するまでのプレースホルダー
-model MigrationPlaceholder {
-  id Int @id @default(autoincrement())
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
