@@ -58,7 +58,7 @@ function validateConnectionString(connectionString: string): void {
     ) {
       throw error;
     }
-    throw new Error(`DATABASE_URL is not a valid URL: ${connectionString}`);
+    throw new Error("DATABASE_URL is not a valid URL");
   }
 }
 

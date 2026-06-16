@@ -34,7 +34,7 @@ function validateConnectionString(connectionString) {
     if (error.message && error.message.startsWith("DATABASE_URL must use")) {
       throw error;
     }
-    throw new Error(`DATABASE_URL is not a valid URL: ${connectionString}`);
+    throw new Error("DATABASE_URL is not a valid URL");
   }
 }
 
