@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run && pnpm -r run test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage && pnpm -r run test:coverage",
+    "test:coverage": "vitest run --coverage && pnpm -r run --if-present test:coverage",
     "typecheck": "tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && pnpm -r run typecheck",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
