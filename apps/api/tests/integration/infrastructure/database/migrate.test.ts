@@ -12,29 +12,35 @@ const projectRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../../",
 );
-const testDatabasePath = resolve(projectRoot, "prisma/test.db");
+const migrateTestDatabaseUrl = "file:./prisma/migrate-test.db";
+const migrateTestDatabasePath = resolve(projectRoot, "prisma/migrate-test.db");
 
 async function runPrismaMigrateDeploy(): Promise<void> {
   await execFileAsync(
-    "node",
+    "pnpm",
     [
-      "node_modules/prisma/build/index.js",
+      "--pm-on-fail=ignore",
+      "exec",
+      "prisma",
       "migrate",
       "deploy",
       "--schema",
       "prisma/schema.prisma",
     ],
-    { cwd: projectRoot },
+    {
+      cwd: projectRoot,
+      env: { ...process.env, DATABASE_URL: migrateTestDatabaseUrl },
+    },
   );
 }
 
-async function cleanTestDatabase(): Promise<void> {
-  await rm(testDatabasePath, { force: true });
+async function cleanMigrateTestDatabase(): Promise<void> {
+  await rm(migrateTestDatabasePath, { force: true });
 }
 
 describe("マイグレーションコマンド", () => {
-  beforeEach(cleanTestDatabase);
-  afterEach(cleanTestDatabase);
+  beforeEach(cleanMigrateTestDatabase);
+  afterEach(cleanMigrateTestDatabase);
 
   it("prisma migrate deploy が成功する", async () => {
     await runPrismaMigrateDeploy();
