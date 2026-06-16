@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import { isDatabaseConfigured } from "../../../../src/infrastructure/database/config";
 
 const execAsync = promisify(exec);
@@ -11,18 +11,16 @@ describe("マイグレーションコマンド", () => {
   it.skipIf(!hasDatabaseUrl)(
     "マイグレーションを適用できる",
     async () => {
-      await expect(execAsync("pnpm run migrate")).resolves.toBeDefined();
+      await execAsync("pnpm run migrate");
     },
-    30000,
+    30_000,
   );
 
   it.skipIf(!hasDatabaseUrl)(
     "マイグレーションをロールバックできる",
     async () => {
-      await expect(
-        execAsync("pnpm run migrate:rollback"),
-      ).resolves.toBeDefined();
+      await execAsync("pnpm run migrate:rollback");
     },
-    30000,
+    30_000,
   );
 });
