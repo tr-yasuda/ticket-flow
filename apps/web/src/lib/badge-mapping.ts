@@ -43,7 +43,11 @@ function getConfig<TKey extends string>(
   config: Record<TKey, BadgeConfig>,
   key: string,
 ): BadgeConfig {
-  return config[key as TKey] ?? fallbackConfig;
+  if (!Object.prototype.hasOwnProperty.call(config, key)) {
+    return fallbackConfig;
+  }
+
+  return config[key as TKey];
 }
 
 export function getTicketStatusConfig(status: string): BadgeConfig {
