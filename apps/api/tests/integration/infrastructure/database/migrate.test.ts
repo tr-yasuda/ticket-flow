@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { exec } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 
 const projectRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -16,17 +16,8 @@ const migrateTestDatabaseUrl = "file:./prisma/migrate-test.db";
 const migrateTestDatabasePath = resolve(projectRoot, "prisma/migrate-test.db");
 
 async function runPrismaMigrateDeploy(): Promise<void> {
-  await execFileAsync(
-    "pnpm",
-    [
-      "--pm-on-fail=ignore",
-      "exec",
-      "prisma",
-      "migrate",
-      "deploy",
-      "--schema",
-      "prisma/schema.prisma",
-    ],
+  await execAsync(
+    "pnpm --pm-on-fail=ignore exec prisma migrate deploy --schema prisma/schema.prisma",
     {
       cwd: projectRoot,
       env: { ...process.env, DATABASE_URL: migrateTestDatabaseUrl },
@@ -35,7 +26,12 @@ async function runPrismaMigrateDeploy(): Promise<void> {
 }
 
 async function cleanMigrateTestDatabase(): Promise<void> {
-  await rm(migrateTestDatabasePath, { force: true });
+  const sidecarSuffixes = ["", "-wal", "-shm", "-journal"];
+  await Promise.all(
+    sidecarSuffixes.map((suffix) =>
+      rm(`${migrateTestDatabasePath}${suffix}`, { force: true }),
+    ),
+  );
 }
 
 describe("マイグレーションコマンド", () => {
