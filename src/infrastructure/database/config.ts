@@ -40,6 +40,28 @@ function buildSslConfig(
   return { rejectUnauthorized: shouldRejectUnauthorized ?? true };
 }
 
+function validateConnectionString(connectionString: string): void {
+  try {
+    const parsedUrl = new URL(connectionString);
+    if (
+      parsedUrl.protocol !== "postgres:" &&
+      parsedUrl.protocol !== "postgresql:"
+    ) {
+      throw new Error(
+        `DATABASE_URL must use postgres:// or postgresql:// protocol, got: ${parsedUrl.protocol}`,
+      );
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("DATABASE_URL must use")
+    ) {
+      throw error;
+    }
+    throw new Error(`DATABASE_URL is not a valid URL: ${connectionString}`);
+  }
+}
+
 export function isDatabaseConfigured(env: NodeJS.ProcessEnv): boolean {
   return readConnectionString(env) !== "";
 }
@@ -49,6 +71,7 @@ export function loadDatabaseConfig(env: NodeJS.ProcessEnv): DatabaseConfig {
   if (connectionString === "") {
     throw new Error("DATABASE_URL is required");
   }
+  validateConnectionString(connectionString);
   return {
     connectionString,
     ssl: buildSslConfig(

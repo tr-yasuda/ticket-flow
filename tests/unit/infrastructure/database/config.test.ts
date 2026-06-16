@@ -29,6 +29,34 @@ describe("データベース設定", () => {
     );
   });
 
+  it("DATABASE_URL が無効な URL の場合はエラーになる", () => {
+    expect(() => loadDatabaseConfig({ DATABASE_URL: "not-a-url" })).toThrow(
+      "DATABASE_URL is not a valid URL",
+    );
+  });
+
+  it("DATABASE_URL にプロトコルがない場合はエラーになる", () => {
+    expect(() =>
+      loadDatabaseConfig({ DATABASE_URL: "localhost:5432/db" }),
+    ).toThrow("DATABASE_URL must use postgres:// or postgresql:// protocol");
+  });
+
+  it("DATABASE_URL のプロトコルが postgres でない場合はエラーになる", () => {
+    expect(() =>
+      loadDatabaseConfig({ DATABASE_URL: "http://localhost:5432/db" }),
+    ).toThrow("DATABASE_URL must use postgres:// or postgresql:// protocol");
+  });
+
+  it("postgresql:// プロトコルの DATABASE_URL は有効である", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+    });
+
+    expect(config.connectionString).toBe(
+      "postgresql://user:pass@localhost:5432/db",
+    );
+  });
+
   it("DATABASE_SSL=true の場合は SSL を有効にする", () => {
     const config = loadDatabaseConfig({
       DATABASE_URL: "postgres://user:pass@localhost:5432/db",
