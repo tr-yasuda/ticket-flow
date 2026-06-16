@@ -37,8 +37,55 @@ pnpm install
 2. `.worktrees/<branch-name>/` 以下に作業用 worktree を作成する
 3. 対象レイヤーに変更を加える
 4. テストを追加・実行し、振る舞いを検証する
-5. Conventional Commits に従って commit する
+5. Conventional Commits に従って commit する（commitlint / lefthook で検証）
 6. Pull Request を作成し、レビューを受ける
+
+## ブランチ命名規約
+
+ブランチ名は Conventional Branching に従い、1 つの branch に 1 つの役割を持たせる。
+
+```text
+<type>/<issue-number>-<description>
+```
+
+Issue 番号がない場合は `<type>/<description>` とする。description は英語の kebab-case、小文字で始める。
+
+### type の一覧
+
+| type        | 用途                       |
+| ----------- | -------------------------- |
+| `feature/`  | 新機能の開発               |
+| `bugfix/`   | バグ修正                   |
+| `hotfix/`   | 緊急のバグ修正             |
+| `release/`  | リリース準備               |
+| `docs/`     | ドキュメントの変更         |
+| `style/`    | 振る舞いに影響しない整形   |
+| `refactor/` | 構造変更                   |
+| `test/`     | テストの追加や修正         |
+| `chore/`    | 補助ツールや依存関係の更新 |
+
+### 例
+
+```text
+feature/add-user-authentication
+bugfix/123-fix-header-alignment
+chore/update-markdown-lint-config
+```
+
+## コミットメッセージの検証
+
+コミットメッセージは Conventional Commits 形式で記述し、commitlint で検証する。
+ローカルでは lefthook の `commit-msg` フックが自動的に commitlint を実行する。
+
+```bash
+# 依存関係をインストールするときに lefthook がフックをセットアップする
+pnpm install
+
+# 直前のコミットメッセージを手動で検証する
+pnpm run commitlint
+
+# CI では `CI=true` または `.git` がない場合にフックのインストールをスキップする
+```
 
 ## レイヤーの責務
 
