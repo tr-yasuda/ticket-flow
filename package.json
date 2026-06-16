@@ -1,36 +1,34 @@
 {
   "name": "ticket-flow",
   "version": "0.0.1",
-  "description": "マルチテナント SaaS 向けチケット管理システム",
   "private": true,
-  "packageManager": "pnpm@10.8.1",
+  "description": "マルチテナント SaaS 向けチケット管理システム",
+  "license": "MIT",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build": "tsc",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
-    "format:check": "biome format .",
-    "format": "biome format --write .",
-    "check": "biome check .",
-    "check:fix": "biome check --write ."
+    "lint": "oxlint .",
+    "format:check": "oxfmt . --check",
+    "format": "oxfmt . --write"
   },
-  "license": "MIT",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+  "dependencies": {
+    "pg": "^8.21.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
     "@types/node": "^20.17.30",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
+    "oxfmt": "0.55.0",
+    "oxlint": "1.70.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.9"
   },
-  "dependencies": {
-    "pg": "^8.21.0"
-  }
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "packageManager": "pnpm@10.8.1"
 }
