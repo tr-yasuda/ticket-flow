@@ -12,10 +12,10 @@ importers:
         specifier: ^8.21.0
         version: 8.21.0
       react:
-        specifier: ^19.1.0
+        specifier: ^19.2.7
         version: 19.2.7
       react-dom:
-        specifier: ^19.1.0
+        specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@commitlint/cli':
@@ -28,7 +28,7 @@ importers:
         specifier: ^6.6.3
         version: 6.9.1
       '@testing-library/react':
-        specifier: ^16.3.0
+        specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^20.17.30
@@ -37,13 +37,13 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
       '@types/react':
-        specifier: ^19.1.0
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: ^19.1.0
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
-        specifier: ^6.0.0
+        specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@20.19.43)(jiti@2.6.1))
       '@vitest/coverage-v8':
         specifier: ^4.1.9
