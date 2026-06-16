@@ -16,8 +16,8 @@
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
     "format": "oxfmt . --write",
-    "commitlint": "commitlint",
-    "prepare": "lefthook install"
+    "commitlint": "commitlint --from HEAD~1 --to HEAD",
+    "prepare": "node -e \"const fs=require('fs'); if(process.env.CI || !fs.existsSync('.git')){console.log('Skipping lefthook install');process.exit(0)} require('child_process').execSync('lefthook install', {stdio:'inherit'})\""
   },
   "dependencies": {
     "pg": "^8.21.0",

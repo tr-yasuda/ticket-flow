@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  LEFTHOOK: 0
+
 permissions:
   contents: read
 
