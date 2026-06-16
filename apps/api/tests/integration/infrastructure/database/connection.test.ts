@@ -11,6 +11,11 @@ describe("データベース接続", () => {
 
     try {
       const health = await checkDatabaseHealth(client);
+      if (health.status === "unhealthy") {
+        throw (
+          health.error ?? new Error("データベースヘルスチェックが失敗しました")
+        );
+      }
       expect(health.status).toBe("healthy");
     } finally {
       await client.$disconnect();
