@@ -1,4 +1,4 @@
-import type { TokenConfig } from "../../domain/token";
+import type { TokenConfig } from "../../domain/token.js";
 
 const MIN_SECRET_BYTES = 32;
 

@@ -6,7 +6,7 @@ import {
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
-} from "../../../src/domain/token";
+} from "../../../src/domain/token.js";
 
 const testConfig = {
   secret: "test-secret-at-least-32-bytes-long!",
