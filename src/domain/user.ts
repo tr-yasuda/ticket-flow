@@ -3,10 +3,11 @@ export type User = Readonly<{
 }>;
 
 export function createUser(email: string): User {
-  if (!isValidEmail(email)) {
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) {
     throw new Error("Invalid email address");
   }
-  return { email };
+  return { email: trimmedEmail };
 }
 
 function isValidEmail(email: string): boolean {

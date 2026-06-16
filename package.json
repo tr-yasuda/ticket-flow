@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
-    "format": "oxfmt . --write"
+    "format": "oxfmt . --write",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:rollback": "node scripts/migrate.js down",
+    "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
   },
   "dependencies": {
     "pg": "^8.21.0",
@@ -32,6 +35,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "^4.1.9",
     "happy-dom": "^20.10.4",
+    "node-pg-migrate": "^8.0.4",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
     "typescript": "^6.0.3",

@@ -1,0 +1,5 @@
+{
+  "migrations-dir": "migrations",
+  "ignore-pattern": "**/{README.md,*.sql}",
+  "use-glob": true
+}
