@@ -4,7 +4,7 @@ const { resolve } = require("node:path");
 
 function consumeValue(argv, index, flag) {
   const value = argv[index];
-  if (!value || value.startsWith("--")) {
+  if (value === undefined) {
     console.error(`Error: ${flag} requires a value`);
     process.exit(1);
   }
@@ -20,11 +20,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === "--") {
-      if (index + 1 < argv.length) {
-        console.error("Error: unexpected arguments after --");
-        process.exit(1);
-      }
-      break;
+      continue;
     } else if (arg === "--title") {
       args.title = consumeValue(argv, ++index, "--title");
     } else if (arg === "--body-file") {
