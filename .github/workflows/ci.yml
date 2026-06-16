@@ -50,7 +50,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -73,11 +73,15 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           for i in {1..30}; do
-            if docker exec ${{ job.services.postgres.id }} pg_isready -U postgres; then
+            if docker exec ${{ job.services.postgres.id }} pg_isready -U postgres -d postgres; then
+              echo "PostgreSQL is ready"
               exit 0
             fi
+            echo "Waiting for PostgreSQL... ($i/30)"
             sleep 1
           done
+          echo "PostgreSQL did not become ready in time" >&2
+          docker logs ${{ job.services.postgres.id }} >&2 || true
           exit 1
       - name: Run tests
         run: pnpm run test
