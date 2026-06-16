@@ -18,11 +18,11 @@ pnpm install
 pnpm run dev
 
 # ビルド
-pnpm run build          # フロントエンド（dist-web/）
+pnpm run build          # フロントエンド（apps/web/dist/）
 pnpm run build:server   # サーバー側 TypeScript（dist/）
 
 # 型検査
-pnpm run typecheck      # tsconfig.json / tsconfig.app.json / tsconfig.test.json / tsconfig.node.json をまとめて検査
+pnpm run typecheck      # 全パッケージの tsconfig をまとめて検査
 
 # テスト
 pnpm run test           # 全テストを一度実行
@@ -71,16 +71,16 @@ pnpm run migrate:create -- <description>
 
 ### フロントエンド
 
-- Vite + React 19。エントリポイントは `src/main.tsx`
-- `index.html` が `src/main.tsx` を読み込む
-- ビルド成果物は `dist-web/`
+- Vite + React 19。エントリポイントは `apps/web/src/main.tsx`
+- `apps/web/index.html` が `apps/web/src/main.tsx` を読み込む
+- ビルド成果物は `apps/web/dist/`
 
 ## テスト
 
 - ランナー: Vitest
 - DOM: happy-dom（React コンポーネントテスト用）
-- セットアップ: `tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
-- カバレッジ: `src/**/*.ts` / `src/**/*.tsx` を対象
+- セットアップ: `apps/web/tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
+- カバレッジ: ルートは `src/**/*.ts`、apps/web は `src/**/*.ts` / `src/**/*.tsx` を対象
 - DB 接続系の統合テストは `DATABASE_URL` の設定で有効化される
 - マイグレーション統合テストは `DATABASE_URL` に加えて `MIGRATE_INTEGRATION_TEST=true` が必要
 
