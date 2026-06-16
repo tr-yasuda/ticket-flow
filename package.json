@@ -16,6 +16,7 @@
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
     "format": "oxfmt . --write",
+    "create-issue": "node scripts/create-issue.js",
     "commitlint": "git log -1 --pretty=%B | pnpm exec commitlint",
     "setup": "lefthook install"
   },
