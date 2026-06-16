@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
+
 import { createDatabasePool } from "../../../../src/infrastructure/database/pool";
 
 describe("データベース接続プール", () => {
