@@ -7,13 +7,13 @@ import { isDatabaseConfigured } from "../../../../src/infrastructure/database/co
 
 const execAsync = promisify(exec);
 
-const runMigrationTests =
+const isEnabled =
   isDatabaseConfigured(process.env) &&
-  process.env.RUN_MIGRATION_TESTS === "true";
+  process.env.MIGRATE_INTEGRATION_TEST === "true";
 
 describe("マイグレーションコマンド", () => {
-  it.skipIf(!runMigrationTests)(
-    "マイグレーションを適用し、必ずロールバックする",
+  it.skipIf(!isEnabled)(
+    "マイグレーションを適用してロールバックできる",
     async () => {
       try {
         await execAsync("pnpm run migrate");
