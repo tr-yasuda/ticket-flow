@@ -24,13 +24,14 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "jose": "^6.2.3",
     "pg": "^8.21.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.3",
-    "@commitlint/config-conventional": "^20.5.3",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@types/bcrypt": "^6.0.0",
-    "@types/node": "^20.17.30",
+    "@types/node": "^22.13.0",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
     "lefthook": "^2.1.9",
