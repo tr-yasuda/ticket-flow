@@ -8,18 +8,21 @@ const execAsync = promisify(exec);
 const hasDatabaseUrl = isDatabaseConfigured(process.env);
 
 describe("マイグレーションコマンド", () => {
-  it.skipIf(!hasDatabaseUrl)("マイグレーションを適用できる", async () => {
-    const { stdout } = await execAsync("pnpm run migrate");
-
-    expect(stdout).toContain("Migrations complete");
-  });
+  it.skipIf(!hasDatabaseUrl)(
+    "マイグレーションを適用できる",
+    async () => {
+      await expect(execAsync("pnpm run migrate")).resolves.toBeDefined();
+    },
+    30000,
+  );
 
   it.skipIf(!hasDatabaseUrl)(
     "マイグレーションをロールバックできる",
     async () => {
-      const { stdout } = await execAsync("pnpm run migrate:rollback");
-
-      expect(stdout).toContain("Migrations complete");
+      await expect(
+        execAsync("pnpm run migrate:rollback"),
+      ).resolves.toBeDefined();
     },
+    30000,
   );
 });

@@ -29,7 +29,7 @@ pnpm run migrate
 pnpm run migrate:rollback
 
 # 新しいマイグレーションファイルを作成
-pnpm run migrate:create <description>
+pnpm run migrate:create -- <description>
 ```
 
 ## マイグレーションファイルの書き方
