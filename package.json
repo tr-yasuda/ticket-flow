@@ -7,16 +7,17 @@
   "scripts": {
     "dev": "pnpm --filter @ticket-flow/web dev",
     "build": "pnpm -r run build",
+    "build:shared": "pnpm --filter @ticket-flow/shared build",
     "preview": "pnpm --filter @ticket-flow/web preview",
-    "test": "pnpm -r run test",
+    "test": "pnpm run build:shared && pnpm -r run test",
     "test:watch": "pnpm -r run test:watch",
     "test:coverage": "pnpm -r run --if-present test:coverage",
-    "typecheck": "pnpm -r run typecheck",
+    "typecheck": "pnpm run build:shared && pnpm -r run typecheck",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
     "format": "oxfmt . --write",
     "commitlint": "git log -1 --pretty=%B | pnpm exec commitlint",
-    "prepare": "node -e \"const fs=require('fs'); if(process.env.CI || !fs.existsSync('.git')){console.log('Skipping lefthook install');process.exit(0)} require('child_process').execSync('lefthook install', {stdio:'inherit'})\""
+    "setup": "lefthook install"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
