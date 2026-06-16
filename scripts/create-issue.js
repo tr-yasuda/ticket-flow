@@ -1,6 +1,7 @@
-const { readFileSync } = require("node:fs");
+const { readFileSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
-const { resolve } = require("node:path");
+const { resolve, join } = require("node:path");
+const { tmpdir } = require("node:os");
 
 function consumeValue(argv, index, flag) {
   const value = argv[index];
@@ -68,11 +69,22 @@ function main() {
   }
 
   const labelArgs = labels.flatMap((label) => ["--label", label]);
+  const tmpDir = mkdtempSync(join(tmpdir(), "issue-body-"));
+  const tmpBodyFile = join(tmpDir, "body.md");
 
   try {
+    writeFileSync(tmpBodyFile, body, "utf8");
     execFileSync(
       "gh",
-      ["issue", "create", "--title", title, "--body", body, ...labelArgs],
+      [
+        "issue",
+        "create",
+        "--title",
+        title,
+        "--body-file",
+        tmpBodyFile,
+        ...labelArgs,
+      ],
       { stdio: "inherit" },
     );
   } catch (error) {
@@ -80,6 +92,8 @@ function main() {
       `Error: failed to create issue: ${formatErrorMessage(error)}`,
     );
     process.exit(1);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
