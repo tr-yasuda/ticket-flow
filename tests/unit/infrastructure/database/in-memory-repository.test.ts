@@ -62,4 +62,16 @@ describe("インメモリリポジトリ", () => {
 
     expect(found).toEqual(updated);
   });
+
+  it("保存後にエンティティを変更してもリポジトリ内のデータは汚染されない", async () => {
+    const repository = new InMemoryRepository<User, string>((user) => user.id);
+    const user: User = { id: "user-1", email: "original@example.com" };
+
+    await repository.save(user);
+    const mutableUser = user as { id: string; email: string };
+    mutableUser.email = "mutated@example.com";
+    const found = await repository.findById("user-1");
+
+    expect(found).toEqual({ id: "user-1", email: "original@example.com" });
+  });
 });

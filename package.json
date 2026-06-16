@@ -16,8 +16,8 @@
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
     "format": "oxfmt . --write",
-    "migrate": "node-pg-migrate up --config-file node-pg-migrate.config.json",
-    "migrate:rollback": "node-pg-migrate down --config-file node-pg-migrate.config.json",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:rollback": "node scripts/migrate.js down",
     "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
   },
   "dependencies": {
