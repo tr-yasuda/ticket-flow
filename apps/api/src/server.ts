@@ -33,9 +33,20 @@ const app = createApp({
     generateRefreshToken({ userId }, tokenConfig),
 });
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
 });
+
+function shutdown(signal: string): void {
+  console.log(`Received ${signal}, shutting down...`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 console.log(`Server is running on http://localhost:${port}`);
