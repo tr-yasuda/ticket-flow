@@ -1,3 +1,4 @@
+import { SignJWT } from "jose";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -48,6 +49,17 @@ describe("アクセストークン", () => {
     const token = await generateAccessToken(payload, testConfig);
 
     await expect(verifyAccessToken(token, invalidConfig)).rejects.toThrow(
+      "Invalid token",
+    );
+  });
+
+  it("userId が含まれていないトークンは検証に失敗する", async () => {
+    const token = await new SignJWT({})
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime(testConfig.accessExpiresIn)
+      .sign(new TextEncoder().encode(testConfig.secret));
+
+    await expect(verifyAccessToken(token, testConfig)).rejects.toThrow(
       "Invalid token",
     );
   });

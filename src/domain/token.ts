@@ -31,8 +31,15 @@ async function verifyToken(
   secret: string,
 ): Promise<TokenPayload> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(secret));
-    return { userId: payload.userId as string };
+    const { payload } = await jwtVerify(token, encodeSecret(secret), {
+      algorithms: ["HS256"],
+    });
+
+    if (typeof payload.userId !== "string") {
+      throw new Error("Invalid token");
+    }
+
+    return { userId: payload.userId };
   } catch (error) {
     if (error instanceof errors.JWTExpired) {
       throw new Error("Token has expired");

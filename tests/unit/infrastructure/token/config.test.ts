@@ -44,6 +44,16 @@ describe("JWT 設定", () => {
     ).toThrow("JWT_SECRET");
   });
 
+  it("JWT_SECRET が32バイト未満の場合はエラーになる", () => {
+    expect(() =>
+      loadTokenConfig({
+        JWT_SECRET: "short-secret",
+        JWT_ACCESS_EXPIRES_IN: "15m",
+        JWT_REFRESH_EXPIRES_IN: "7d",
+      }),
+    ).toThrow("JWT_SECRET must be at least 32 bytes");
+  });
+
   it("JWT_ACCESS_EXPIRES_IN がない場合はエラーになる", () => {
     expect(() =>
       loadTokenConfig({
