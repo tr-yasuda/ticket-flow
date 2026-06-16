@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { registerUser } from "../../../src/application/register-user";
 import { DuplicateEmailError } from "../../../src/domain/repository-error";

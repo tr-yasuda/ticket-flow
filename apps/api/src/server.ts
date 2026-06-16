@@ -5,17 +5,9 @@ import { generateAccessToken, generateRefreshToken } from "./domain/token.js";
 import { loadDatabaseConfig } from "./infrastructure/database/config.js";
 import { createPrismaClient } from "./infrastructure/database/prisma-client.js";
 import { PrismaUserRepository } from "./infrastructure/database/prisma-user-repository.js";
+import { parsePort } from "./infrastructure/server/port.js";
 import { loadTokenConfig } from "./infrastructure/token/config.js";
 import { createApp } from "./presentation/app.js";
-
-function parsePort(raw: string | undefined): number {
-  const value = raw ?? "3000";
-  const port = Number(value);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error(`Invalid PORT: ${value}`);
-  }
-  return port;
-}
 
 const port = parsePort(process.env.PORT);
 

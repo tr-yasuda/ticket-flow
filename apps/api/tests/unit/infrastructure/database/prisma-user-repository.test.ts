@@ -20,8 +20,7 @@ function createPrismaClientStub(overrides: {
   } as unknown as PrismaClient;
 }
 
-// PrismaClient 型を importせず、依存注入で使うため any 相当の stub を使用
-type PrismaClient = Parameters<typeof PrismaUserRepository>[0];
+type PrismaClient = ConstructorParameters<typeof PrismaUserRepository>[0];
 
 describe("PrismaUserRepository", () => {
   it("重複したメールアドレス保存時に DuplicateEmailError を投げる", async () => {

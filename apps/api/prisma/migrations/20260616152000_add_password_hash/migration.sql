@@ -8,7 +8,7 @@ CREATE TABLE "new_users" (
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL
 );
-INSERT INTO "new_users" ("created_at", "email", "id", "updated_at") SELECT "created_at", "email", "id", "updated_at" FROM "users";
+INSERT INTO "new_users" ("created_at", "email", "id", "password_hash", "updated_at") SELECT "created_at", "email", "id", 'BACKFILL_REQUIRED', "updated_at" FROM "users";
 DROP TABLE "users";
 ALTER TABLE "new_users" RENAME TO "users";
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
