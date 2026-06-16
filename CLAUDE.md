@@ -67,7 +67,7 @@ pnpm run migrate:create -- <description>
 - `src/infrastructure/database/config.ts` — `DATABASE_URL` の読み取り・検証
 - `src/infrastructure/database/pool.ts` — `pg.Pool` の生成
 - `src/infrastructure/database/health-check.ts` — ヘルスチェック用ユーティリティ
-- 統合テストは `isDatabaseConfigured(process.env) && process.env.MIGRATE_INTEGRATION_TEST === "true"` でスキップ制御される
+- DB 接続系の統合テストは `isDatabaseConfigured(process.env)`（`DATABASE_URL` の有無）でスキップ制御される
 
 ### フロントエンド
 
@@ -81,7 +81,8 @@ pnpm run migrate:create -- <description>
 - DOM: happy-dom（React コンポーネントテスト用）
 - セットアップ: `tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
 - カバレッジ: `src/**/*.ts` / `src/**/*.tsx` を対象
-- 統合テストの DB 関連は `DATABASE_URL` を設定し `MIGRATE_INTEGRATION_TEST=true` を付けると有効化される
+- DB 接続系の統合テストは `DATABASE_URL` の設定で有効化される
+- マイグレーション統合テストは `DATABASE_URL` に加えて `MIGRATE_INTEGRATION_TEST=true` が必要
 
 ## 開発フロー
 
@@ -116,7 +117,7 @@ GitHub Actions (`ci.yml`) で以下を実行:
 - test
 - lint (`oxlint`)
 - format check (`oxfmt`)
-- dependency-review（PR 時）
+- dependency-review（PR 時。`continue-on-error: true` のため警告用途で、単独ではブロックしない）
 
 ローカルでは `pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test` を実行すれば CI と同等の検証になる。
 
