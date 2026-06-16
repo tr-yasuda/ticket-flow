@@ -58,7 +58,16 @@ function validateConnectionString(connectionString: string): void {
 }
 
 export function isDatabaseConfigured(env: NodeJS.ProcessEnv): boolean {
-  return readConnectionString(env) !== "";
+  const connectionString = readConnectionString(env);
+  if (connectionString === "") {
+    return false;
+  }
+  try {
+    validateConnectionString(connectionString);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function loadDatabaseConfig(env: NodeJS.ProcessEnv): DatabaseConfig {

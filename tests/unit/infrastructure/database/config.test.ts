@@ -1,8 +1,53 @@
 import { describe, expect, it } from "vitest";
 
-import { loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
+import {
+  isDatabaseConfigured,
+  loadDatabaseConfig,
+} from "../../../../src/infrastructure/database/config";
 
 describe("データベース設定", () => {
+  describe("isDatabaseConfigured", () => {
+    it("有効な postgres URL が設定されている場合は true を返す", () => {
+      expect(
+        isDatabaseConfigured({
+          DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+        }),
+      ).toBe(true);
+    });
+
+    it("有効な postgresql URL が設定されている場合は true を返す", () => {
+      expect(
+        isDatabaseConfigured({
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+        }),
+      ).toBe(true);
+    });
+
+    it("DATABASE_URL が未設定の場合は false を返す", () => {
+      expect(isDatabaseConfigured({})).toBe(false);
+    });
+
+    it("DATABASE_URL が空文字の場合は false を返す", () => {
+      expect(isDatabaseConfigured({ DATABASE_URL: "" })).toBe(false);
+    });
+
+    it("DATABASE_URL が無効な URL の場合は false を返す", () => {
+      expect(isDatabaseConfigured({ DATABASE_URL: "not-a-url" })).toBe(false);
+    });
+
+    it("DATABASE_URL が postgres / postgresql 以外のプロトコルの場合は false を返す", () => {
+      expect(
+        isDatabaseConfigured({ DATABASE_URL: "http://localhost:5432/db" }),
+      ).toBe(false);
+    });
+
+    it("DATABASE_URL が postgres:// 形式でない opaque URL の場合は false を返す", () => {
+      expect(isDatabaseConfigured({ DATABASE_URL: "postgres:foo" })).toBe(
+        false,
+      );
+    });
+  });
+
   it("DATABASE_URL が設定されている場合は設定を返す", () => {
     const config = loadDatabaseConfig({
       DATABASE_URL: "postgres://user:pass@localhost:5432/db",
