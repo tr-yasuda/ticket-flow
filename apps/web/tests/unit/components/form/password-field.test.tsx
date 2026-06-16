@@ -19,7 +19,7 @@ describe("PasswordField", () => {
     );
   });
 
-  it("目くらし切替ボタンで text タイプに切り替わる", async () => {
+  it("目くらし切替ボタンで text タイプに切り替わる", () => {
     render(<PasswordField id="password" label="パスワード" />);
 
     const toggleButton = screen.getByRole("button", {

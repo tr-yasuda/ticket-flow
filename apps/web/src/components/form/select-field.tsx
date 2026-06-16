@@ -12,13 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type SelectOption = {
   value: string;
   label: string;
 };
 
-type SelectFieldProps = React.ComponentProps<typeof Select> & {
+type SelectFieldProps = Omit<
+  React.ComponentProps<typeof Select>,
+  "className"
+> & {
   id: string;
   label: string;
   helperText?: string;
@@ -26,6 +30,7 @@ type SelectFieldProps = React.ComponentProps<typeof Select> & {
   loading?: boolean;
   options: SelectOption[];
   placeholder?: string;
+  className?: string;
 };
 
 function SelectField({
@@ -37,6 +42,7 @@ function SelectField({
   loading,
   options,
   placeholder,
+  className,
   ...props
 }: SelectFieldProps) {
   const { ariaDescribedBy } = useFieldDescription(
@@ -47,7 +53,7 @@ function SelectField({
   );
 
   return (
-    <div className="grid gap-2">
+    <div className={cn("grid gap-2", className)}>
       <Label htmlFor={id}>{label}</Label>
       <Select disabled={disabled || loading} {...props}>
         <SelectTrigger

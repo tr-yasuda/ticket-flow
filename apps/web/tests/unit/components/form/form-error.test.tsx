@@ -12,7 +12,7 @@ describe("FormError", () => {
     );
   });
 
-  it("複数行のメッセージを表示する", () => {
+  it("別のメッセージを表示する", () => {
     render(<FormError message="メールアドレスが既に登録されています" />);
 
     expect(
