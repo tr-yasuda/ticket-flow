@@ -1,14 +1,11 @@
+import type { PrismaClient } from "@prisma/client";
+
 export type DatabaseHealth = Readonly<{
   status: "healthy" | "unhealthy";
   error?: Error;
 }>;
 
-export type DatabaseQueryable = Readonly<{
-  $queryRaw(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<unknown>;
-}>;
+export type DatabaseQueryable = Pick<PrismaClient, "$queryRaw">;
 
 export async function checkDatabaseHealth(
   client: DatabaseQueryable,
