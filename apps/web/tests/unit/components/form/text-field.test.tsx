@@ -100,6 +100,22 @@ describe("TextField", () => {
     );
   });
 
+  it("error と helper text の両方がある場合に両方のテキストを表示する", () => {
+    render(
+      <TextField
+        id="email"
+        label="メールアドレス"
+        helperText="会社用のメールアドレスを入力してください"
+        error="必須です"
+      />,
+    );
+
+    expect(screen.getByText("必須です")).toBeInTheDocument();
+    expect(
+      screen.getByText("会社用のメールアドレスを入力してください"),
+    ).toBeInTheDocument();
+  });
+
   it("disabled 状態を扱える", () => {
     render(<TextField id="email" label="メールアドレス" disabled />);
 

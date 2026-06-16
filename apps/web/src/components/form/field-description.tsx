@@ -40,7 +40,7 @@ function FieldDescription({
           {error}
         </p>
       )}
-      {!error && (loading || helperText) && (
+      {(loading || helperText) && (
         <p id={descriptionId} className="text-sm text-muted-foreground">
           {loading ? "送信中..." : helperText}
         </p>
