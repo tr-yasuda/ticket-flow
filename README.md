@@ -84,7 +84,7 @@ pnpm install
 # 直前のコミットメッセージを手動で検証する
 pnpm run commitlint
 
-# CI ではフックのインストールをスキップする（LEFTHOOK=0）
+# CI では `CI=true` または `.git` がない場合にフックのインストールをスキップする
 ```
 
 ## レイヤーの責務
