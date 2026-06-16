@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
-    "format": "oxfmt . --write"
+    "format": "oxfmt . --write",
+    "commitlint": "commitlint",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "pg": "^8.21.0",
@@ -23,6 +25,8 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^20.17.30",
@@ -32,6 +36,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "^4.1.9",
     "happy-dom": "^20.10.4",
+    "lefthook": "^2.1.9",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
     "typescript": "^6.0.3",

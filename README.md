@@ -40,6 +40,38 @@ pnpm install
 5. Conventional Commits に従って commit する
 6. Pull Request を作成し、レビューを受ける
 
+## ブランチ命名規約
+
+ブランチ名は Conventional Branching に従い、1 つの branch に 1 つの役割を持たせる。
+
+```text
+<type>/<issue-number>-<description>
+```
+
+Issue 番号がない場合は `<type>/<description>` とする。description は英語の kebab-case、小文字で始める。
+
+### type の一覧
+
+| type        | 用途                       |
+| ----------- | -------------------------- |
+| `feature/`  | 新機能の開発               |
+| `bugfix/`   | バグ修正                   |
+| `hotfix/`   | 緊急のバグ修正             |
+| `release/`  | リリース準備               |
+| `docs/`     | ドキュメントの変更         |
+| `style/`    | 振る舞いに影響しない整形   |
+| `refactor/` | 構造変更                   |
+| `test/`     | テストの追加や修正         |
+| `chore/`    | 補助ツールや依存関係の更新 |
+
+### 例
+
+```text
+feature/add-user-authentication
+bugfix/123-fix-header-alignment
+chore/update-markdown-lint-config
+```
+
 ## レイヤーの責務
 
 - `presentation`: 入力を受け、サービスを呼び、返却形式へ写すだけにする
