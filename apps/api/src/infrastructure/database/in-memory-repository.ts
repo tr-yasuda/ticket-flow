@@ -1,4 +1,4 @@
-import type { Repository } from "../../domain/repository";
+import type { Repository } from "../../domain/repository.js";
 
 export class InMemoryRepository<TEntity, TId> implements Repository<
   TEntity,

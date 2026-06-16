@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { loadTokenConfig } from "../../../../src/infrastructure/token/config";
+import { loadTokenConfig } from "../../../../src/infrastructure/token/config.js";
 
 describe("JWT 設定", () => {
   it("必要な環境変数が設定されている場合は設定を返す", () => {

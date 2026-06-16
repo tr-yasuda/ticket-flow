@@ -7,35 +7,23 @@
   "scripts": {
     "dev": "pnpm --filter @ticket-flow/web dev",
     "build": "pnpm -r run build",
-    "build:server": "tsc -p tsconfig.json",
     "preview": "pnpm --filter @ticket-flow/web preview",
     "test": "node scripts/test.js",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage && pnpm -r --if-present run test:coverage",
-    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r run typecheck",
+    "test:coverage": "pnpm -r run --if-present test:coverage",
+    "typecheck": "pnpm -r run typecheck",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check",
     "format": "oxfmt . --write",
     "commitlint": "git log -1 --pretty=%B | pnpm exec commitlint",
-    "prepare": "node -e \"const fs=require('fs'); if(process.env.CI || !fs.existsSync('.git')){console.log('Skipping lefthook install');process.exit(0)} require('child_process').execSync('lefthook install', {stdio:'inherit'})\"",
-    "migrate": "node scripts/migrate.js up",
-    "migrate:rollback": "node scripts/migrate.js down",
-    "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
-  },
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "jose": "^6.2.3",
-    "pg": "^8.21.0"
+    "prepare": "node -e \"const fs=require('fs'); if(process.env.CI || !fs.existsSync('.git')){console.log('Skipping lefthook install');process.exit(0)} require('child_process').execSync('lefthook install', {stdio:'inherit'})\""
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.13.0",
-    "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
     "lefthook": "^2.1.9",
-    "node-pg-migrate": "^8.0.4",
     "oxfmt": "0.55.0",
     "oxlint": "1.70.0",
     "typescript": "^6.0.3",
