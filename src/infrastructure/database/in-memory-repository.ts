@@ -1,8 +1,9 @@
 import type { Repository } from "../../domain/repository";
 
-export class InMemoryRepository<TEntity, TId>
-  implements Repository<TEntity, TId>
-{
+export class InMemoryRepository<TEntity, TId> implements Repository<
+  TEntity,
+  TId
+> {
   private readonly entities = new Map<TId, TEntity>();
 
   constructor(private readonly getId: (entity: TEntity) => TId) {}

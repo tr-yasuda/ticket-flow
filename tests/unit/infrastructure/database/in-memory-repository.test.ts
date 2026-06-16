@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { InMemoryRepository } from "../../../../src/infrastructure/database/in-memory-repository";
 
 type User = Readonly<{

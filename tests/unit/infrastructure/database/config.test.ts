@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
 
 describe("データベース設定", () => {

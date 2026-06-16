@@ -1,6 +1,8 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+
 import { describe, it } from "vitest";
+
 import { isDatabaseConfigured } from "../../../../src/infrastructure/database/config";
 
 const execAsync = promisify(exec);

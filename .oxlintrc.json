@@ -1,0 +1,9 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlintrc.json",
+  "plugins": ["typescript"],
+  "rules": {
+    "no-unused-vars": "error",
+    "typescript/no-explicit-any": "error"
+  },
+  "ignorePatterns": ["dist", "node_modules", "migrations"]
+}

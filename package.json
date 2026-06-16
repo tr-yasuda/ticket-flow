@@ -1,9 +1,9 @@
 {
   "name": "ticket-flow",
   "version": "0.0.1",
-  "description": "マルチテナント SaaS 向けチケット管理システム",
   "private": true,
-  "packageManager": "pnpm@10.8.1",
+  "description": "マルチテナント SaaS 向けチケット管理システム",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,19 +13,12 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
-    "format:check": "biome format .",
-    "format": "biome format --write .",
-    "check": "biome check .",
-    "check:fix": "biome check --write .",
+    "lint": "oxlint .",
+    "format:check": "oxfmt . --check",
+    "format": "oxfmt . --write",
     "migrate": "node-pg-migrate up --config-file node-pg-migrate.config.json",
     "migrate:rollback": "node-pg-migrate down --config-file node-pg-migrate.config.json",
     "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
-  },
-  "license": "MIT",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
     "pg": "^8.21.0",
@@ -33,7 +26,6 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^20.17.30",
@@ -44,8 +36,14 @@
     "@vitest/coverage-v8": "^4.1.9",
     "happy-dom": "^20.10.4",
     "node-pg-migrate": "^8.0.4",
+    "oxfmt": "0.55.0",
+    "oxlint": "1.70.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.9"
-  }
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "packageManager": "pnpm@10.8.1"
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { createUser } from "../../src/domain/user";
 
 describe("ユーザー登録", () => {
