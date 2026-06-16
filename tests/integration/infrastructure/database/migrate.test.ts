@@ -7,20 +7,15 @@ import { isDatabaseConfigured } from "../../../../src/infrastructure/database/co
 
 const execAsync = promisify(exec);
 
-const hasDatabaseUrl = isDatabaseConfigured(process.env);
+const isEnabled =
+  isDatabaseConfigured(process.env) &&
+  process.env.MIGRATE_INTEGRATION_TEST === "true";
 
 describe("マイグレーションコマンド", () => {
-  it.skipIf(!hasDatabaseUrl)(
-    "マイグレーションを適用できる",
+  it.skipIf(!isEnabled)(
+    "マイグレーションを適用してロールバックできる",
     async () => {
       await execAsync("pnpm run migrate");
-    },
-    30_000,
-  );
-
-  it.skipIf(!hasDatabaseUrl)(
-    "マイグレーションをロールバックできる",
-    async () => {
       await execAsync("pnpm run migrate:rollback");
     },
     30_000,
