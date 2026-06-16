@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { Toaster } from "@/components/ui/sonner";
 import { useApiErrorHandler } from "@/hooks/use-api-error-handler";
+import { API_ERROR_MESSAGES } from "@/lib/api-error";
 
 function ApiErrorTestButton() {
   const { handleApiError } = useApiErrorHandler();
@@ -35,9 +36,7 @@ describe("useApiErrorHandler", () => {
     fireEvent.click(screen.getByRole("button", { name: "trigger api error" }));
 
     expect(
-      await screen.findByText(
-        "システムエラーが発生しました。時間をおいて再度お試しください。",
-      ),
+      await screen.findByText(API_ERROR_MESSAGES.server),
     ).toBeInTheDocument();
   });
 });
