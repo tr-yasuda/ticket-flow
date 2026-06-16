@@ -15,7 +15,9 @@ function parseArgs(argv) {
   const args = { labels: [] };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
-    if (arg === "--title") {
+    if (arg === "--") {
+      break;
+    } else if (arg === "--title") {
       args.title = consumeValue(argv, ++index, "--title");
     } else if (arg === "--body-file") {
       args.bodyFile = consumeValue(argv, ++index, "--body-file");
@@ -23,6 +25,9 @@ function parseArgs(argv) {
       args.labels.push(consumeValue(argv, ++index, "--label"));
     } else if (arg.startsWith("--")) {
       console.error(`Error: unknown option ${arg}`);
+      process.exit(1);
+    } else {
+      console.error(`Error: unexpected argument ${arg}`);
       process.exit(1);
     }
   }
@@ -43,7 +48,7 @@ function main() {
   const { title, bodyFile, labels } = parseArgs(process.argv.slice(2));
   if (!title || !bodyFile) {
     console.error(
-      "Usage: node scripts/create-issue.js --title <title> --body-file <path> [--label <label> ...]",
+      "Usage: pnpm run create-issue -- --title <title> --body-file <path> [--label <label> ...]",
     );
     process.exit(1);
   }
