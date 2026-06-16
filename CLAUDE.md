@@ -94,6 +94,7 @@ pnpm run migrate:create -- <description>
 ## 開発フロー
 
 1. Issue またはタスクを確認
+   - `gh issue create --body-file` で Issue テンプレートを使う場合は、`pnpm run create-issue -- --title "<title>" --body-file <path>` を使用し、frontmatter（`---` 〜 `---`）を本文から除去する
 2. `.worktrees/<branch-name>/` 以下に worktree を作成
 3. 対象レイヤーに変更を加える
 4. テストを追加・実行
