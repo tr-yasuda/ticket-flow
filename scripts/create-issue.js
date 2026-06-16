@@ -11,6 +11,10 @@ function consumeValue(argv, index, flag) {
   return value;
 }
 
+function formatErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function parseArgs(argv) {
   const args = { labels: [] };
   for (let index = 0; index < argv.length; index++) {
@@ -62,7 +66,7 @@ function main() {
     body = stripFrontmatter(readFileSync(resolve(bodyFile), "utf8"));
   } catch (error) {
     console.error(
-      `Error: failed to read body file "${bodyFile}": ${error.message}`,
+      `Error: failed to read body file "${bodyFile}": ${formatErrorMessage(error)}`,
     );
     process.exit(1);
   }
@@ -76,7 +80,9 @@ function main() {
       { stdio: "inherit" },
     );
   } catch (error) {
-    console.error(`Error: failed to create issue: ${error.message}`);
+    console.error(
+      `Error: failed to create issue: ${formatErrorMessage(error)}`,
+    );
     process.exit(1);
   }
 }
