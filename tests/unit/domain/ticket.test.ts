@@ -13,8 +13,13 @@ describe("チケット作成", () => {
     });
   });
 
-  it("空文字の id は拒否される", () => {
-    expect(() => createTicket("", "バグを修正する")).toThrow(
+  it.each([
+    ["空文字", ""],
+    ["空白のみ", "   "],
+    ["タブと改行のみ", "\t\n"],
+    ["全角スペースのみ", "　"],
+  ])("%s の id は拒否される", (_label, id) => {
+    expect(() => createTicket(id, "バグを修正する")).toThrow(
       "Ticket id is required",
     );
   });
