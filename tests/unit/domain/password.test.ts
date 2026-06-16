@@ -29,8 +29,17 @@ describe("パスワードハッシュ化", () => {
     expect(hashedPassword).not.toBe(plainPassword);
   });
 
-  it("72バイトを超えるパスワードはハッシュ化できない", async () => {
+  it("72バイトを超える ASCII パスワードはハッシュ化できない", async () => {
     const plainPassword = "a".repeat(73);
+
+    await expect(hashPassword(plainPassword)).rejects.toThrow(
+      "Password must be 72 bytes or fewer",
+    );
+  });
+
+  it("72バイトを超えるマルチバイト文字のパスワードはハッシュ化できない", async () => {
+    // "あ" は UTF-8 で 3 バイトなので、25 文字で 75 バイト
+    const plainPassword = "あ".repeat(25);
 
     await expect(hashPassword(plainPassword)).rejects.toThrow(
       "Password must be 72 bytes or fewer",
