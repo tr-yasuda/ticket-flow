@@ -34,7 +34,7 @@ function stripFrontmatter(content) {
     content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
   const match = withoutBom.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/);
   if (!match) {
-    return content;
+    return withoutBom;
   }
   return withoutBom.slice(match[0].length).replace(/^(\r?\n)+/, "");
 }
@@ -48,14 +48,28 @@ function main() {
     process.exit(1);
   }
 
-  const body = stripFrontmatter(readFileSync(resolve(bodyFile), "utf8"));
+  let body;
+  try {
+    body = stripFrontmatter(readFileSync(resolve(bodyFile), "utf8"));
+  } catch (error) {
+    console.error(
+      `Error: failed to read body file "${bodyFile}": ${error.message}`,
+    );
+    process.exit(1);
+  }
+
   const labelArgs = labels.flatMap((label) => ["--label", label]);
 
-  execFileSync(
-    "gh",
-    ["issue", "create", "--title", title, "--body", body, ...labelArgs],
-    { stdio: "inherit" },
-  );
+  try {
+    execFileSync(
+      "gh",
+      ["issue", "create", "--title", title, "--body", body, ...labelArgs],
+      { stdio: "inherit" },
+    );
+  } catch (error) {
+    console.error(`Error: failed to create issue: ${error.message}`);
+    process.exit(1);
+  }
 }
 
 main();
