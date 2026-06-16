@@ -10,5 +10,5 @@ export function createUser(email: string): User {
 }
 
 function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$(?![\s\S])/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email);
 }

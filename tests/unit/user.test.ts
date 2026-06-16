@@ -25,11 +25,11 @@ describe("ユーザー登録", () => {
   });
 
   it.each([
-    ["\tuser@example.com\n", "タブと改行"],
-    ["　user@example.com　", "全角スペース"],
-    ["user@example.com\t", "末尾タブ"],
-    ["user@example.com ", "末尾半角スペース"],
-  ])("%s は拒否される", (input) => {
+    ["タブと改行", "\tuser@example.com\n"],
+    ["全角スペース", "　user@example.com　"],
+    ["末尾タブ", "user@example.com\t"],
+    ["末尾半角スペース", "user@example.com "],
+  ])("%s を含むメールアドレスは拒否される", (_label, input) => {
     expect(() => createUser(input)).toThrow("Invalid email address");
   });
 });
