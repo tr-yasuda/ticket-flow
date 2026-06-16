@@ -21,17 +21,22 @@ function parseArgs(argv) {
       args.bodyFile = consumeValue(argv, ++index, "--body-file");
     } else if (arg === "--label") {
       args.labels.push(consumeValue(argv, ++index, "--label"));
+    } else if (arg.startsWith("--")) {
+      console.error(`Error: unknown option ${arg}`);
+      process.exit(1);
     }
   }
   return args;
 }
 
 function stripFrontmatter(content) {
-  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  const withoutBom =
+    content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
+  const match = withoutBom.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/);
   if (!match) {
     return content;
   }
-  return content.slice(match[0].length).replace(/^\r?\n+/, "");
+  return withoutBom.slice(match[0].length).replace(/^(\r?\n)+/, "");
 }
 
 function main() {
