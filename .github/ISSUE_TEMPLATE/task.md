@@ -1,6 +1,6 @@
 ---
 name: タスク
-description: 機能追加・バグ修正・リファクタなどの開発タスク
+about: 機能追加・バグ修正・リファクタなどの開発タスク
 title: ""
 labels: []
 assignees: []
