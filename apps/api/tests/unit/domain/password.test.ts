@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { hashPassword, verifyPassword } from "../../../src/domain/password";
+import {
+  hashPassword,
+  validatePassword,
+  verifyPassword,
+} from "../../../src/domain/password";
 
 describe("パスワードハッシュ化", () => {
   it("正しいパスワードで検証が成功する", async () => {
@@ -27,6 +31,12 @@ describe("パスワードハッシュ化", () => {
     const hashedPassword = await hashPassword(plainPassword);
 
     expect(hashedPassword).not.toBe(plainPassword);
+  });
+
+  it("7バイト以下のパスワードはハッシュ化できない", async () => {
+    await expect(hashPassword("short")).rejects.toThrow(
+      "Password must be at least 8 bytes",
+    );
   });
 
   it("72バイトを超える ASCII パスワードはハッシュ化できない", async () => {
@@ -69,5 +79,35 @@ describe("パスワードハッシュ化", () => {
     const isValid = await verifyPassword(longPassword, hashedPassword);
 
     expect(isValid).toBe(false);
+  });
+
+  it("7バイト以下のパスワードは検証が失敗する", async () => {
+    const hashedPassword = await hashPassword("correct-password");
+
+    const isValid = await verifyPassword("short", hashedPassword);
+
+    expect(isValid).toBe(false);
+  });
+});
+
+describe("パスワード検証", () => {
+  it("8バイト以上72バイト以下のパスワードは有効", () => {
+    const result = validatePassword("password");
+
+    expect(result.valid).toBe(true);
+  });
+
+  it("7バイト以下のパスワードは無効", () => {
+    const result = validatePassword("passwor");
+
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("Password must be at least 8 bytes");
+  });
+
+  it("72バイトを超えるパスワードは無効", () => {
+    const result = validatePassword("a".repeat(73));
+
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("Password must be 72 bytes or fewer");
   });
 });
