@@ -14,11 +14,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # 依存関係のインストール
 pnpm install
 
+# lefthook フックのセットアップ（初回のみ）
+pnpm run setup
+
+# apps/api 開発時は @ticket-flow/shared を事前にビルド
+pnpm --filter @ticket-flow/shared build
+
 # 開発サーバー起動（Vite）
 pnpm run dev
 
 # ビルド
-pnpm run build          # フロントエンド（apps/web/dist/）
+pnpm run build          # 全パッケージのビルド
+pnpm run build:shared   # @ticket-flow/shared のみビルド
 pnpm run build:server   # サーバー側 TypeScript（dist/）
 
 # 型検査
@@ -90,7 +97,7 @@ pnpm run migrate:create -- <description>
 2. `.worktrees/<branch-name>/` 以下に worktree を作成
 3. 対象レイヤーに変更を加える
 4. テストを追加・実行
-5. Conventional Commits で commit（lefthook / commitlint で検証）
+5. Conventional Commits で commit（`pnpm run setup` で lefthook / commitlint を有効化済み）
 6. Pull Request を作成
 
 ### ブランチ命名規約
