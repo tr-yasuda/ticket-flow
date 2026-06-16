@@ -1,8 +1,8 @@
 import type { VariantProps } from "class-variance-authority";
 
-type BadgeVariant = VariantProps<
-  typeof import("@/components/ui/badge").badgeVariants
->["variant"];
+type BadgeVariant = NonNullable<
+  VariantProps<typeof import("@/components/ui/badge").badgeVariants>["variant"]
+>;
 
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
