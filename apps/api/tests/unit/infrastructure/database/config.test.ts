@@ -35,7 +35,13 @@ describe("データベース設定", () => {
       expect(isDatabaseConfigured({ DATABASE_URL: "not-a-url" })).toBe(false);
     });
 
-    it("DATABASE_URL が postgres / postgresql 以外のプロトコルの場合は false を返す", () => {
+    it("有効な SQLite file URL が設定されている場合は true を返す", () => {
+      expect(isDatabaseConfigured({ DATABASE_URL: "file:./dev.db" })).toBe(
+        true,
+      );
+    });
+
+    it("DATABASE_URL が postgres / postgresql / file 以外のプロトコルの場合は false を返す", () => {
       expect(
         isDatabaseConfigured({ DATABASE_URL: "http://localhost:5432/db" }),
       ).toBe(false);
@@ -80,7 +86,7 @@ describe("データベース設定", () => {
     );
   });
 
-  it("DATABASE_URL のプロトコルが postgres / postgresql 以外の場合はエラーになる", () => {
+  it("DATABASE_URL のプロトコルが postgres / postgresql / file 以外の場合はエラーになる", () => {
     expect(() =>
       loadDatabaseConfig({ DATABASE_URL: "localhost:5432/db" }),
     ).toThrow("got: localhost:");
@@ -94,8 +100,24 @@ describe("データベース設定", () => {
 
   it("DATABASE_URL が postgres:// 形式でない opaque URL の場合はエラーになる", () => {
     expect(() => loadDatabaseConfig({ DATABASE_URL: "postgres:foo" })).toThrow(
-      "got: postgres:",
+      "must include a host",
     );
+  });
+
+  it("SQLite file URL の場合は有効な設定を返す", () => {
+    const config = loadDatabaseConfig({ DATABASE_URL: "file:./dev.db" });
+
+    expect(config.connectionString).toBe("file:./dev.db");
+    expect(config.ssl).toBeUndefined();
+  });
+
+  it("SQLite file URL の場合は DATABASE_SSL 設定を無視する", () => {
+    const config = loadDatabaseConfig({
+      DATABASE_URL: "file:./dev.db",
+      DATABASE_SSL: "true",
+    });
+
+    expect(config.ssl).toBeUndefined();
   });
 
   it("postgresql:// プロトコルの DATABASE_URL は有効である", () => {

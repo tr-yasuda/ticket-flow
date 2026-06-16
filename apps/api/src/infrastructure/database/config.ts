@@ -40,21 +40,32 @@ function buildSslConfig(
   return { rejectUnauthorized: shouldRejectUnauthorized ?? true };
 }
 
-function validateConnectionString(connectionString: string): void {
+const allowedProtocols = ["postgres:", "postgresql:", "file:"] as const;
+
+type AllowedProtocol = (typeof allowedProtocols)[number];
+
+function validateConnectionString(connectionString: string): AllowedProtocol {
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(connectionString);
   } catch {
     throw new Error("DATABASE_URL is not a valid URL");
   }
-  if (
-    !parsedUrl.href.startsWith("postgres://") &&
-    !parsedUrl.href.startsWith("postgresql://")
-  ) {
+  const protocol = parsedUrl.protocol as AllowedProtocol;
+  if (!allowedProtocols.includes(protocol)) {
     throw new Error(
-      `DATABASE_URL must use postgres:// or postgresql:// protocol, got: ${parsedUrl.protocol}`,
+      `DATABASE_URL must use postgres://, postgresql://, or file:// protocol, got: ${parsedUrl.protocol}`,
     );
   }
+  if (
+    (protocol === "postgres:" || protocol === "postgresql:") &&
+    parsedUrl.hostname === ""
+  ) {
+    throw new Error(
+      "DATABASE_URL must include a host for PostgreSQL connections",
+    );
+  }
+  return protocol;
 }
 
 export function isDatabaseConfigured(env: NodeJS.ProcessEnv): boolean {
@@ -75,12 +86,15 @@ export function loadDatabaseConfig(env: NodeJS.ProcessEnv): DatabaseConfig {
   if (connectionString === "") {
     throw new Error("DATABASE_URL is required");
   }
-  validateConnectionString(connectionString);
+  const protocol = validateConnectionString(connectionString);
+  const isSqlite = protocol === "file:";
   return {
     connectionString,
-    ssl: buildSslConfig(
-      parseBooleanEnv(env, "DATABASE_SSL"),
-      parseBooleanEnv(env, "DATABASE_SSL_REJECT_UNAUTHORIZED"),
-    ),
+    ssl: isSqlite
+      ? undefined
+      : buildSslConfig(
+          parseBooleanEnv(env, "DATABASE_SSL"),
+          parseBooleanEnv(env, "DATABASE_SSL_REJECT_UNAUTHORIZED"),
+        ),
   };
 }
