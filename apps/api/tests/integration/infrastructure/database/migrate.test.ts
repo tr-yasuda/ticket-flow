@@ -1,47 +1,44 @@
 import { exec } from "node:child_process";
+import { rm } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { describe, it } from "vitest";
-
-import { isDatabaseConfigured } from "../../../../src/infrastructure/database/config";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
 const execAsync = promisify(exec);
 
-const isEnabled =
-  isDatabaseConfigured(process.env) &&
-  process.env.MIGRATE_INTEGRATION_TEST === "true";
+const projectRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../",
+);
+const migrateTestDatabaseUrl = "file:./prisma/migrate-test.db";
+const migrateTestDatabasePath = resolve(projectRoot, "prisma/migrate-test.db");
 
-function toError(value: unknown): Error {
-  return value instanceof Error ? value : new Error(String(value));
+async function runPrismaMigrateDeploy(): Promise<void> {
+  await execAsync(
+    "pnpm --pm-on-fail=ignore exec prisma migrate deploy --schema prisma/schema.prisma",
+    {
+      cwd: projectRoot,
+      env: { ...process.env, DATABASE_URL: migrateTestDatabaseUrl },
+    },
+  );
+}
+
+async function cleanMigrateTestDatabase(): Promise<void> {
+  const sidecarSuffixes = ["", "-wal", "-shm", "-journal"];
+  await Promise.all(
+    sidecarSuffixes.map((suffix) =>
+      rm(`${migrateTestDatabasePath}${suffix}`, { force: true }),
+    ),
+  );
 }
 
 describe("マイグレーションコマンド", () => {
-  it.skipIf(!isEnabled)(
-    "マイグレーションを適用してロールバックできる",
-    async () => {
-      const errors: Error[] = [];
+  beforeEach(cleanMigrateTestDatabase);
+  afterEach(cleanMigrateTestDatabase);
 
-      try {
-        await execAsync("pnpm run migrate");
-      } catch (error) {
-        errors.push(toError(error));
-      }
-
-      try {
-        await execAsync("pnpm run migrate:rollback");
-      } catch (error) {
-        errors.push(toError(error));
-      }
-
-      if (errors.length > 0) {
-        const [first, ...rest] = errors;
-        const message =
-          rest.length > 0
-            ? `${first.message}; 追加のエラー: ${rest.map((error) => error.message).join(", ")}`
-            : first.message;
-        throw new Error(message);
-      }
-    },
-    30_000,
-  );
+  it("prisma migrate deploy が成功する", async () => {
+    await runPrismaMigrateDeploy();
+  }, 30_000);
 });

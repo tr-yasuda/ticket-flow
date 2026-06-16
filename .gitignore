@@ -149,3 +149,9 @@ dist-web/
 *.db
 *.sqlite
 *.sqlite3
+
+# SQLite test database
+apps/api/prisma/test.db
+apps/api/prisma/test.db-*
+apps/api/prisma/migrate-test.db
+apps/api/prisma/migrate-test.db-*
