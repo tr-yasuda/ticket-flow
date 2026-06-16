@@ -16,6 +16,10 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === "--") {
+      if (index + 1 < argv.length) {
+        console.error("Error: unexpected arguments after --");
+        process.exit(1);
+      }
       break;
     } else if (arg === "--title") {
       args.title = consumeValue(argv, ++index, "--title");
