@@ -1,26 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isDatabaseConfigured,
-  loadDatabaseConfig,
-} from "../../../../src/infrastructure/database/config";
+import { loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
 import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check";
-import { createDatabasePool } from "../../../../src/infrastructure/database/pool";
+import { createPrismaClient } from "../../../../src/infrastructure/database/prisma-client";
 
-const hasDatabaseUrl = isDatabaseConfigured(process.env);
+const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+const isSqliteUrl = databaseUrl.startsWith("file:");
 
 describe("データベース接続", () => {
-  it.skipIf(!hasDatabaseUrl)(
-    "DATABASE_URL が設定されていれば接続できる",
+  it.skipIf(!isSqliteUrl)(
+    "SQLite の DATABASE_URL が設定されていれば接続できる",
     async () => {
       const config = loadDatabaseConfig(process.env);
-      const pool = createDatabasePool(config);
+      const client = createPrismaClient(config);
 
       try {
-        const health = await checkDatabaseHealth(pool);
+        const health = await checkDatabaseHealth(client);
         expect(health.status).toBe("healthy");
       } finally {
-        await pool.end();
+        await client.$disconnect();
       }
     },
   );
