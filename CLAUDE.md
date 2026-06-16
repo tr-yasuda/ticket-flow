@@ -58,7 +58,7 @@ pnpm run migrate:create -- <description>
 
 ### 重要な型と責務
 
-- `Repository<TEntity, TId>` (`src/domain/repository.ts`) — 全リポジトリ実装の共通インターフェース
+- `Repository<TEntity, TId>` (`src/domain/repository.ts`) — 全リポジトリ実装の共通の型定義
 - `InMemoryRepository<TEntity, TId>` (`src/infrastructure/database/in-memory-repository.ts`) — テスト用のインメモリ実装
 - `createUser()` (`src/domain/user.ts`) — 現在のドメインロジックの実例。メールアドレスの trim・検証を行う
 
@@ -102,12 +102,15 @@ pnpm run migrate:create -- <description>
 
 type: `feature`, `bugfix`, `hotfix`, `release`, `docs`, `style`, `refactor`, `test`, `chore`
 
+- `description` は英語の kebab-case、小文字で始める
+- Issue 番号がない場合は `<type>/<description>` とする
+
 ### コミットメッセージ
 
 - Conventional Commits 形式
 - `.commitlintrc.json` で `@commitlint/config-conventional` を使用
 - lefthook の `commit-msg` フックが自動検証
-- **commit message、PR タイトル、PR 本文は日本語で記述する**
+- **commit message、PR タイトル、PR 本文は日本語で記述する**（commitlint では言語を強制しないため、運用ルールとして守る）
 
 ## CI / 品質ゲート
 
@@ -125,6 +128,6 @@ GitHub Actions (`ci.yml`) で以下を実行:
 
 - パッケージマネージャー: `pnpm@10.8.1`（`packageManager` 指定あり）
 - Node: `^20.19.0 || >=22.12.0`
-- Lint: `oxlint`（Biome から移行済み）。`migrations` は対象外
+- Lint: `oxlint`。`migrations` は対象外
 - Format: `oxfmt`。設定は `.oxfmtrc.jsonc`
 - TypeScript: 厳格モード有効。`noImplicitAny`, `strictNullChecks` 有効
