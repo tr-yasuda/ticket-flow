@@ -1,47 +1,42 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
+import { rm } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { describe, it } from "vitest";
+import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { isDatabaseConfigured } from "../../../../src/infrastructure/database/config";
+const execFileAsync = promisify(execFile);
 
-const execAsync = promisify(exec);
+const projectRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../",
+);
+const testDatabasePath = resolve(projectRoot, "prisma/test.db");
 
-const isEnabled =
-  isDatabaseConfigured(process.env) &&
-  process.env.MIGRATE_INTEGRATION_TEST === "true";
+async function runPrismaMigrateDeploy(): Promise<void> {
+  await execFileAsync(
+    "node",
+    [
+      "node_modules/prisma/build/index.js",
+      "migrate",
+      "deploy",
+      "--schema",
+      "prisma/schema.prisma",
+    ],
+    { cwd: projectRoot },
+  );
+}
 
-function toError(value: unknown): Error {
-  return value instanceof Error ? value : new Error(String(value));
+async function cleanTestDatabase(): Promise<void> {
+  await rm(testDatabasePath, { force: true });
 }
 
 describe("マイグレーションコマンド", () => {
-  it.skipIf(!isEnabled)(
-    "マイグレーションを適用してロールバックできる",
-    async () => {
-      const errors: Error[] = [];
+  beforeEach(cleanTestDatabase);
+  afterEach(cleanTestDatabase);
 
-      try {
-        await execAsync("pnpm run migrate");
-      } catch (error) {
-        errors.push(toError(error));
-      }
-
-      try {
-        await execAsync("pnpm run migrate:rollback");
-      } catch (error) {
-        errors.push(toError(error));
-      }
-
-      if (errors.length > 0) {
-        const [first, ...rest] = errors;
-        const message =
-          rest.length > 0
-            ? `${first.message}; 追加のエラー: ${rest.map((error) => error.message).join(", ")}`
-            : first.message;
-        throw new Error(message);
-      }
-    },
-    30_000,
-  );
+  it("prisma migrate deploy が成功する", async () => {
+    await runPrismaMigrateDeploy();
+  }, 30_000);
 });
