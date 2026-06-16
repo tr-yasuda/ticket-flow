@@ -88,8 +88,8 @@ pnpm run migrate:create -- <description>
 - DOM: happy-dom（React コンポーネントテスト用）
 - セットアップ: `apps/web/tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
 - カバレッジ: ルートは `src/**/*.ts`、apps/web は `src/**/*.ts` / `src/**/*.tsx` を対象
-- DB 接続系の統合テストは `DATABASE_URL` の設定で有効化される
-- マイグレーション統合テストは `DATABASE_URL` が有効であれば常に実行される
+- DB 接続系の統合テストは `DATABASE_URL` が未設定の場合、テスト用 SQLite をデフォルトで使用する
+- マイグレーション統合テストは `DATABASE_URL` の設定に関わらず常に実行され、テスト内で専用の SQLite DB を使用する
 
 ## 開発フロー
 
