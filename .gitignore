@@ -144,3 +144,8 @@ vite.config.ts.timestamp-*
 
 # Frontend build output
 dist-web/
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3

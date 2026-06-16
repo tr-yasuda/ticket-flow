@@ -1,0 +1,13 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// #101 で各種ドメインモデルを定義するまでのプレースホルダー
+model MigrationPlaceholder {
+  id Int @id @default(autoincrement())
+}
