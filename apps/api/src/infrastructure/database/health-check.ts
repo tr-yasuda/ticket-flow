@@ -3,15 +3,18 @@ export type DatabaseHealth = Readonly<{
   error?: Error;
 }>;
 
-export type Queryable = Readonly<{
-  query(text: string): Promise<unknown>;
+export type DatabaseQueryable = Readonly<{
+  $queryRaw(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<unknown>;
 }>;
 
 export async function checkDatabaseHealth(
-  pool: Queryable,
+  client: DatabaseQueryable,
 ): Promise<DatabaseHealth> {
   try {
-    await pool.query("SELECT 1");
+    await client.$queryRaw`SELECT 1`;
     return { status: "healthy" };
   } catch (error) {
     return {
