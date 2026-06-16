@@ -35,16 +35,22 @@ describe("データベース設定", () => {
     );
   });
 
-  it("DATABASE_URL にプロトコルがない場合はエラーになる", () => {
+  it("DATABASE_URL のプロトコルが postgres / postgresql 以外の場合はエラーになる", () => {
     expect(() =>
       loadDatabaseConfig({ DATABASE_URL: "localhost:5432/db" }),
-    ).toThrow("DATABASE_URL must use postgres:// or postgresql:// protocol");
+    ).toThrow("got: localhost:");
   });
 
-  it("DATABASE_URL のプロトコルが postgres でない場合はエラーになる", () => {
+  it("DATABASE_URL のプロトコルが http の場合はエラーになる", () => {
     expect(() =>
       loadDatabaseConfig({ DATABASE_URL: "http://localhost:5432/db" }),
-    ).toThrow("DATABASE_URL must use postgres:// or postgresql:// protocol");
+    ).toThrow("got: http:");
+  });
+
+  it("DATABASE_URL が postgres:// 形式でない opaque URL の場合はエラーになる", () => {
+    expect(() => loadDatabaseConfig({ DATABASE_URL: "postgres:foo" })).toThrow(
+      "got: postgres:",
+    );
   });
 
   it("postgresql:// プロトコルの DATABASE_URL は有効である", () => {

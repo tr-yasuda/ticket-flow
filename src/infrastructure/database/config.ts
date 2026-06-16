@@ -48,8 +48,8 @@ function validateConnectionString(connectionString: string): void {
     throw new Error("DATABASE_URL is not a valid URL");
   }
   if (
-    parsedUrl.protocol !== "postgres:" &&
-    parsedUrl.protocol !== "postgresql:"
+    !parsedUrl.href.startsWith("postgres://") &&
+    !parsedUrl.href.startsWith("postgresql://")
   ) {
     throw new Error(
       `DATABASE_URL must use postgres:// or postgresql:// protocol, got: ${parsedUrl.protocol}`,
