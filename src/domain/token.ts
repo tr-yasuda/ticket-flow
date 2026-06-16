@@ -10,16 +10,19 @@ export type TokenConfig = Readonly<{
   refreshExpiresIn: string;
 }>;
 
+type TokenType = "access" | "refresh";
+
 function encodeSecret(secret: string): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
 async function signToken(
   payload: TokenPayload,
+  tokenType: TokenType,
   secret: string,
   expiresIn: string,
 ): Promise<string> {
-  return new SignJWT({ ...payload })
+  return new SignJWT({ ...payload, tokenType })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
@@ -28,6 +31,7 @@ async function signToken(
 
 async function verifyToken(
   token: string,
+  expectedType: TokenType,
   secret: string,
 ): Promise<TokenPayload> {
   try {
@@ -35,16 +39,19 @@ async function verifyToken(
       algorithms: ["HS256"],
     });
 
-    if (typeof payload.userId !== "string") {
+    if (
+      payload.tokenType !== expectedType ||
+      typeof payload.userId !== "string"
+    ) {
       throw new Error("Invalid token");
     }
 
     return { userId: payload.userId };
   } catch (error) {
     if (error instanceof errors.JWTExpired) {
-      throw new Error("Token has expired");
+      throw Object.assign(new Error("Token has expired"), { cause: error });
     }
-    throw new Error("Invalid token");
+    throw Object.assign(new Error("Invalid token"), { cause: error });
   }
 }
 
@@ -52,26 +59,26 @@ export async function generateAccessToken(
   payload: TokenPayload,
   config: TokenConfig,
 ): Promise<string> {
-  return signToken(payload, config.secret, config.accessExpiresIn);
+  return signToken(payload, "access", config.secret, config.accessExpiresIn);
 }
 
 export async function verifyAccessToken(
   token: string,
   config: TokenConfig,
 ): Promise<TokenPayload> {
-  return verifyToken(token, config.secret);
+  return verifyToken(token, "access", config.secret);
 }
 
 export async function generateRefreshToken(
   payload: TokenPayload,
   config: TokenConfig,
 ): Promise<string> {
-  return signToken(payload, config.secret, config.refreshExpiresIn);
+  return signToken(payload, "refresh", config.secret, config.refreshExpiresIn);
 }
 
 export async function verifyRefreshToken(
   token: string,
   config: TokenConfig,
 ): Promise<TokenPayload> {
-  return verifyToken(token, config.secret);
+  return verifyToken(token, "refresh", config.secret);
 }

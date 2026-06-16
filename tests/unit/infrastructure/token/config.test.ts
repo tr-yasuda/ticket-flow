@@ -82,13 +82,23 @@ describe("JWT 設定", () => {
     ).toThrow("JWT_REFRESH_EXPIRES_IN");
   });
 
-  it("JWT_REFRESH_EXPIRES_IN が空文字の場合はエラーになる", () => {
+  it("JWT_ACCESS_EXPIRES_IN の形式が不正な場合はエラーになる", () => {
+    expect(() =>
+      loadTokenConfig({
+        JWT_SECRET: "test-secret-at-least-32-bytes-long!",
+        JWT_ACCESS_EXPIRES_IN: "1x",
+        JWT_REFRESH_EXPIRES_IN: "7d",
+      }),
+    ).toThrow("Invalid value for JWT_ACCESS_EXPIRES_IN");
+  });
+
+  it("JWT_REFRESH_EXPIRES_IN の形式が不正な場合はエラーになる", () => {
     expect(() =>
       loadTokenConfig({
         JWT_SECRET: "test-secret-at-least-32-bytes-long!",
         JWT_ACCESS_EXPIRES_IN: "15m",
-        JWT_REFRESH_EXPIRES_IN: "",
+        JWT_REFRESH_EXPIRES_IN: "invalid",
       }),
-    ).toThrow("JWT_REFRESH_EXPIRES_IN");
+    ).toThrow("Invalid value for JWT_REFRESH_EXPIRES_IN");
   });
 });

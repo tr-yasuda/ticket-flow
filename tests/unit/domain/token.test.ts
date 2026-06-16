@@ -63,6 +63,15 @@ describe("アクセストークン", () => {
       "Invalid token",
     );
   });
+
+  it("アクセストークンをリフレッシュトークンとして検証できない", async () => {
+    const payload = { userId: "user-123" };
+    const token = await generateAccessToken(payload, testConfig);
+
+    await expect(verifyRefreshToken(token, testConfig)).rejects.toThrow(
+      "Invalid token",
+    );
+  });
 });
 
 describe("リフレッシュトークン", () => {
@@ -89,6 +98,15 @@ describe("リフレッシュトークン", () => {
     const token = await generateRefreshToken(payload, testConfig);
 
     await expect(verifyRefreshToken(token, invalidConfig)).rejects.toThrow(
+      "Invalid token",
+    );
+  });
+
+  it("リフレッシュトークンをアクセストークンとして検証できない", async () => {
+    const payload = { userId: "user-123" };
+    const token = await generateRefreshToken(payload, testConfig);
+
+    await expect(verifyAccessToken(token, testConfig)).rejects.toThrow(
       "Invalid token",
     );
   });
