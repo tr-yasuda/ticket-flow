@@ -2,30 +2,36 @@ const { readFileSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { resolve } = require("node:path");
 
+function consumeValue(argv, index, flag) {
+  const value = argv[index];
+  if (!value || value.startsWith("--")) {
+    console.error(`Error: ${flag} requires a value`);
+    process.exit(1);
+  }
+  return value;
+}
+
 function parseArgs(argv) {
   const args = { labels: [] };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     if (arg === "--title") {
-      args.title = argv[++index];
+      args.title = consumeValue(argv, ++index, "--title");
     } else if (arg === "--body-file") {
-      args.bodyFile = argv[++index];
+      args.bodyFile = consumeValue(argv, ++index, "--body-file");
     } else if (arg === "--label") {
-      args.labels.push(argv[++index]);
+      args.labels.push(consumeValue(argv, ++index, "--label"));
     }
   }
   return args;
 }
 
 function stripFrontmatter(content) {
-  if (!content.startsWith("---\n")) {
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  if (!match) {
     return content;
   }
-  const endIndex = content.indexOf("\n---\n", 4);
-  if (endIndex === -1) {
-    return content;
-  }
-  return content.slice(endIndex + 5).replace(/^\n+/, "");
+  return content.slice(match[0].length).replace(/^\r?\n+/, "");
 }
 
 function main() {
