@@ -127,7 +127,7 @@ GitHub Actions (`ci.yml`) で以下を実行:
 ## 制約・注意点
 
 - パッケージマネージャー: `pnpm@10.8.1`（`packageManager` 指定あり）
-- Node: `^20.19.0 || >=22.12.0`
+- Node: `>=22.12.0`
 - Lint: `oxlint`。`migrations` は対象外
 - Format: `oxfmt`。設定は `.oxfmtrc.jsonc`
 - TypeScript: 厳格モード有効。`noImplicitAny`, `strictNullChecks` 有効
