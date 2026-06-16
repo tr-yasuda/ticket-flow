@@ -15,6 +15,17 @@ describe("JWT 設定", () => {
     expect(config.refreshExpiresIn).toBe("7d");
   });
 
+  it("有効期限が数値のみの場合は秒単位に正規化される", () => {
+    const config = loadTokenConfig({
+      JWT_SECRET: "test-secret-at-least-32-bytes-long!",
+      JWT_ACCESS_EXPIRES_IN: "3600",
+      JWT_REFRESH_EXPIRES_IN: "604800",
+    });
+
+    expect(config.accessExpiresIn).toBe("3600s");
+    expect(config.refreshExpiresIn).toBe("604800s");
+  });
+
   it("JWT_SECRET がない場合はエラーになる", () => {
     expect(() =>
       loadTokenConfig({

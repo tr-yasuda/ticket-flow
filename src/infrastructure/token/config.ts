@@ -24,12 +24,19 @@ function isValidExpiresIn(value: string): boolean {
   return EXPIRES_IN_PATTERN.test(value) || /^-?\d+$/.test(value);
 }
 
+function normalizeExpiresIn(value: string): string {
+  if (/^-?\d+$/.test(value)) {
+    return `${value}s`;
+  }
+  return value;
+}
+
 function readExpiresIn(env: NodeJS.ProcessEnv, name: string): string {
   const value = readRequiredEnv(env, name);
   if (!isValidExpiresIn(value)) {
     throw new Error(`Invalid value for ${name}: ${value}`);
   }
-  return value;
+  return normalizeExpiresIn(value);
 }
 
 export function loadTokenConfig(env: NodeJS.ProcessEnv): TokenConfig {
