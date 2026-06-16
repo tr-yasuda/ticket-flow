@@ -1,0 +1,38 @@
+{
+  "name": "@ticket-flow/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:rollback": "node scripts/migrate.js down",
+    "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
+  },
+  "dependencies": {
+    "@ticket-flow/shared": "workspace:*",
+    "bcrypt": "^6.0.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^20.17.30",
+    "@types/pg": "^8.20.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "node-pg-migrate": "^8.0.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
