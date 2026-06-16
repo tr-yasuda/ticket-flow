@@ -8,7 +8,9 @@ function isPasswordLengthValid(plainPassword: string): boolean {
 }
 
 function isValidBcryptHash(hashedPassword: string): boolean {
-  return /^\$2[abyx]\$\d{2}\$[./0-9A-Za-z]{53}$/.test(hashedPassword);
+  return /^\$2[abyx]\$(0[4-9]|[12]\d|3[01])\$[./0-9A-Za-z]{53}$/.test(
+    hashedPassword,
+  );
 }
 
 export async function hashPassword(plainPassword: string): Promise<string> {

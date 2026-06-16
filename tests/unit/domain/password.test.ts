@@ -52,6 +52,16 @@ describe("パスワードハッシュ化", () => {
     expect(isValid).toBe(false);
   });
 
+  it("コストが不正な bcrypt 形式のハッシュは検証が失敗する", async () => {
+    // bcrypt のコスト係数は 04–31 が有効。32 は無効。
+    const invalidCostHash =
+      "$2b$32$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW";
+
+    const isValid = await verifyPassword("correct-password", invalidCostHash);
+
+    expect(isValid).toBe(false);
+  });
+
   it("72バイトを超えるパスワードは検証が失敗する", async () => {
     const longPassword = "a".repeat(73);
     const hashedPassword = await hashPassword("correct-password");
