@@ -3,7 +3,7 @@ export type User = Readonly<{
 }>;
 
 export function createUser(email: string): User {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = email.toLowerCase();
   if (!isValidEmail(normalizedEmail)) {
     throw new Error("Invalid email address");
   }
@@ -11,5 +11,5 @@ export function createUser(email: string): User {
 }
 
 function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(email);
 }
