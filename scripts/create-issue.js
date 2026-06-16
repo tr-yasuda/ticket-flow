@@ -5,7 +5,7 @@ const { tmpdir } = require("node:os");
 
 function consumeValue(argv, index, flag) {
   const value = argv[index];
-  if (value === undefined) {
+  if (value === undefined || value.startsWith("--")) {
     console.error(`Error: ${flag} requires a value`);
     process.exit(1);
   }
@@ -69,31 +69,34 @@ function main() {
   }
 
   const labelArgs = labels.flatMap((label) => ["--label", label]);
-  const tmpDir = mkdtempSync(join(tmpdir(), "issue-body-"));
-  const tmpBodyFile = join(tmpDir, "body.md");
 
   try {
-    writeFileSync(tmpBodyFile, body, "utf8");
-    execFileSync(
-      "gh",
-      [
-        "issue",
-        "create",
-        "--title",
-        title,
-        "--body-file",
-        tmpBodyFile,
-        ...labelArgs,
-      ],
-      { stdio: "inherit" },
-    );
+    const tmpDir = mkdtempSync(join(tmpdir(), "issue-body-"));
+    const tmpBodyFile = join(tmpDir, "body.md");
+
+    try {
+      writeFileSync(tmpBodyFile, body, "utf8");
+      execFileSync(
+        "gh",
+        [
+          "issue",
+          "create",
+          "--title",
+          title,
+          "--body-file",
+          tmpBodyFile,
+          ...labelArgs,
+        ],
+        { stdio: "inherit" },
+      );
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   } catch (error) {
     console.error(
       `Error: failed to create issue: ${formatErrorMessage(error)}`,
     );
     process.exit(1);
-  } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
