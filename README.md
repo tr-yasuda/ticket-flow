@@ -29,6 +29,12 @@ tests/
 ```bash
 # 依存関係をインストール
 pnpm install
+
+# lefthook の Git フックをセットアップ（初回のみ）
+pnpm run setup
+
+# apps/api を開発する場合は @ticket-flow/shared を事前にビルド
+pnpm run build:shared
 ```
 
 ## 開発フロー
@@ -78,13 +84,13 @@ chore/update-markdown-lint-config
 ローカルでは lefthook の `commit-msg` フックが自動的に commitlint を実行する。
 
 ```bash
-# 依存関係をインストールするときに lefthook がフックをセットアップする
-pnpm install
+# lefthook の Git フックを手動でセットアップする
+pnpm run setup
 
 # 直前のコミットメッセージを手動で検証する
 pnpm run commitlint
 
-# CI では `CI=true` または `.git` がない場合にフックのインストールをスキップする
+# CI では lefthook のフックを無効化している
 ```
 
 ## レイヤーの責務
