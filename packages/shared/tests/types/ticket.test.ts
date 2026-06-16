@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createTicket, formatTicket } from "./ticket.js";
+import { createTicket, formatTicket } from "../../src/types/ticket.js";
 
 describe("createTicket", () => {
   it("指定した id と title で open 状態のチケットを作成する", () => {
