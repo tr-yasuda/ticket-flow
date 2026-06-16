@@ -6,11 +6,16 @@ export type User = Readonly<{
   passwordHash: string;
 }>;
 
-export function createUser(email: string, passwordHash: string): User {
+export function validateEmail(email: string): string {
   const normalizedEmail = email.toLowerCase();
   if (!isValidEmail(normalizedEmail)) {
     throw new Error("Invalid email address");
   }
+  return normalizedEmail;
+}
+
+export function createUser(email: string, passwordHash: string): User {
+  const normalizedEmail = validateEmail(email);
   return {
     id: randomUUID(),
     email: normalizedEmail,

@@ -1,5 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
+import { DuplicateEmailError } from "../../domain/repository-error.js";
 import type { UserRepository } from "../../domain/user-repository.js";
 import type { User } from "../../domain/user.js";
 
@@ -24,18 +25,28 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async save(entity: User): Promise<void> {
-    await this.prisma.user.upsert({
-      where: { id: entity.id },
-      create: {
-        id: entity.id,
-        email: entity.email,
-        passwordHash: entity.passwordHash,
-      },
-      update: {
-        email: entity.email,
-        passwordHash: entity.passwordHash,
-      },
-    });
+    try {
+      await this.prisma.user.upsert({
+        where: { id: entity.id },
+        create: {
+          id: entity.id,
+          email: entity.email,
+          passwordHash: entity.passwordHash,
+        },
+        update: {
+          email: entity.email,
+          passwordHash: entity.passwordHash,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new DuplicateEmailError();
+      }
+      throw error;
+    }
   }
 
   async delete(id: string): Promise<void> {

@@ -8,10 +8,6 @@ export type PasswordValidationResult = Readonly<
   { valid: true } | { valid: false; reason: string }
 >;
 
-function isPasswordLengthValid(plainPassword: string): boolean {
-  return Buffer.byteLength(plainPassword, "utf8") <= MAX_PASSWORD_BYTES;
-}
-
 function isValidBcryptHash(hashedPassword: string): boolean {
   return /^\$2[abyx]\$(0[4-9]|[12]\d|3[01])\$[./0-9A-Za-z]{53}$/.test(
     hashedPassword,
@@ -32,8 +28,9 @@ export function validatePassword(
 }
 
 export async function hashPassword(plainPassword: string): Promise<string> {
-  if (!isPasswordLengthValid(plainPassword)) {
-    throw new Error("Password must be 72 bytes or fewer");
+  const validation = validatePassword(plainPassword);
+  if (!validation.valid) {
+    throw new Error(validation.reason);
   }
 
   return bcrypt.hash(plainPassword, SALT_ROUNDS);
@@ -43,7 +40,8 @@ export async function verifyPassword(
   plainPassword: string,
   hashedPassword: string,
 ): Promise<boolean> {
-  if (!isPasswordLengthValid(plainPassword)) {
+  const validation = validatePassword(plainPassword);
+  if (!validation.valid) {
     return false;
   }
 

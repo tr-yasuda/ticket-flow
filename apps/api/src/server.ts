@@ -8,7 +8,16 @@ import { PrismaUserRepository } from "./infrastructure/database/prisma-user-repo
 import { loadTokenConfig } from "./infrastructure/token/config.js";
 import { createApp } from "./presentation/app.js";
 
-const port = Number(process.env.PORT ?? "3000");
+function parsePort(raw: string | undefined): number {
+  const value = raw ?? "3000";
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(`Invalid PORT: ${value}`);
+  }
+  return port;
+}
+
+const port = parsePort(process.env.PORT);
 
 const databaseConfig = loadDatabaseConfig(process.env);
 const prisma = createPrismaClient(databaseConfig);

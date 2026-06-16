@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { registerUser } from "../../../src/application/register-user";
+import { DuplicateEmailError } from "../../../src/domain/repository-error";
+import type { UserRepository } from "../../../src/domain/user-repository";
 import { InMemoryUserRepository } from "../../../src/infrastructure/database/in-memory-user-repository";
 
 function createTestDependencies(overrides?: {
-  repository?: InMemoryUserRepository;
+  repository?: UserRepository;
   hashPassword?: (password: string) => Promise<string>;
   generateAccessToken?: (userId: string) => Promise<string>;
   generateRefreshToken?: (userId: string) => Promise<string>;
@@ -99,5 +101,37 @@ describe("ユーザー登録ユースケース", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error.type).toBe("email-already-exists");
+  });
+
+  it("リポジトリの重複エラーは 409 として扱う", async () => {
+    const deps = createTestDependencies({
+      repository: {
+        findById: async () => null,
+        findByEmail: async () => null,
+        findAll: async () => [],
+        save: async () => {
+          throw new DuplicateEmailError();
+        },
+        delete: async () => {},
+      },
+    });
+
+    const result = await registerUser(
+      { email: "user@example.com", password: "password" },
+      deps,
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.type).toBe("email-already-exists");
+  });
+
+  it("無効なメールアドレスではハッシュ化処理が実行されない", async () => {
+    const hashPassword = vi.fn(async () => "hashed-password");
+    const deps = createTestDependencies({ hashPassword });
+
+    await registerUser({ email: "invalid-email", password: "password" }, deps);
+
+    expect(hashPassword).not.toHaveBeenCalled();
   });
 });

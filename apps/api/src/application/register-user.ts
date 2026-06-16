@@ -1,6 +1,7 @@
 import { validatePassword } from "../domain/password.js";
+import { DuplicateEmailError } from "../domain/repository-error.js";
 import type { UserRepository } from "../domain/user-repository.js";
-import { createUser } from "../domain/user.js";
+import { createUser, validateEmail } from "../domain/user.js";
 import type { User } from "../domain/user.js";
 
 export type RegisterUserInput = Readonly<{
@@ -35,6 +36,20 @@ export async function registerUser(
   input: RegisterUserInput,
   deps: RegisterUserDependencies,
 ): Promise<RegisterUserResult> {
+  let normalizedEmail: string;
+  try {
+    normalizedEmail = validateEmail(input.email);
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        type: "invalid-email",
+        message:
+          error instanceof Error ? error.message : "Invalid email address",
+      },
+    };
+  }
+
   const passwordValidation = validatePassword(input.password);
   if (!passwordValidation.valid) {
     return {
@@ -46,7 +61,6 @@ export async function registerUser(
     };
   }
 
-  const normalizedEmail = input.email.toLowerCase();
   const existingUser = await deps.userRepository.findByEmail(normalizedEmail);
   if (existingUser !== null) {
     return {
@@ -59,22 +73,22 @@ export async function registerUser(
   }
 
   const passwordHash = await deps.hashPassword(input.password);
+  const user = createUser(normalizedEmail, passwordHash);
 
-  let user: User;
   try {
-    user = createUser(normalizedEmail, passwordHash);
+    await deps.userRepository.save(user);
   } catch (error) {
-    return {
-      success: false,
-      error: {
-        type: "invalid-email",
-        message:
-          error instanceof Error ? error.message : "Invalid email address",
-      },
-    };
+    if (error instanceof DuplicateEmailError) {
+      return {
+        success: false,
+        error: {
+          type: "email-already-exists",
+          message: "Email already exists",
+        },
+      };
+    }
+    throw error;
   }
-
-  await deps.userRepository.save(user);
 
   const [accessToken, refreshToken] = await Promise.all([
     deps.generateAccessToken(user.id),

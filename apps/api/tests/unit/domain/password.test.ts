@@ -33,6 +33,12 @@ describe("パスワードハッシュ化", () => {
     expect(hashedPassword).not.toBe(plainPassword);
   });
 
+  it("7バイト以下のパスワードはハッシュ化できない", async () => {
+    await expect(hashPassword("short")).rejects.toThrow(
+      "Password must be at least 8 bytes",
+    );
+  });
+
   it("72バイトを超える ASCII パスワードはハッシュ化できない", async () => {
     const plainPassword = "a".repeat(73);
 
@@ -71,6 +77,14 @@ describe("パスワードハッシュ化", () => {
     const hashedPassword = await hashPassword("correct-password");
 
     const isValid = await verifyPassword(longPassword, hashedPassword);
+
+    expect(isValid).toBe(false);
+  });
+
+  it("7バイト以下のパスワードは検証が失敗する", async () => {
+    const hashedPassword = await hashPassword("correct-password");
+
+    const isValid = await verifyPassword("short", hashedPassword);
 
     expect(isValid).toBe(false);
   });

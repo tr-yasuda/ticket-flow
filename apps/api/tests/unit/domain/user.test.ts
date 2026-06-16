@@ -1,6 +1,41 @@
 import { describe, expect, it } from "vitest";
 
-import { createUser } from "../../../src/domain/user";
+import { createUser, validateEmail } from "../../../src/domain/user";
+
+describe("メールアドレス検証", () => {
+  it("有効なメールアドレスは小文字に正規化されて返される", () => {
+    const email = validateEmail("USER@EXAMPLE.COM");
+
+    expect(email).toBe("user@example.com");
+  });
+
+  it("無効なメールアドレスはエラーになる", () => {
+    expect(() => validateEmail("invalid-email")).toThrow(
+      "Invalid email address",
+    );
+  });
+
+  it("末尾に改行があるメールアドレスは拒否される", () => {
+    expect(() => validateEmail("user@example.com\n")).toThrow(
+      "Invalid email address",
+    );
+  });
+
+  it("前後に空白があるメールアドレスは拒否される", () => {
+    expect(() => validateEmail("  user@example.com  ")).toThrow(
+      "Invalid email address",
+    );
+  });
+
+  it.each([
+    ["タブと改行", "\tuser@example.com\n"],
+    ["全角スペース", "　user@example.com　"],
+    ["末尾タブ", "user@example.com\t"],
+    ["末尾半角スペース", "user@example.com "],
+  ])("%s を含むメールアドレスは拒否される", (_label, input) => {
+    expect(() => validateEmail(input)).toThrow("Invalid email address");
+  });
+});
 
 describe("ユーザー登録", () => {
   it("有効なメールアドレスとパスワードハッシュでユーザーが作成できる", () => {
