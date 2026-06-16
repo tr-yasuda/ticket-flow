@@ -23,9 +23,11 @@
     "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.5",
     "@prisma/client": "^6.4.1",
     "@ticket-flow/shared": "workspace:*",
     "bcrypt": "^6.0.0",
+    "hono": "^4.12.25",
     "jose": "^6.2.3",
     "pg": "^8.21.0"
   },
