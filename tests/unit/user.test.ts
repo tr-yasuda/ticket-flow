@@ -22,7 +22,7 @@ describe("ユーザー登録", () => {
     expect(user.email).toBe("user@example.com");
   });
 
-  it("大文字小文字が異なる同一メールアドレスは同じユーザーとして扱われる", () => {
+  it("大文字小文字が異なる同一メールアドレスは同じ email 値に正規化される", () => {
     const upperCaseUser = createUser("USER@EXAMPLE.COM");
     const lowerCaseUser = createUser("user@example.com");
     const mixedCaseUser = createUser("User@Example.Com");
