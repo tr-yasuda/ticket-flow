@@ -20,21 +20,19 @@ function parseBooleanEnv(env, name) {
 }
 
 function validateConnectionString(connectionString) {
+  let parsedUrl;
   try {
-    const parsedUrl = new URL(connectionString);
-    if (
-      parsedUrl.protocol !== "postgres:" &&
-      parsedUrl.protocol !== "postgresql:"
-    ) {
-      throw new Error(
-        `DATABASE_URL must use postgres:// or postgresql:// protocol, got: ${parsedUrl.protocol}`,
-      );
-    }
-  } catch (error) {
-    if (error.message && error.message.startsWith("DATABASE_URL must use")) {
-      throw error;
-    }
+    parsedUrl = new URL(connectionString);
+  } catch {
     throw new Error("DATABASE_URL is not a valid URL");
+  }
+  if (
+    parsedUrl.protocol !== "postgres:" &&
+    parsedUrl.protocol !== "postgresql:"
+  ) {
+    throw new Error(
+      `DATABASE_URL must use postgres:// or postgresql:// protocol, got: ${parsedUrl.protocol}`,
+    );
   }
 }
 
