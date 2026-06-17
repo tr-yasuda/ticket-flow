@@ -9,7 +9,7 @@ export function OrganizationTicketsPage({
 }: OrganizationTicketsPageProps): ReactElement {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Tickets</h1>
+      <h1 className="text-2xl font-bold">チケット</h1>
       <p data-testid="organization-id">{organizationId}</p>
     </div>
   );

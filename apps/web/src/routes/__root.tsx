@@ -3,7 +3,7 @@ import { ThemeProvider } from "next-themes";
 import type { ReactElement } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
-import { NotFoundPage } from "@/pages/NotFoundPage";
+import { NotFoundPage } from "@/pages/not-found-page";
 
 function RootComponent(): ReactElement {
   return (
