@@ -75,8 +75,9 @@ describe("ユーザーログインハンドラ", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error).toBeDefined();
-    expect(body.details).toEqual(
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           field: "email",
@@ -196,6 +197,6 @@ describe("ユーザーログインハンドラ", () => {
     expect(wrongResponse.status).toBe(401);
     const missingBody = await missingResponse.json();
     const wrongBody = await wrongResponse.json();
-    expect(missingBody.error).toBe(wrongBody.error);
+    expect(missingBody.error).toEqual(wrongBody.error);
   });
 });

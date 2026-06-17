@@ -148,6 +148,33 @@ describe("apiClient", () => {
     }
   });
 
+  it("共通エラー形式のレスポンスを ApiError に変換する", async () => {
+    const details = [{ field: "email", message: "メールアドレスが無効です" }];
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "入力内容を確認してください",
+            details,
+          },
+        }),
+        { status: 400 },
+      ),
+    );
+    mockFetch(fetchMock);
+
+    const request = apiClient.get("protected");
+    await expect(request).rejects.toThrow(ApiError);
+    const error = await request.catch((reason) => reason);
+    expect(error).toBeInstanceOf(ApiError);
+    const apiError = error as ApiError;
+    expect(apiError.status).toBe(400);
+    expect(apiError.message).toBe("入力内容を確認してください");
+    expect(apiError.details).toEqual(details);
+  });
+
   it("不正な details は無視して ApiError を生成する", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
