@@ -1,11 +1,7 @@
 import { Inbox } from "lucide-react";
 import type { ReactElement } from "react";
 
-import {
-  EmptyState,
-  ErrorState,
-  LoadingSpinner,
-} from "@/components/feedback";
+import { EmptyState, ErrorState, LoadingSpinner } from "@/components/feedback";
 
 type OrganizationTicketsPageProps = {
   organizationId: string;

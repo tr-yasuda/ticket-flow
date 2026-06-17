@@ -27,7 +27,8 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
         try {
           return await action(...args);
         } catch (err) {
-          const caughtError = err instanceof Error ? err : new Error(String(err));
+          const caughtError =
+            err instanceof Error ? err : new Error(String(err));
           setError(caughtError);
           throw caughtError;
         } finally {
