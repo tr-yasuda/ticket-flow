@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createTicket } from "../../../src/domain/ticket";
+import { createTicket, rehydrateTicket } from "../../../src/domain/ticket";
 
 describe("チケット作成", () => {
   it("有効な id と title でチケットが作成できる", () => {
@@ -54,6 +54,28 @@ describe("チケット作成", () => {
 
     expect(() => createTicket("ticket-1", title)).toThrow(
       "Ticket title must be 200 characters or fewer",
+    );
+  });
+});
+
+describe("チケット復元", () => {
+  it("有効な status でチケットを復元できる", () => {
+    const ticket = rehydrateTicket("ticket-1", "バグを修正する", "in-progress");
+
+    expect(ticket).toEqual({
+      id: "ticket-1",
+      title: "バグを修正する",
+      status: "in-progress",
+    });
+  });
+
+  it.each([
+    ["無効な文字列", "invalid"],
+    ["空文字", ""],
+    ["大文字", "OPEN"],
+  ])("%s の status は拒否される", (_label, status) => {
+    expect(() => rehydrateTicket("ticket-1", "バグを修正する", status)).toThrow(
+      `Invalid ticket status: ${status}`,
     );
   });
 });
