@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
+import { createTestDatabaseUrl } from "./test-database-url.js";
 
-const defaultTestDatabaseUrl = `file:${resolve(process.cwd(), "prisma/test.db").replace(/\\/g, "/")}`;
+const defaultTestDatabaseUrl = createTestDatabaseUrl("prisma/test.db");
 
 if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === "") {
   process.env.DATABASE_URL = defaultTestDatabaseUrl;
