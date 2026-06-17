@@ -2,13 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 import type { TicketRepository } from "../../domain/ticket-repository.js";
 import type { Ticket, TicketId } from "../../domain/ticket.js";
-
-const ticketStatuses = ["open", "in-progress", "closed"] as const;
-type TicketStatus = (typeof ticketStatuses)[number];
-
-function isValidStatus(status: string): status is TicketStatus {
-  return (ticketStatuses as readonly string[]).includes(status);
-}
+import { rehydrateTicket } from "../../domain/ticket.js";
 
 export class PrismaTicketRepository implements TicketRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -57,13 +51,6 @@ export class PrismaTicketRepository implements TicketRepository {
     title: string;
     status: string;
   }): Ticket {
-    if (!isValidStatus(record.status)) {
-      throw new Error(`Invalid ticket status: ${record.status}`);
-    }
-    return {
-      id: record.id,
-      title: record.title,
-      status: record.status,
-    };
+    return rehydrateTicket(record.id, record.title, record.status);
   }
 }
