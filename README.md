@@ -178,11 +178,16 @@ pnpm install
 pnpm run build:shared
 
 # 3. ターミナル 1: API サーバーを起動（マイグレーション・seed も自動実行）
-pnpm --filter @ticket-flow/api dev
+#    API はコード上で .env を自動読み込みしないため、起動前にシェルへ読み込む
+cd apps/api
+source .env
+pnpm run dev
 
 # 4. ターミナル 2: Web 開発サーバーを起動
 pnpm run dev
 ```
+
+`source .env` は bash / zsh の例です。PowerShell 等をお使いの場合は、`.env` の値を同等の方法でシェル環境変数として読み込んでください。
 
 ### 起動後の確認
 
@@ -199,8 +204,8 @@ pnpm run dev
 | ------------------------ | ---- | ------------------------ | ------------------------------------------------- |
 | `DATABASE_URL`           | 必須 | `file:./dev.db`          | SQLite の接続文字列（`file:` プロトコルのみ許可） |
 | `JWT_SECRET`             | 必須 | `your-32-byte-secret...` | 32 バイト以上                                     |
-| `JWT_ACCESS_EXPIRES_IN`  | 任意 | `15m`                    | アクセストークンの有効期限                        |
-| `JWT_REFRESH_EXPIRES_IN` | 任意 | `7d`                     | リフレッシュトークンの有効期限                    |
+| `JWT_ACCESS_EXPIRES_IN`  | 必須 | `15m`                    | アクセストークンの有効期限                        |
+| `JWT_REFRESH_EXPIRES_IN` | 必須 | `7d`                     | リフレッシュトークンの有効期限                    |
 | `PORT`                   | 任意 | `3000`                   | API サーバーのポート（未設定時は `3000`）         |
 
 #### フロントエンド
@@ -257,7 +262,7 @@ seed は冪等に実装されており、同じデータが存在する場合は
 ## 開発フロー
 
 1. Issue またはタスクを確認する
-2. `.worktree/<branch-name>/` 以下に作業用 worktree を作成する
+2. `.worktrees/<branch-name>/` 以下に作業用 worktree を作成する
 3. 対象レイヤーに変更を加える
 4. テストを追加・実行し、振る舞いを検証する
 5. Conventional Commits に従って commit する（commitlint / lefthook で検証）
