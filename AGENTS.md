@@ -95,7 +95,7 @@ pnpm run build:shared
 pnpm run dev
 ```
 
-`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `apps/api` 内で `pnpm run build` を実行し、生成された `dist/server.js` を `node dist/server.js` で起動してください（現時点ではルートに api 専用の dev スクリプトはありません）。
+`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `pnpm --filter @ticket-flow/api dev`、または `apps/api` 内で `pnpm run dev` を実行してください。
 
 ### ビルド
 
