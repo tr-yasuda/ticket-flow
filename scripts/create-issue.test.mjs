@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, it, expect, vi } from "vitest";
 
 import { consumeValue, parseArgs, stripFrontmatter } from "./create-issue.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function captureExit(action) {
   const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
