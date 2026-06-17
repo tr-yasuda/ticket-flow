@@ -178,16 +178,17 @@ pnpm install
 pnpm run build:shared
 
 # 3. ターミナル 1: API サーバーを起動（マイグレーション・seed も自動実行）
-#    API はコード上で .env を自動読み込みしないため、起動前にシェルへ読み込む
+#    API はコード上で .env を自動読み込みしないため、起動前に環境変数として読み込む
 cd apps/api
-source .env
+set -a && source .env && set +a
 pnpm run dev
 
 # 4. ターミナル 2: Web 開発サーバーを起動
+#    リポジトリルートで実行してください
 pnpm run dev
 ```
 
-`source .env` は bash / zsh の例です。PowerShell 等をお使いの場合は、`.env` の値を同等の方法でシェル環境変数として読み込んでください。
+`set -a && source .env && set +a` は bash / zsh の例です。`.env` に `export` が付いていない場合でも変数を環境変数としてエクスポートするため、`set -a` が必要です。PowerShell 等をお使いの場合は、`.env` の値を環境変数として読み込んでください。
 
 ### 起動後の確認
 
