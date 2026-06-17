@@ -37,6 +37,17 @@ pnpm run setup
 pnpm run build:shared
 ```
 
+## データベース
+
+- Prisma + SQLite を使用する
+- マイグレーションファイルは `apps/api/prisma/migrations/` で管理する
+- 接続先は `DATABASE_URL` で指定する（例: `file:./dev.db`）
+- スキーマ変更時は Prisma のマイグレーションコマンドを使用する
+
+```bash
+pnpm --filter @ticket-flow/api exec prisma migrate dev --schema prisma/schema.prisma
+```
+
 ## Seed データ
 
 開発・デモ用の初期データを投入する仕組みです。本番環境（`NODE_ENV=production`）では実行できません。

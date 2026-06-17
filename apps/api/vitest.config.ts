@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    globalSetup: ["./tests/global-setup.ts"],
+    globalSetup: ["./tests/globalSetup.ts"],
     setupFiles: ["./tests/setup.ts"],
     server: {
       deps: {

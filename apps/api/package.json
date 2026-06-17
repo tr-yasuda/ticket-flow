@@ -20,10 +20,7 @@
     "postinstall": "prisma generate --schema prisma/schema.prisma",
     "dev": "pnpm run db:migrate && pnpm run db:seed && pnpm run build && node dist/server.js",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
-    "db:seed": "prisma db seed",
-    "migrate": "node scripts/migrate.js up",
-    "migrate:rollback": "node scripts/migrate.js down",
-    "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.5",
@@ -31,15 +28,12 @@
     "@ticket-flow/shared": "workspace:*",
     "bcrypt": "^6.0.0",
     "hono": "^4.12.25",
-    "jose": "^6.2.3",
-    "pg": "^8.21.0"
+    "jose": "^6.2.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.13.0",
-    "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "node-pg-migrate": "^8.0.4",
     "prisma": "^6.4.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
