@@ -1,6 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import type { ZodType } from "zod";
 
+import { ApiError } from "@/lib/api-client";
 import { mapApiErrorToFields, mapZodErrorToFields } from "@/lib/validation";
 
 type UseAuthFormOptions<TValues extends Record<string, unknown>> = Readonly<{
@@ -31,7 +32,15 @@ export function useAuthForm<TValues extends Record<string, unknown>>({
       } catch (error) {
         const fields = mapApiErrorToFields(error);
         if (Object.keys(fields).length === 0) {
-          formApi.setErrorMap({ onSubmit: "処理に失敗しました" });
+          const defaultMessage =
+            "処理に失敗しました。時間をおいて再度お試しください。";
+          const message =
+            error instanceof ApiError &&
+            error.status < 500 &&
+            error.message !== "Request failed"
+              ? error.message
+              : defaultMessage;
+          formApi.setErrorMap({ onSubmit: message });
         } else {
           formApi.setErrorMap({ onSubmit: { fields } });
         }
