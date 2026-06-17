@@ -76,6 +76,14 @@ describe("ユーザーログインハンドラ", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBeDefined();
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "email",
+          message: expect.any(String),
+        }),
+      ]),
+    );
   });
 
   it("存在しないメールアドレスでは 401 を返す", async () => {
@@ -178,7 +186,10 @@ describe("ユーザーログインハンドラ", () => {
     }).request("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@example.com", password: "wrong" }),
+      body: JSON.stringify({
+        email: "user@example.com",
+        password: "wrong-password",
+      }),
     });
 
     expect(missingResponse.status).toBe(401);

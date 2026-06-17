@@ -121,4 +121,55 @@ describe("apiClient", () => {
       expect((error as ApiError).message).toBe("bad request");
     }
   });
+
+  it("API エラーの details を ApiError に伝播する", async () => {
+    const details = [{ field: "email", message: "メールアドレスが無効です" }];
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "入力内容を確認してください",
+          details,
+        }),
+        { status: 400 },
+      ),
+    );
+    globalThis.fetch = fetchMock;
+
+    try {
+      await apiClient.get("protected");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      const apiError = error as ApiError;
+      expect(apiError.status).toBe(400);
+      expect(apiError.details).toEqual(details);
+    }
+  });
+
+  it("不正な details は無視して ApiError を生成する", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "入力内容を確認してください",
+          details: [
+            { field: "email", message: "有効な詳細" },
+            { field: 123, message: "無効な詳細" },
+            "不正な要素",
+          ],
+        }),
+        { status: 400 },
+      ),
+    );
+    globalThis.fetch = fetchMock;
+
+    try {
+      await apiClient.get("protected");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      const apiError = error as ApiError;
+      expect(apiError.status).toBe(400);
+      expect(apiError.details).toEqual([
+        { field: "email", message: "有効な詳細" },
+      ]);
+    }
+  });
 });

@@ -63,6 +63,14 @@ describe("ユーザー登録ハンドラ", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBeDefined();
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "email",
+          message: expect.any(String),
+        }),
+      ]),
+    );
   });
 
   it("8バイト未満のパスワードでは 400 を返す", async () => {
@@ -77,6 +85,14 @@ describe("ユーザー登録ハンドラ", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBeDefined();
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "password",
+          message: expect.any(String),
+        }),
+      ]),
+    );
   });
 
   it("既存のメールアドレスでは 409 を返す", async () => {

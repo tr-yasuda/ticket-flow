@@ -1,3 +1,4 @@
+import { loginInputSchema, type LoginInput } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
 import { loginUser } from "../../application/login-user.js";
@@ -12,22 +13,29 @@ export function createLoginHandler(deps: LoginUserDependencies) {
       return c.json({ error: "Invalid request body" }, 400);
     }
 
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      typeof (body as Record<string, unknown>).email !== "string" ||
-      typeof (body as Record<string, unknown>).password !== "string"
-    ) {
-      return c.json({ error: "Invalid request body" }, 400);
+    const parseResult = loginInputSchema.safeParse(body);
+    if (!parseResult.success) {
+      const details = parseResult.error.issues
+        .map((issue) => ({
+          field: issue.path[0],
+          message: issue.message,
+        }))
+        .filter(
+          (detail): detail is { field: string; message: string } =>
+            typeof detail.field === "string",
+        );
+      return c.json(
+        {
+          error: "入力内容を確認してください",
+          details,
+        },
+        400,
+      );
     }
 
-    const result = await loginUser(
-      {
-        email: (body as Record<string, string>).email,
-        password: (body as Record<string, string>).password,
-      },
-      deps,
-    );
+    const input: LoginInput = parseResult.data;
+
+    const result = await loginUser(input, deps);
 
     if (!result.success) {
       const status = result.error.type === "invalid-email" ? 400 : 401;
