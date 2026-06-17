@@ -100,12 +100,15 @@ export function AuthProvider({
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    const user = state.type === "authenticated" ? state.user : null;
+    const accessToken = getAccessToken();
+    const isAuthenticated =
+      state.type === "authenticated" && accessToken !== null;
+    const user = isAuthenticated ? state.user : null;
 
     return {
       user,
       isLoading: state.type === "loading",
-      isAuthenticated: state.type === "authenticated",
+      isAuthenticated,
       error,
       login,
       logout,
