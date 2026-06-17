@@ -6,6 +6,7 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const organizationNameSchema = z
   .string({ error: "組織名を入力してください" })
+  .trim()
   .min(1, { error: "組織名を入力してください" })
   .max(MAX_NAME_LENGTH, {
     error: `組織名は${MAX_NAME_LENGTH}文字以内で入力してください`,
@@ -13,6 +14,7 @@ export const organizationNameSchema = z
 
 export const organizationSlugSchema = z
   .string({ error: "スラッグを入力してください" })
+  .trim()
   .min(1, { error: "スラッグを入力してください" })
   .max(MAX_SLUG_LENGTH, {
     error: `スラッグは${MAX_SLUG_LENGTH}文字以内で入力してください`,
