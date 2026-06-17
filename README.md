@@ -44,10 +44,13 @@ pnpm run build:shared
 ```bash
 cd apps/api
 
+# 初回または DB ファイルを削除した場合は、先に migrate を適用
+pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
 # 手動で seed を実行
 pnpm run db:seed
 
-# または dev 起動時に自動投入
+# または dev 起動時に自動投入（migrate も含む）
 pnpm run dev
 ```
 
