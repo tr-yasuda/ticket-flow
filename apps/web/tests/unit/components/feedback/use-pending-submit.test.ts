@@ -19,7 +19,7 @@ describe("usePendingSubmit", () => {
   });
 
   it("実行中の重複呼び出しを無視する", async () => {
-    let resolve: (value: string) => void;
+    let resolve!: (value: string) => void;
     const action = vi.fn(
       () =>
         new Promise<string>((r) => {
