@@ -7,6 +7,7 @@ allowBuilds:
   bcrypt: true
   esbuild: true
   lefthook: true
+  msw: true
   prisma: true
 minimumReleaseAgeExclude:
   - "@oxfmt/binding-android-arm-eabi@0.55.0"
@@ -43,7 +44,7 @@ minimumReleaseAgeExclude:
   - "@oxlint/binding-linux-s390x-gnu@1.70.0"
   - "@oxlint/binding-linux-x64-gnu@1.70.0"
   - "@oxlint/binding-linux-x64-musl@1.70.0"
-  - "@oxlint/binding-openharmony-arm64@1.70.0"
+  - "@oxlint/binding-openharmony-arm64@0.55.0"
   - "@oxlint/binding-win32-arm64-msvc@1.70.0"
   - "@oxlint/binding-win32-ia32-msvc@1.70.0"
   - "@oxlint/binding-win32-x64-msvc@1.70.0"
