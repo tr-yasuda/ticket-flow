@@ -171,4 +171,27 @@ describe("ユーザー登録ユースケース", () => {
     const tokens = await refreshTokenRepository.findAll();
     expect(tokens).toHaveLength(0);
   });
+
+  it("リフレッシュトークン保存失敗時はユーザーも削除する", async () => {
+    const repository = new InMemoryUserRepository();
+    const deps = createTestDependencies({
+      repository,
+      refreshTokenRepository: {
+        findById: async () => null,
+        findByTokenHash: async () => null,
+        findAll: async () => [],
+        save: async () => {
+          throw new Error("Refresh token save failed");
+        },
+        delete: async () => {},
+      },
+    });
+
+    await expect(
+      registerUser({ email: "user@example.com", password: "password" }, deps),
+    ).rejects.toThrow("Refresh token save failed");
+
+    const user = await repository.findByEmail("user@example.com");
+    expect(user).toBeNull();
+  });
 });

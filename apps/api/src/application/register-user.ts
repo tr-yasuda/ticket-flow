@@ -98,10 +98,15 @@ export async function registerUser(
     deps.generateRefreshToken(user.id),
   ]);
 
-  await deps.refreshTokenRepository.save({
-    tokenHash: deps.hashRefreshToken(refreshToken),
-    userId: user.id,
-  });
+  try {
+    await deps.refreshTokenRepository.save({
+      tokenHash: deps.hashRefreshToken(refreshToken),
+      userId: user.id,
+    });
+  } catch (error) {
+    await deps.userRepository.delete(user.id).catch(() => {});
+    throw error;
+  }
 
   return {
     success: true,
