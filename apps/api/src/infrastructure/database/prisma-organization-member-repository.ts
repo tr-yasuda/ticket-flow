@@ -1,12 +1,13 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 
 import type { OrganizationMemberRepository } from "../../domain/organization-member-repository.js";
-import type {
-  OrganizationMember,
-  OrganizationMemberId,
-  OrganizationMemberRole,
+import {
+  organizationMemberRoles,
+  rehydrateOrganizationMember,
+  type OrganizationMember,
+  type OrganizationMemberId,
+  type OrganizationMemberRole,
 } from "../../domain/organization-member.js";
-import { rehydrateOrganizationMember } from "../../domain/organization-member.js";
 import { DuplicateOrganizationMembershipError } from "../../domain/repository-error.js";
 
 export class PrismaOrganizationMemberRepository implements OrganizationMemberRepository {
@@ -123,8 +124,11 @@ function isOrganizationMemberUniqueViolation(
 }
 
 function toOrganizationMemberRole(role: string): OrganizationMemberRole {
-  if (role === "owner" || role === "member") {
-    return role;
+  const matched = organizationMemberRoles.find(
+    (validRole) => validRole === role,
+  );
+  if (matched !== undefined) {
+    return matched;
   }
   throw new Error(`Invalid organization member role: ${role}`);
 }

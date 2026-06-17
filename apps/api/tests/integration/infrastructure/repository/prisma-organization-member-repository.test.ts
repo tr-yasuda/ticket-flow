@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  changeRole,
   createOrganizationMember,
   type OrganizationMemberRole,
 } from "../../../../src/domain/organization-member.js";
@@ -55,16 +56,40 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
       "member-test-org",
     );
     const user = await createUserRecord();
-    const member = createOrganizationMember(
-      organization.id,
-      user.id,
-      "owner" as OrganizationMemberRole,
-    );
+    const member = createOrganizationMember(organization.id, user.id, "owner");
 
     await repository.save(member);
     const found = await repository.findById(member.id);
 
     expect(found).toEqual(member);
+  });
+
+  it("admin ロールのメンバーを作成できる", async () => {
+    const organization = await createOrganizationRecord(
+      "Member Test Org Admin",
+      "member-test-org-admin",
+    );
+    const user = await createUserRecord();
+    const member = createOrganizationMember(organization.id, user.id, "admin");
+
+    await repository.save(member);
+    const found = await repository.findById(member.id);
+
+    expect(found?.role).toBe("admin");
+  });
+
+  it("viewer ロールのメンバーを作成できる", async () => {
+    const organization = await createOrganizationRecord(
+      "Member Test Org Viewer",
+      "member-test-org-viewer",
+    );
+    const user = await createUserRecord();
+    const member = createOrganizationMember(organization.id, user.id, "viewer");
+
+    await repository.save(member);
+    const found = await repository.findById(member.id);
+
+    expect(found?.role).toBe("viewer");
   });
 
   it("findByOrganizationIdAndUserId で保存したメンバーを取得できる", async () => {
@@ -73,11 +98,7 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
       "member-test-org-find",
     );
     const user = await createUserRecord();
-    const member = createOrganizationMember(
-      organization.id,
-      user.id,
-      "owner" as OrganizationMemberRole,
-    );
+    const member = createOrganizationMember(organization.id, user.id, "owner");
     await repository.save(member);
 
     const found = await repository.findByOrganizationIdAndUserId(
@@ -107,12 +128,12 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
     const member1 = createOrganizationMember(
       organization.id,
       user1.id,
-      "owner" as OrganizationMemberRole,
+      "owner",
     );
     const member2 = createOrganizationMember(
       organization.id,
       user2.id,
-      "member" as OrganizationMemberRole,
+      "member",
     );
     await repository.save(member1);
     await repository.save(member2);
@@ -130,14 +151,26 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
       "member-test-org-update",
     );
     const user = await createUserRecord();
-    const member = createOrganizationMember(
-      organization.id,
-      user.id,
-      "owner" as OrganizationMemberRole,
-    );
+    const member = createOrganizationMember(organization.id, user.id, "owner");
     await repository.save(member);
 
     const updated = { ...member, role: "member" as OrganizationMemberRole };
+    await repository.save(updated);
+
+    const found = await repository.findById(member.id);
+    expect(found).toEqual(updated);
+  });
+
+  it("save でロールを変更できる", async () => {
+    const organization = await createOrganizationRecord(
+      "Member Test Org Change Role",
+      "member-test-org-change-role",
+    );
+    const user = await createUserRecord();
+    const member = createOrganizationMember(organization.id, user.id, "member");
+    await repository.save(member);
+
+    const updated = changeRole(member, "admin");
     await repository.save(updated);
 
     const found = await repository.findById(member.id);
@@ -150,17 +183,13 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
       "member-test-org-duplicate",
     );
     const user = await createUserRecord();
-    const member = createOrganizationMember(
-      organization.id,
-      user.id,
-      "owner" as OrganizationMemberRole,
-    );
+    const member = createOrganizationMember(organization.id, user.id, "owner");
     await repository.save(member);
 
     const duplicate = createOrganizationMember(
       organization.id,
       user.id,
-      "member" as OrganizationMemberRole,
+      "member",
     );
 
     await repository.save(duplicate);
@@ -179,11 +208,7 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
       "member-test-org-delete",
     );
     const user = await createUserRecord();
-    const member = createOrganizationMember(
-      organization.id,
-      user.id,
-      "owner" as OrganizationMemberRole,
-    );
+    const member = createOrganizationMember(organization.id, user.id, "owner");
     await repository.save(member);
 
     await repository.delete(member.id);
