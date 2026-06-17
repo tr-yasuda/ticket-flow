@@ -84,6 +84,21 @@ describe("デモ seed 統合テスト", () => {
     }
   }, 30_000);
 
+  it("db:seed は複数回実行してもデータ件数が増えない", async () => {
+    await runSeed();
+    await runSeed();
+
+    const prisma = createPrismaClient();
+    try {
+      const userCount = await prisma.user.count();
+      const ticketCount = await prisma.ticket.count();
+      expect(userCount).toBe(1);
+      expect(ticketCount).toBe(4);
+    } finally {
+      await prisma.$disconnect();
+    }
+  }, 30_000);
+
   it("db:seed は production 環境では実行できない", async () => {
     await expect(
       execAsync("pnpm run db:seed", {
@@ -94,6 +109,6 @@ describe("デモ seed 統合テスト", () => {
           NODE_ENV: "production",
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("Seed scripts must not run in production environment");
   });
 });
