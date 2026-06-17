@@ -1,3 +1,5 @@
+import { type ApiSuccessResponse } from "@ticket-flow/shared";
+
 import { apiClient } from "./api-client";
 import { clearTokens, getRefreshToken, setTokens } from "./token-storage";
 
@@ -10,20 +12,56 @@ type AuthResponse = Readonly<{
   refreshToken: string;
 }>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUser(value: unknown): value is { id: string; email: string } {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.email === "string"
+  );
+}
+
+function isAuthResponse(value: unknown): value is AuthResponse {
+  return (
+    isRecord(value) &&
+    isUser(value.user) &&
+    typeof value.accessToken === "string" &&
+    typeof value.refreshToken === "string"
+  );
+}
+
+function isApiSuccessResponse(
+  value: unknown,
+): value is ApiSuccessResponse<AuthResponse> {
+  return (
+    isRecord(value) &&
+    value.success === true &&
+    isRecord(value.data) &&
+    isAuthResponse(value.data)
+  );
+}
+
+async function postAuth(
+  endpoint: "auth/login" | "auth/register",
+  input: LoginInput | RegisterInput,
+): Promise<AuthResponse> {
+  const body = await apiClient
+    .post(endpoint, { json: input })
+    .json<AuthResponse | ApiSuccessResponse<AuthResponse>>();
+  const data = isApiSuccessResponse(body) ? body.data : body;
+  setTokens(data.accessToken, data.refreshToken);
+  return data;
+}
+
 export async function register(input: RegisterInput): Promise<AuthResponse> {
-  const response = await apiClient
-    .post("auth/register", { json: input })
-    .json<AuthResponse>();
-  setTokens(response.accessToken, response.refreshToken);
-  return response;
+  return postAuth("auth/register", input);
 }
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  const response = await apiClient
-    .post("auth/login", { json: input })
-    .json<AuthResponse>();
-  setTokens(response.accessToken, response.refreshToken);
-  return response;
+  return postAuth("auth/login", input);
 }
 
 export async function logout(): Promise<void> {

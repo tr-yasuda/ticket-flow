@@ -2,6 +2,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { isMswEnabled } from "@/mocks/env.js";
 import { routeTree } from "@/routeTree.gen";
 
 import "./index.css";
@@ -14,14 +15,28 @@ declare module "@tanstack/react-router" {
   }
 }
 
-const container = document.getElementById("root");
+async function enableMocking(): Promise<void> {
+  if (!isMswEnabled()) {
+    return;
+  }
 
-if (container === null) {
-  throw new Error("Root element not found");
+  const { worker } = await import("./mocks/browser.js");
+  await worker.start({
+    onUnhandledRequest: "bypass",
+  });
 }
 
-createRoot(container).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+function renderApp(): void {
+  const container = document.getElementById("root");
+  if (container === null) {
+    throw new Error("Root element not found");
+  }
+
+  createRoot(container).render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  );
+}
+
+enableMocking().finally(renderApp);

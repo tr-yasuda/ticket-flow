@@ -1,3 +1,4 @@
+import { type ApiErrorResponse } from "@ticket-flow/shared";
 import ky, {
   type AfterResponseHook,
   type BeforeRequestHook,
@@ -46,9 +47,38 @@ export class ApiError extends Error {
   }
 }
 
-type RefreshResponse = Readonly<{ accessToken: string }>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function extractAccessToken(body: unknown): string | undefined {
+  if (!isRecord(body)) {
+    return undefined;
+  }
+  if (body.success === true && isRecord(body.data)) {
+    const token = body.data.accessToken;
+    return typeof token === "string" ? token : undefined;
+  }
+  const token = body.accessToken;
+  return typeof token === "string" ? token : undefined;
+}
 
 let refreshingPromise: Promise<string> | null = null;
+
+function isApiErrorResponseLike(body: unknown): body is ApiErrorResponse {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const response = body as { success?: unknown; error?: unknown };
+  if (response.success !== false) {
+    return false;
+  }
+  if (typeof response.error !== "object" || response.error === null) {
+    return false;
+  }
+  const error = response.error as { message?: unknown };
+  return typeof error.message === "string";
+}
 
 function getApiBaseUrl(): string {
   const value = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -85,21 +115,18 @@ async function performRefresh(): Promise<string> {
         throw new ApiError("Refresh failed", response.status);
       }
 
-      let body: RefreshResponse;
+      let body: unknown;
       try {
-        body = (await response.json()) as RefreshResponse;
+        body = await response.json();
       } catch {
         throw new ApiError("Invalid refresh response", 500);
       }
-      if (
-        typeof body !== "object" ||
-        body === null ||
-        typeof body.accessToken !== "string" ||
-        body.accessToken === ""
-      ) {
+
+      const accessToken = extractAccessToken(body);
+      if (accessToken === undefined || accessToken === "") {
         throw new ApiError("Invalid refresh response", 500);
       }
-      return body.accessToken;
+      return accessToken;
     } finally {
       refreshingPromise = null;
     }
@@ -152,13 +179,24 @@ const handleErrorResponse: AfterResponseHook = async (
 
   const cloned = response.clone();
   try {
-    const body = (await cloned.json()) as {
-      error?: unknown;
-      details?: unknown;
-    };
+    const body = (await cloned.json()) as unknown;
+    if (isApiErrorResponseLike(body)) {
+      throw new ApiError(
+        body.error.message,
+        response.status,
+        parseDetails(body.error.details),
+      );
+    }
+    const legacyBody = body as { error?: unknown; details?: unknown };
     const message =
-      typeof body.error === "string" ? body.error : "Request failed";
-    throw new ApiError(message, response.status, parseDetails(body.details));
+      typeof legacyBody.error === "string"
+        ? legacyBody.error
+        : "Request failed";
+    throw new ApiError(
+      message,
+      response.status,
+      parseDetails(legacyBody.details),
+    );
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;

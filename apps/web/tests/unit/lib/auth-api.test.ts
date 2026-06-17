@@ -8,27 +8,35 @@ import {
   setTokens,
 } from "@/lib/token-storage";
 
-describe("auth-api", () => {
-  const originalFetch = globalThis.fetch;
+function mockFetch(impl: ReturnType<typeof vi.fn>): ReturnType<typeof vi.fn> {
+  return vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(impl as unknown as typeof fetch);
+}
 
+describe("auth-api", () => {
   beforeEach(() => {
     clearTokens();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
   it("register はユーザー情報とトークンを返す", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          user: { id: "user-1", email: "user@example.com" },
-          accessToken: "access-token",
-          refreshToken: "refresh-token",
-        }),
-        { status: 201 },
+    mockFetch(
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              user: { id: "user-1", email: "user@example.com" },
+              accessToken: "access-token",
+              refreshToken: "refresh-token",
+            },
+          }),
+          { status: 201 },
+        ),
       ),
     );
 
@@ -44,14 +52,19 @@ describe("auth-api", () => {
   });
 
   it("login 成功時にトークンを保存する", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          user: { id: "user-1", email: "user@example.com" },
-          accessToken: "access-token",
-          refreshToken: "refresh-token",
-        }),
-        { status: 200 },
+    mockFetch(
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              user: { id: "user-1", email: "user@example.com" },
+              accessToken: "access-token",
+              refreshToken: "refresh-token",
+            },
+          }),
+          { status: 200 },
+        ),
       ),
     );
 
@@ -70,7 +83,7 @@ describe("auth-api", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 204 }));
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     await logout();
 

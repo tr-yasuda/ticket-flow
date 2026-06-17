@@ -8,20 +8,23 @@ import {
   setTokens,
 } from "@/lib/token-storage";
 
+function mockFetch(impl: ReturnType<typeof vi.fn>): ReturnType<typeof vi.fn> {
+  return vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(impl as unknown as typeof fetch);
+}
+
 function getFirstRequest(fetchMock: ReturnType<typeof vi.fn>): Request {
   const [request] = fetchMock.mock.calls[0] as [Request];
   return request;
 }
 
 describe("apiClient", () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(() => {
     clearTokens();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
@@ -32,7 +35,7 @@ describe("apiClient", () => {
       .mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     await apiClient.get("protected");
 
@@ -46,7 +49,7 @@ describe("apiClient", () => {
       .mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     await apiClient.get("protected");
 
@@ -71,7 +74,7 @@ describe("apiClient", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     const result = await apiClient.get("protected").json<{ ok: boolean }>();
 
@@ -97,7 +100,7 @@ describe("apiClient", () => {
           status: 401,
         }),
       );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
     expect(getAccessToken()).toBeNull();
@@ -110,7 +113,7 @@ describe("apiClient", () => {
       .mockResolvedValue(
         new Response(JSON.stringify({ error: "bad request" }), { status: 400 }),
       );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
     try {
@@ -133,7 +136,7 @@ describe("apiClient", () => {
         { status: 400 },
       ),
     );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     try {
       await apiClient.get("protected");
@@ -159,7 +162,7 @@ describe("apiClient", () => {
         { status: 400 },
       ),
     );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     try {
       await apiClient.get("protected");
