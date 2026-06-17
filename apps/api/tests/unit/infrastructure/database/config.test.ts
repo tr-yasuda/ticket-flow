@@ -30,6 +30,10 @@ describe("データベース設定", () => {
         isDatabaseConfigured({ DATABASE_URL: "http://localhost:5432/db" }),
       ).toBe(false);
     });
+
+    it("DATABASE_URL にファイルパスがない場合は false を返す", () => {
+      expect(isDatabaseConfigured({ DATABASE_URL: "file:" })).toBe(false);
+    });
   });
 
   it("DATABASE_URL が設定されている場合は設定を返す", () => {
@@ -64,5 +68,11 @@ describe("データベース設定", () => {
     expect(() =>
       loadDatabaseConfig({ DATABASE_URL: "http://localhost:5432/db" }),
     ).toThrow("got: http:");
+  });
+
+  it("DATABASE_URL にファイルパスがない場合はエラーになる", () => {
+    expect(() => loadDatabaseConfig({ DATABASE_URL: "file:" })).toThrow(
+      "DATABASE_URL must include a database file path",
+    );
   });
 });

@@ -15,8 +15,11 @@ function validateConnectionString(connectionString: string): void {
   }
   if (parsedUrl.protocol !== "file:") {
     throw new Error(
-      `DATABASE_URL must use file:// protocol, got: ${parsedUrl.protocol}`,
+      `DATABASE_URL must use file: protocol, got: ${parsedUrl.protocol}`,
     );
+  }
+  if (parsedUrl.pathname === "/" && parsedUrl.host === "") {
+    throw new Error("DATABASE_URL must include a database file path");
   }
 }
 
