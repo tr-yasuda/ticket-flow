@@ -55,7 +55,7 @@ apps/api/src/
 - `InMemoryRepository<TEntity, TId>` (`apps/api/src/infrastructure/database/in-memory-repository.ts`) を単体テストで使用
 - `UserRepository` / `RefreshTokenRepository` / `TicketRepository` は `Repository` を拡張したドメイン層のインターフェース
 - 各ハンドラは `AuthDependencies` として依存を注入する形で実装
-- `createAuthMiddleware` (`apps/api/src/presentation/middleware/auth-middleware.ts`) は実装されているが、現時点では `createApp` では未使用
+- `createAuthMiddleware` (`apps/api/src/presentation/middleware/auth-middleware.ts`) は `createApp` 内の `GET /api/me` で使用
 
 ### フロントエンド (`apps/web`)
 
