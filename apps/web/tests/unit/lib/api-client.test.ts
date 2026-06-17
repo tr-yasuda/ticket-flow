@@ -121,4 +121,27 @@ describe("apiClient", () => {
       expect((error as ApiError).message).toBe("bad request");
     }
   });
+
+  it("API エラーの details を ApiError に伝播する", async () => {
+    const details = [{ field: "email", message: "メールアドレスが無効です" }];
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "入力内容を確認してください",
+          details,
+        }),
+        { status: 400 },
+      ),
+    );
+    globalThis.fetch = fetchMock;
+
+    try {
+      await apiClient.get("protected");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      const apiError = error as ApiError;
+      expect(apiError.status).toBe(400);
+      expect(apiError.details).toEqual(details);
+    }
+  });
 });

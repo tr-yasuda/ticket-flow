@@ -1,3 +1,4 @@
+import { registerInputSchema, type RegisterInput } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
 import { registerUser } from "../../application/register-user.js";
@@ -12,22 +13,29 @@ export function createRegisterHandler(deps: RegisterUserDependencies) {
       return c.json({ error: "Invalid request body" }, 400);
     }
 
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      typeof (body as Record<string, unknown>).email !== "string" ||
-      typeof (body as Record<string, unknown>).password !== "string"
-    ) {
-      return c.json({ error: "Invalid request body" }, 400);
+    const parseResult = registerInputSchema.safeParse(body);
+    if (!parseResult.success) {
+      const details = parseResult.error.issues
+        .map((issue) => ({
+          field: issue.path[0],
+          message: issue.message,
+        }))
+        .filter(
+          (detail): detail is { field: string; message: string } =>
+            typeof detail.field === "string",
+        );
+      return c.json(
+        {
+          error: "入力内容を確認してください",
+          details,
+        },
+        400,
+      );
     }
 
-    const result = await registerUser(
-      {
-        email: (body as Record<string, string>).email,
-        password: (body as Record<string, string>).password,
-      },
-      deps,
-    );
+    const input: RegisterInput = parseResult.data;
+
+    const result = await registerUser(input, deps);
 
     if (!result.success) {
       const status = result.error.type === "email-already-exists" ? 409 : 400;

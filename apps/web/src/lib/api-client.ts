@@ -11,10 +11,16 @@ import {
   setTokens,
 } from "./token-storage";
 
+export type ApiErrorDetail = Readonly<{
+  field: string;
+  message: string;
+}>;
+
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly details?: ReadonlyArray<ApiErrorDetail>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -127,8 +133,15 @@ const handleErrorResponse: AfterResponseHook = async (
 
   const cloned = response.clone();
   try {
-    const body = (await cloned.json()) as { error?: string };
-    throw new ApiError(body.error ?? "Request failed", response.status);
+    const body = (await cloned.json()) as {
+      error?: string;
+      details?: ReadonlyArray<ApiErrorDetail>;
+    };
+    throw new ApiError(
+      body.error ?? "Request failed",
+      response.status,
+      body.details,
+    );
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
