@@ -197,6 +197,10 @@ describe("ユーザーログインハンドラ", () => {
     expect(wrongResponse.status).toBe(401);
     const missingBody = await missingResponse.json();
     const wrongBody = await wrongResponse.json();
+    expect(missingBody.success).toBe(false);
+    expect(missingBody.error.code).toBe("AUTH_UNAUTHORIZED");
+    expect(wrongBody.success).toBe(false);
+    expect(wrongBody.error.code).toBe("AUTH_UNAUTHORIZED");
     expect(missingBody.error).toEqual(wrongBody.error);
   });
 });

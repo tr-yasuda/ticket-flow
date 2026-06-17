@@ -246,10 +246,11 @@ seed は冪等に実装されており、同じデータが存在する場合は
 Zod の `issue.path[0]` をフィールド名、`issue.message` をメッセージとし、`packages/shared/src/types/api-response.ts` で定義する `ApiValidationErrorDetail` の配列に変換する。
 
 ```ts
-{
-  field: issue.path[0],
-  message: issue.message,
+const field = issue.path[0];
+if (typeof field !== "string") {
+  continue;
 }
+return { field, message: issue.message };
 ```
 
 API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, message, details)` を使用し、以下の共通レスポンス形式で HTTP 400 を返す。
