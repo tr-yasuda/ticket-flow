@@ -139,4 +139,43 @@ describe("ユーザーログインハンドラ", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("認証失敗時のエラーメッセージはメールアドレスの存在有無を区別しない", async () => {
+    const repository = {
+      findById: async () => null,
+      findByEmail: async () => ({
+        id: "user-id",
+        email: "user@example.com",
+        passwordHash: "hashed-password",
+      }),
+      findAll: async () => [],
+      save: async () => {},
+      delete: async () => {},
+    };
+    const missingResponse = await createTestHandler().request(
+      "/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "unknown@example.com",
+          password: "password",
+        }),
+      },
+    );
+    const wrongResponse = await createTestHandler({
+      userRepository: repository,
+      verifyPassword: async () => false,
+    }).request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "wrong" }),
+    });
+
+    expect(missingResponse.status).toBe(401);
+    expect(wrongResponse.status).toBe(401);
+    const missingBody = await missingResponse.json();
+    const wrongBody = await wrongResponse.json();
+    expect(missingBody.error).toBe(wrongBody.error);
+  });
 });
