@@ -50,7 +50,7 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
     return this.repository.delete(id);
   }
 
-  withTransaction(): OrganizationRepository {
+  withTransaction(_tx: unknown): OrganizationRepository {
     return this;
   }
 }

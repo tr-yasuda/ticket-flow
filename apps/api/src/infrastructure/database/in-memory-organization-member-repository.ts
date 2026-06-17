@@ -47,7 +47,7 @@ export class InMemoryOrganizationMemberRepository implements OrganizationMemberR
     return this.repository.delete(id);
   }
 
-  withTransaction(): OrganizationMemberRepository {
+  withTransaction(_tx: unknown): OrganizationMemberRepository {
     return this;
   }
 }

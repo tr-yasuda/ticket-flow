@@ -65,7 +65,8 @@ export class PrismaOrganizationMemberRepository implements OrganizationMemberRep
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
+        error.code === "P2002" &&
+        isOrganizationMemberUniqueViolation(error)
       ) {
         throw new DuplicateOrganizationMembershipError();
       }
@@ -106,6 +107,19 @@ export class PrismaOrganizationMemberRepository implements OrganizationMemberRep
       tx as Prisma.TransactionClient,
     );
   }
+}
+
+function isOrganizationMemberUniqueViolation(
+  error: Prisma.PrismaClientKnownRequestError,
+): boolean {
+  const target = error.meta?.target;
+  if (typeof target === "string") {
+    return target.includes("organization_id") && target.includes("user_id");
+  }
+  if (Array.isArray(target)) {
+    return target.includes("organization_id") && target.includes("user_id");
+  }
+  return false;
 }
 
 function toOrganizationMemberRole(role: string): OrganizationMemberRole {

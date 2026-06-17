@@ -31,7 +31,7 @@ function createTestApp(overrides?: Partial<AppDependencies>) {
       findAll: async () => [],
       save: async () => {},
       delete: async () => {},
-      withTransaction() {
+      withTransaction(_tx: unknown) {
         return this;
       },
     },
@@ -41,7 +41,7 @@ function createTestApp(overrides?: Partial<AppDependencies>) {
       findAll: async () => [],
       save: async () => {},
       delete: async () => {},
-      withTransaction() {
+      withTransaction(_tx: unknown) {
         return this;
       },
     },
