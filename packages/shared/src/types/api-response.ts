@@ -40,7 +40,9 @@ export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
  * API エラー詳細。
  *
  * `details` はエラーコードに応じた追加情報を格納する。
- * バリデーションエラーの場合はフィールド単位のメッセージを配列で持つ。
+ * 例えばバリデーションエラーでは、フィールド単位のメッセージを配列で含めることが多い。
+ * ただし `ApiError.details` の型は `unknown` のため、これは実行時の例示であり型として保証しない。
+ * 将来的には discriminated union 等で型付けを検討する。
  */
 export type ApiValidationErrorDetail = Readonly<{
   field: string;
