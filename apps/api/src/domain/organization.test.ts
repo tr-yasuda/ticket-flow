@@ -89,6 +89,9 @@ describe("rehydrateOrganization", () => {
   });
 
   it("無効な値ではエラー", () => {
+    expect(() => rehydrateOrganization("", "Acme", "acme")).toThrow(
+      "id is required",
+    );
     expect(() => rehydrateOrganization("org-1", "", "acme")).toThrow(
       "name is required",
     );

@@ -18,15 +18,16 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
 
   async findBySlug(slug: string): Promise<Organization | null> {
     const record = await this.prisma.organization.findUnique({
-      where: { slug: slug.toLowerCase() },
+      where: { slug: slug.trim().toLowerCase() },
     });
     return record ? this.toOrganization(record) : null;
   }
 
   async findByName(name: string): Promise<readonly Organization[]> {
+    const query = name.trim();
     const records = await this.prisma.organization.findMany({
       where: {
-        name: { contains: name },
+        name: { contains: query },
       },
       orderBy: { createdAt: "asc" },
     });

@@ -33,6 +33,10 @@ function validateOrganization(
   name: string,
   slug: string,
 ): Organization {
+  if (!isNonEmptyString(id)) {
+    throw new Error("id is required");
+  }
+
   if (!isNonEmptyString(name)) {
     throw new Error("name is required");
   }

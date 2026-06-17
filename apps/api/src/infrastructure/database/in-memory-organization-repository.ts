@@ -17,16 +17,17 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async findBySlug(slug: string): Promise<Organization | null> {
+    const normalizedSlug = slug.trim().toLowerCase();
     const organizations = await this.repository.findAll();
     return (
       organizations.find(
-        (organization) => organization.slug === slug.toLowerCase(),
+        (organization) => organization.slug === normalizedSlug,
       ) ?? null
     );
   }
 
   async findByName(name: string): Promise<readonly Organization[]> {
-    const query = name.toLowerCase();
+    const query = name.trim().toLowerCase();
     const organizations = await this.repository.findAll();
     return organizations.filter((organization) =>
       organization.name.toLowerCase().includes(query),

@@ -32,6 +32,16 @@ describe("InMemoryOrganizationRepository", () => {
     expect(results[0]).toEqual(acme);
   });
 
+  it("組織名の検索語に前後空白があっても検索できる", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("  AC  ");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual(organization);
+  });
+
   it("組織名で一致しない場合は空配列を返す", async () => {
     const organization = createOrganization("Acme", "acme");
     await repository.save(organization);
@@ -46,6 +56,15 @@ describe("InMemoryOrganizationRepository", () => {
     await repository.save(organization);
 
     const found = await repository.findBySlug("acme");
+
+    expect(found).toEqual(organization);
+  });
+
+  it("slug の前後空白は無視して組織を取得できる", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const found = await repository.findBySlug("  ACME  ");
 
     expect(found).toEqual(organization);
   });

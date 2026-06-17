@@ -51,6 +51,16 @@ describe("PrismaOrganizationRepository 統合テスト", () => {
     expect(results).toHaveLength(0);
   });
 
+  it("組織名の検索語に前後空白があっても検索できる", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("  AC  ");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual(organization);
+  });
+
   it("findById で存在しない ID に対して null を返す", async () => {
     const found = await repository.findById("not-found");
 
@@ -77,6 +87,15 @@ describe("PrismaOrganizationRepository 統合テスト", () => {
     await repository.save(organization);
 
     const found = await repository.findBySlug("ACME");
+
+    expect(found).toEqual(organization);
+  });
+
+  it("findBySlug は前後空白を無視する", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const found = await repository.findBySlug("  acme  ");
 
     expect(found).toEqual(organization);
   });
