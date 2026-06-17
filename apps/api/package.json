@@ -17,7 +17,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "postinstall": "prisma generate --schema prisma/schema.prisma"
+    "postinstall": "prisma generate --schema prisma/schema.prisma",
+    "dev": "pnpm run db:migrate && pnpm run db:seed && pnpm run build && node dist/server.js",
+    "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.5",
@@ -32,7 +35,11 @@
     "@types/node": "^22.13.0",
     "@vitest/coverage-v8": "^4.1.9",
     "prisma": "^6.4.1",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

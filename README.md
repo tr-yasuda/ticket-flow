@@ -48,6 +48,40 @@ pnpm run build:shared
 pnpm --filter @ticket-flow/api exec prisma migrate dev --schema prisma/schema.prisma
 ```
 
+## Seed データ
+
+開発・デモ用の初期データを投入する仕組みです。本番環境（`NODE_ENV=production`）では実行できません。
+
+```bash
+cd apps/api
+
+# .env を作成（初回のみ。必要に応じて値を編集）
+cp ../../.env.example .env
+
+# 初回または DB ファイルを削除した場合は、先に migrate を適用
+pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
+# 手動で seed を実行
+pnpm run db:seed
+
+# または dev 起動時に自動投入（migrate も含む）
+pnpm run dev
+```
+
+### デモアカウント
+
+| 項目     | 値                 |
+| -------- | ------------------ |
+| email    | `demo@example.com` |
+| password | `demo1234`         |
+
+### 投入されるデータ
+
+- デモユーザー 1 件
+- デモチケット 4 件（open / in-progress / closed のステータスを含む）
+
+seed は冪等に実装されており、同じデータが存在する場合は更新されます。
+
 ## 開発フロー
 
 1. Issue またはタスクを確認する
