@@ -33,8 +33,7 @@ packages/
 - **フレームワーク**: [Hono](https://hono.dev/) + `@hono/node-server`
 - **ORM / DB**: Prisma（スキーマ定義は `apps/api/prisma/schema.prisma`）
   - 現在の Prisma スキーマは `provider = "sqlite"` を使用
-  - DB 接続設定 (`apps/api/src/infrastructure/database/config.ts`) は `postgres://`、`postgresql://`、`file://` のいずれも許可
-  - PostgreSQL 移行を見越して、マイグレーション実行用に `migrations/`（ルート）と `node-pg-migrate` を準備済み
+  - DB 接続設定 (`apps/api/src/infrastructure/database/config.ts`) は `file:` プロトコルのみを許可
 - **認証**: JWT（`jose`）アクセストークン / リフレッシュトークン、パスワードは `bcrypt` でハッシュ化
 - **実行形式**: Node.js ESM（`"type": "module"`）
 - **主要エントリポイント**
@@ -131,7 +130,7 @@ pnpm run test:coverage
 ### Lint / Format
 
 ```bash
-pnpm run lint           # oxlint（migrations は対象外）
+pnpm run lint           # oxlint
 pnpm run format:check   # oxfmt での整形確認
 pnpm run format         # oxfmt での整形適用
 ```
@@ -141,11 +140,6 @@ pnpm run format         # oxfmt での整形適用
 ```bash
 # Prisma（SQLite）のマイグレーション適用
 pnpm --filter @ticket-flow/api exec prisma migrate deploy --schema prisma/schema.prisma
-
-# node-pg-migrate（PostgreSQL 用、ルート migrations/）
-pnpm --filter @ticket-flow/api run migrate
-pnpm --filter @ticket-flow/api run migrate:rollback
-pnpm --filter @ticket-flow/api run migrate:create -- <description>
 ```
 
 ## コードスタイルガイドライン
@@ -156,7 +150,7 @@ pnpm --filter @ticket-flow/api run migrate:create -- <description>
 - **Linter**: `oxlint`（設定: `.oxlintrc.json`）
   - `no-unused-vars: error`
   - `typescript/no-explicit-any: error`
-  - 対象外: `dist/`、`node_modules/`、`migrations/`
+  - 対象外: `dist/`、`node_modules/`
 - **EditorConfig**: UTF-8、LF、2 スペースインデント、最終改行あり
 - **TypeScript**: 厳格モード有効
   - `noImplicitAny: true`、`strictNullChecks: true`
@@ -258,9 +252,7 @@ pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test
 `.env.example` をコピーして `.env` を作成します。
 
 ```bash
-DATABASE_URL="file:./dev.db"           # SQLite または PostgreSQL の接続文字列
-DATABASE_SSL=false                     # PostgreSQL 時の SSL 有効化
-DATABASE_SSL_REJECT_UNAUTHORIZED=true  # SSL 時の証明書検証
+DATABASE_URL="file:./dev.db"           # SQLite の接続文字列
 JWT_SECRET=                            # 32 バイト以上必須
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
