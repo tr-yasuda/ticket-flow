@@ -17,10 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "postinstall": "prisma generate --schema prisma/schema.prisma",
-    "migrate": "node scripts/migrate.js up",
-    "migrate:rollback": "node scripts/migrate.js down",
-    "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
+    "postinstall": "prisma generate --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.5",
@@ -28,15 +25,12 @@
     "@ticket-flow/shared": "workspace:*",
     "bcrypt": "^6.0.0",
     "hono": "^4.12.25",
-    "jose": "^6.2.3",
-    "pg": "^8.21.0"
+    "jose": "^6.2.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.13.0",
-    "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "node-pg-migrate": "^8.0.4",
     "prisma": "^6.4.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
