@@ -42,7 +42,7 @@ function parseArgs(argv) {
 function stripFrontmatter(content) {
   const withoutBom =
     content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
-  const match = withoutBom.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/);
+  const match = withoutBom.match(/^---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$)/);
   if (!match) {
     return withoutBom;
   }
@@ -100,4 +100,14 @@ function main() {
   }
 }
 
-main();
+module.exports = {
+  consumeValue,
+  formatErrorMessage,
+  parseArgs,
+  stripFrontmatter,
+  main,
+};
+
+if (require.main === module) {
+  main();
+}
