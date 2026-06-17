@@ -61,6 +61,16 @@ describe("PrismaOrganizationRepository 統合テスト", () => {
     expect(results[0]).toEqual(organization);
   });
 
+  it("組織名の検索が大文字小文字を区別しない", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("AC");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual(organization);
+  });
+
   it("findById で存在しない ID に対して null を返す", async () => {
     const found = await repository.findById("not-found");
 

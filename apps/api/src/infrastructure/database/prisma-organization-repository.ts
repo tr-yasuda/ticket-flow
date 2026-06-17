@@ -24,13 +24,16 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
   }
 
   async findByName(name: string): Promise<readonly Organization[]> {
-    const query = name.trim();
-    const records = await this.prisma.organization.findMany({
-      where: {
-        name: { contains: query },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+    const query = name.trim().toLowerCase();
+    // SQLite 上で大文字小文字を区別せず部分一致検索する
+    const records = await this.prisma.$queryRaw<
+      Array<{ id: string; name: string; slug: string }>
+    >`
+      SELECT id, name, slug
+      FROM "organizations"
+      WHERE LOWER(name) LIKE '%' || ${query} || '%'
+      ORDER BY created_at ASC
+    `;
     return records.map((record) => this.toOrganization(record));
   }
 
@@ -94,7 +97,9 @@ function isSlugConstraintViolation(
   meta: Prisma.PrismaClientKnownRequestError["meta"],
 ): boolean {
   if (meta === undefined || meta.target === undefined) {
-    return false;
+    // Organization モデルの UNIQUE 制約は slug のみなので、
+    // meta が取得できない場合も slug 制約違反として扱う
+    return true;
   }
 
   const { target } = meta;
