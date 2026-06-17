@@ -81,24 +81,31 @@ export function TicketTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tickets.map((ticket) => (
-            <TableRow
-              key={ticket.id}
-              data-row-id={ticket.id}
-              role="button"
-              tabIndex={0}
-              aria-label={ticket.title}
-              className="cursor-pointer"
-              onClick={() => onRowClick?.(ticket)}
-              onKeyDown={(event) => handleRowKeyDown(event, ticket)}
-            >
-              {ticketTableColumns.map((column) => (
-                <TableCell key={`${ticket.id}-${column.key}`}>
-                  {column.cell(ticket)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
+          {tickets.map((ticket) => {
+            const isInteractive = onRowClick !== undefined;
+            return (
+              <TableRow
+                key={ticket.id}
+                data-row-id={ticket.id}
+                role={isInteractive ? "button" : undefined}
+                tabIndex={isInteractive ? 0 : undefined}
+                aria-label={isInteractive ? ticket.title : undefined}
+                className={isInteractive ? "cursor-pointer" : undefined}
+                onClick={() => onRowClick?.(ticket)}
+                onKeyDown={
+                  isInteractive
+                    ? (event) => handleRowKeyDown(event, ticket)
+                    : undefined
+                }
+              >
+                {ticketTableColumns.map((column) => (
+                  <TableCell key={`${ticket.id}-${column.key}`}>
+                    {column.cell(ticket)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
