@@ -7,11 +7,12 @@ function extractBearerToken(authorization: string | undefined): string | null {
   if (authorization === undefined) {
     return null;
   }
-  const [scheme, token] = authorization.split(" ");
-  if (scheme?.toLowerCase() !== "bearer" || token === undefined) {
+  const trimmed = authorization.trim();
+  const match = /^Bearer\s+(.+)$/i.exec(trimmed);
+  if (match === null) {
     return null;
   }
-  return token;
+  return match[1];
 }
 
 export function createLogoutHandler(deps: LogoutUserDependencies) {

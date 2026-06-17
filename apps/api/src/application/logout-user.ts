@@ -1,5 +1,4 @@
 import type { RefreshTokenRepository } from "../domain/refresh-token-repository.js";
-import { hashRefreshToken } from "../domain/refresh-token.js";
 
 export type LogoutUserInput = Readonly<{
   refreshToken: string;
@@ -12,6 +11,7 @@ export type LogoutUserResult =
 export type LogoutUserDependencies = Readonly<{
   refreshTokenRepository: RefreshTokenRepository;
   verifyRefreshToken: (token: string) => Promise<{ userId: string }>;
+  hashRefreshToken: (token: string) => string;
 }>;
 
 export async function logoutUser(
@@ -31,7 +31,7 @@ export async function logoutUser(
     };
   }
 
-  const tokenHash = hashRefreshToken(input.refreshToken);
+  const tokenHash = deps.hashRefreshToken(input.refreshToken);
   await deps.refreshTokenRepository.delete(tokenHash);
 
   return { success: true };

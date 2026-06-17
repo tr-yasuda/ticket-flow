@@ -7,6 +7,7 @@ import { InMemoryRefreshTokenRepository } from "../../../src/infrastructure/data
 function createTestDependencies(overrides?: {
   refreshTokenRepository?: InMemoryRefreshTokenRepository;
   verifyRefreshToken?: (token: string) => Promise<{ userId: string }>;
+  hashRefreshToken?: (token: string) => string;
 }) {
   return {
     refreshTokenRepository:
@@ -16,6 +17,7 @@ function createTestDependencies(overrides?: {
       (async (token: string) => ({
         userId: token.startsWith("valid-") ? "user-id" : "other-user-id",
       })),
+    hashRefreshToken: overrides?.hashRefreshToken ?? hashRefreshToken,
   };
 }
 

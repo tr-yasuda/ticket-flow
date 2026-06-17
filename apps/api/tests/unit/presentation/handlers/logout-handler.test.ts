@@ -27,6 +27,7 @@ function createTestHandler(overrides?: Partial<LogoutUserDependencies>) {
       }
       return { userId: "user-id" };
     },
+    hashRefreshToken,
     ...overrides,
   };
 
@@ -96,5 +97,43 @@ describe("ユーザーログアウトハンドラ", () => {
     });
 
     expect(response.status).toBe(204);
+  });
+
+  it("Bearer とトークンの間に複数スペースがあってもトークンを抽出する", async () => {
+    const { app, deps } = createTestHandler();
+    await deps.refreshTokenRepository.save({
+      tokenHash: hashRefreshToken("valid-token"),
+      userId: "user-id",
+    });
+
+    const response = await app.request("/api/auth/logout", {
+      method: "POST",
+      headers: { Authorization: "Bearer   valid-token" },
+    });
+
+    expect(response.status).toBe(204);
+    const storedToken = await deps.refreshTokenRepository.findByTokenHash(
+      hashRefreshToken("valid-token"),
+    );
+    expect(storedToken).toBeNull();
+  });
+
+  it("Authorization ヘッダーの前後空白を無視してトークンを抽出する", async () => {
+    const { app, deps } = createTestHandler();
+    await deps.refreshTokenRepository.save({
+      tokenHash: hashRefreshToken("valid-token"),
+      userId: "user-id",
+    });
+
+    const response = await app.request("/api/auth/logout", {
+      method: "POST",
+      headers: { Authorization: "  Bearer valid-token  " },
+    });
+
+    expect(response.status).toBe(204);
+    const storedToken = await deps.refreshTokenRepository.findByTokenHash(
+      hashRefreshToken("valid-token"),
+    );
+    expect(storedToken).toBeNull();
   });
 });
