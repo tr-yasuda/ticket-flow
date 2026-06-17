@@ -38,3 +38,13 @@ model Ticket {
   @@index([status])
   @@index([createdAt])
 }
+
+model Organization {
+  id        String   @id @default(uuid()) @map("id")
+  name      String   @map("name")
+  slug      String   @unique @map("slug")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
