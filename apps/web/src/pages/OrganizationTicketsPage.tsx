@@ -1,7 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
-export const Route = createFileRoute("/app/$organizationId/tickets")({
+import { Route as rootRoute } from "@/routes/__root";
+
+export const Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/$organizationId/tickets",
   component: OrganizationTicketsPage,
 });
 
