@@ -189,14 +189,14 @@ function Sidebar({
             "w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
             className,
           )}
+          side={side}
+          {...props}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
               ...props.style,
             } as React.CSSProperties
           }
-          side={side}
-          {...props}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
