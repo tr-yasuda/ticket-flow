@@ -32,10 +32,12 @@ export function useAuthForm<TValues extends Record<string, unknown>>({
       } catch (error) {
         const fields = mapApiErrorToFields(error);
         if (Object.keys(fields).length === 0) {
+          const defaultMessage =
+            "処理に失敗しました。時間をおいて再度お試しください。";
           const message =
-            error instanceof ApiError
+            error instanceof ApiError && error.status < 500
               ? error.message
-              : "処理に失敗しました。時間をおいて再度お試しください。";
+              : defaultMessage;
           formApi.setErrorMap({ onSubmit: message });
         } else {
           formApi.setErrorMap({ onSubmit: { fields } });
