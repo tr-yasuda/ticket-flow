@@ -10,6 +10,7 @@
     "build:shared": "pnpm --filter @ticket-flow/shared build",
     "preview": "pnpm --filter @ticket-flow/web preview",
     "test": "pnpm run build:shared && pnpm -r run test && vitest run",
+    "test:scripts": "vitest run scripts",
     "test:watch": "pnpm -r run test:watch",
     "test:coverage": "pnpm -r run --if-present test:coverage",
     "typecheck": "pnpm run build:shared && pnpm -r run typecheck",

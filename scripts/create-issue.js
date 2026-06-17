@@ -42,11 +42,56 @@ function parseArgs(argv) {
 function stripFrontmatter(content) {
   const withoutBom =
     content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
-  const match = withoutBom.match(/^---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$)/);
-  if (!match) {
+
+  const lines = [];
+  let currentLine = "";
+
+  for (let index = 0; index < withoutBom.length; index++) {
+    const char = withoutBom[index];
+    if (char === "\n") {
+      const endsWithCr = currentLine.endsWith("\r");
+      lines.push({
+        content: endsWithCr ? currentLine.slice(0, -1) : currentLine,
+        ending: endsWithCr ? "\r\n" : "\n",
+      });
+      currentLine = "";
+    } else {
+      currentLine += char;
+    }
+  }
+
+  if (currentLine !== "") {
+    lines.push({ content: currentLine, ending: "" });
+  }
+
+  if (lines.length === 0 || lines[0].content !== "---") {
     return withoutBom;
   }
-  return withoutBom.slice(match[0].length).replace(/^(\r?\n)+/, "");
+
+  let closingIndex = -1;
+  for (let index = 1; index < lines.length; index++) {
+    if (lines[index].content === "---") {
+      closingIndex = index;
+      break;
+    }
+  }
+
+  if (closingIndex === -1) {
+    return withoutBom;
+  }
+
+  let firstContentIndex = closingIndex + 1;
+  while (
+    firstContentIndex < lines.length &&
+    lines[firstContentIndex].content === ""
+  ) {
+    firstContentIndex++;
+  }
+
+  return lines
+    .slice(firstContentIndex)
+    .map((line) => line.content + line.ending)
+    .join("");
 }
 
 function main() {
