@@ -5,8 +5,10 @@ import type { RefreshTokenRepository } from "../domain/refresh-token-repository.
 import type { UserRepository } from "../domain/user-repository.js";
 import { createLoginHandler } from "./handlers/login-handler.js";
 import { createLogoutHandler } from "./handlers/logout-handler.js";
+import { createMeHandler } from "./handlers/me-handler.js";
 import { createRefreshHandler } from "./handlers/refresh-handler.js";
 import { createRegisterHandler } from "./handlers/register-handler.js";
+import { createAuthMiddleware } from "./middleware/auth-middleware.js";
 
 export type AuthDependencies = Readonly<{
   userRepository: UserRepository;
@@ -36,5 +38,9 @@ export function createApp(deps: AuthDependencies): Hono {
   app.post("/api/auth/login", createLoginHandler(deps));
   app.post("/api/auth/logout", createLogoutHandler(deps));
   app.post("/api/auth/refresh", createRefreshHandler(deps));
+
+  const authMiddleware = createAuthMiddleware(deps);
+  app.get("/api/me", authMiddleware, createMeHandler(deps));
+
   return app;
 }

@@ -1,3 +1,4 @@
+import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
 import type { Context, Next } from "hono";
 
 import { extractBearerToken } from "../extract-bearer-token.js";
@@ -16,14 +17,26 @@ export function createAuthMiddleware(deps: AuthMiddlewareDependencies) {
   return async (c: Context, next: Next) => {
     const token = extractBearerToken(c.req.header("Authorization"));
     if (token === null) {
-      return c.json({ error: "Unauthorized" }, 401);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_UNAUTHORIZED,
+          "認証が必要です",
+        ),
+        401,
+      );
     }
 
     let payload: { userId: string };
     try {
       payload = await deps.verifyAccessToken(token);
     } catch {
-      return c.json({ error: "Unauthorized" }, 401);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_UNAUTHORIZED,
+          "認証が必要です",
+        ),
+        401,
+      );
     }
 
     c.set("userId", payload.userId);
