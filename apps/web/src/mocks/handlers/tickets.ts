@@ -6,10 +6,18 @@ import {
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
-import { demoTickets, type MockTicket } from "../data/tickets.js";
+import {
+  demoTickets,
+  type MockTicket,
+  type MockTicketPriority,
+} from "../data/tickets.js";
 
 function isValidStatus(status: string): status is MockTicket["status"] {
   return ["open", "in-progress", "closed"].includes(status);
+}
+
+function isValidPriority(priority: string): priority is MockTicketPriority {
+  return ["low", "medium", "high", "urgent"].includes(priority);
 }
 
 export const ticketHandlers = [
@@ -59,6 +67,7 @@ export const ticketHandlers = [
     const body = (await request.json()) as {
       title?: unknown;
       status?: unknown;
+      priority?: unknown;
     };
 
     if (id !== demoOrganization.id) {
@@ -82,6 +91,10 @@ export const ticketHandlers = [
       typeof body.status === "string" && isValidStatus(body.status)
         ? body.status
         : "open";
+    const priority =
+      typeof body.priority === "string" && isValidPriority(body.priority)
+        ? body.priority
+        : "medium";
 
     return HttpResponse.json(
       createApiSuccessResponse({
@@ -89,6 +102,8 @@ export const ticketHandlers = [
         organizationId: id,
         title: body.title,
         status,
+        priority,
+        assignee: null,
       }),
       { status: 201 },
     );

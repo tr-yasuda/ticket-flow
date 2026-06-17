@@ -4,7 +4,7 @@ type BadgeVariant = NonNullable<
   VariantProps<typeof import("@/components/ui/badge").badgeVariants>["variant"]
 >;
 
-export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type TicketStatus = "open" | "in-progress" | "resolved" | "closed";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
 export type Role = "owner" | "admin" | "member" | "viewer";
 
@@ -15,7 +15,7 @@ type BadgeConfig = {
 
 const ticketStatusConfig: Record<TicketStatus, BadgeConfig> = {
   open: { label: "未対応", variant: "default" },
-  in_progress: { label: "対応中", variant: "secondary" },
+  "in-progress": { label: "対応中", variant: "secondary" },
   resolved: { label: "解決済み", variant: "outline" },
   closed: { label: "完了", variant: "ghost" },
 };
