@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { AppShell } from "../../../../src/components/layout/AppShell";
+import { AppShell } from "@/components/layout/AppShell";
 
 describe("AppShell", () => {
   it("renders children in the main content area", () => {
