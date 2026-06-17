@@ -176,14 +176,14 @@ export function createApiErrorResponse(
   return response;
 }
 
-export function isApiSuccessResponse<T>(
-  response: ApiResponse<T>,
-): response is ApiSuccessResponse<T> {
+export function isApiSuccessResponse<TResponse extends ApiResponse<unknown>>(
+  response: TResponse,
+): response is Extract<TResponse, { success: true }> {
   return response.success === true;
 }
 
-export function isApiErrorResponse<T>(
-  response: ApiResponse<T>,
-): response is ApiErrorResponse {
+export function isApiErrorResponse<TResponse extends ApiResponse<unknown>>(
+  response: TResponse,
+): response is Extract<TResponse, ApiErrorResponse> {
   return response.success === false;
 }

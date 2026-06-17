@@ -96,6 +96,25 @@ describe("isApiSuccessResponse / isApiErrorResponse", () => {
     expect(isApiSuccessResponse(error)).toBe(false);
     expect(isApiErrorResponse(error)).toBe(true);
   });
+
+  it("ページネーション付き成功レスポンスの型を保持して判別できる", () => {
+    const paginated = createApiPaginatedSuccessResponse([{ id: "1" }], {
+      page: 1,
+      perPage: 10,
+      total: 100,
+      totalPages: 10,
+    });
+
+    expect(isApiSuccessResponse(paginated)).toBe(true);
+    if (isApiSuccessResponse(paginated)) {
+      expect(paginated.meta).toStrictEqual({
+        page: 1,
+        perPage: 10,
+        total: 100,
+        totalPages: 10,
+      });
+    }
+  });
 });
 
 describe("ApiErrorCode", () => {
