@@ -1,4 +1,10 @@
-import { loginInputSchema, type LoginInput } from "@ticket-flow/shared";
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  loginInputSchema,
+  mapZodErrorToValidationDetails,
+  type LoginInput,
+} from "@ticket-flow/shared";
 import type { Context } from "hono";
 
 import { loginUser } from "../../application/login-user.js";
@@ -10,25 +16,23 @@ export function createLoginHandler(deps: LoginUserDependencies) {
     try {
       body = await c.req.json();
     } catch {
-      return c.json({ error: "Invalid request body" }, 400);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.BAD_REQUEST,
+          "リクエストボディが不正です",
+        ),
+        400,
+      );
     }
 
     const parseResult = loginInputSchema.safeParse(body);
     if (!parseResult.success) {
-      const details = parseResult.error.issues
-        .map((issue) => ({
-          field: issue.path[0],
-          message: issue.message,
-        }))
-        .filter(
-          (detail): detail is { field: string; message: string } =>
-            typeof detail.field === "string",
-        );
       return c.json(
-        {
-          error: "入力内容を確認してください",
-          details,
-        },
+        createApiErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          "入力内容を確認してください",
+          mapZodErrorToValidationDetails(parseResult.error),
+        ),
         400,
       );
     }
@@ -38,8 +42,16 @@ export function createLoginHandler(deps: LoginUserDependencies) {
     const result = await loginUser(input, deps);
 
     if (!result.success) {
-      const status = result.error.type === "invalid-email" ? 400 : 401;
-      return c.json({ error: result.error.message }, status);
+      const isValidationError = result.error.type === "invalid-email";
+      return c.json(
+        createApiErrorResponse(
+          isValidationError
+            ? ApiErrorCode.VALIDATION_ERROR
+            : ApiErrorCode.AUTH_UNAUTHORIZED,
+          result.error.message,
+        ),
+        isValidationError ? 400 : 401,
+      );
     }
 
     return c.json(
