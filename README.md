@@ -37,6 +37,34 @@ pnpm run setup
 pnpm run build:shared
 ```
 
+## Seed データ
+
+開発・デモ用の初期データを投入する仕組みです。本番環境（`NODE_ENV=production`）では実行できません。
+
+```bash
+cd apps/api
+
+# 手動で seed を実行
+pnpm run db:seed
+
+# または dev 起動時に自動投入
+pnpm run dev
+```
+
+### デモアカウント
+
+| 項目     | 値                 |
+| -------- | ------------------ |
+| email    | `demo@example.com` |
+| password | `demo1234`         |
+
+### 投入されるデータ
+
+- デモユーザー 1 件
+- デモチケット 4 件（open / in-progress / closed のステータスを含む）
+
+seed は冪等に実装されており、同じデータが存在する場合は更新されます。
+
 ## 開発フロー
 
 1. Issue またはタスクを確認する

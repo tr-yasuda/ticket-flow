@@ -14,10 +14,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "pnpm run db:seed && pnpm run build && node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "postinstall": "prisma generate --schema prisma/schema.prisma",
+    "db:seed": "prisma db seed",
     "migrate": "node scripts/migrate.js up",
     "migrate:rollback": "node scripts/migrate.js down",
     "migrate:create": "node-pg-migrate create --config-file node-pg-migrate.config.json"
@@ -38,7 +40,11 @@
     "@vitest/coverage-v8": "^4.1.9",
     "node-pg-migrate": "^8.0.4",
     "prisma": "^6.4.1",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
