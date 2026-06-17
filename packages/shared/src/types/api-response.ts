@@ -117,7 +117,9 @@ export const API_ERROR_CODE_TO_HTTP_STATUS: Record<ApiErrorCode, number> = {
  * 1 つの status code に複数のコードが該当する場合は、
  * 最も汎用的なコードを選択している。
  */
-export const HTTP_STATUS_TO_API_ERROR_CODE: Record<number, ApiErrorCode> = {
+export const HTTP_STATUS_TO_API_ERROR_CODE: Partial<
+  Record<number, ApiErrorCode>
+> = {
   400: ApiErrorCode.BAD_REQUEST,
   401: ApiErrorCode.AUTH_UNAUTHORIZED,
   403: ApiErrorCode.AUTH_FORBIDDEN,

@@ -175,4 +175,8 @@ describe("HTTP_STATUS_TO_API_ERROR_CODE", () => {
       ApiErrorCode.SERVICE_UNAVAILABLE,
     );
   });
+
+  it("対応表に含まれない status code は undefined を返す", () => {
+    expect(HTTP_STATUS_TO_API_ERROR_CODE[418]).toBeUndefined();
+  });
 });
