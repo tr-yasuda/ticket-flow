@@ -37,6 +37,8 @@ describe("ticket mock handlers", () => {
         organizationId: "demo-org-001",
         title: "ログイン画面の UI 改善",
         status: "open",
+        priority: "medium",
+        assignee: { id: "demo-user-001", name: "山田太郎" },
       }),
     );
   });
