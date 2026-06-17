@@ -9,8 +9,13 @@ function getByteLength(value: string): number {
     } else if (code <= 0x7ff) {
       byteLength += 2;
     } else if (code >= 0xd800 && code <= 0xdbff) {
-      byteLength += 4;
-      i++;
+      const low = value.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        byteLength += 4;
+        i++;
+      } else {
+        byteLength += 3;
+      }
     } else {
       byteLength += 3;
     }

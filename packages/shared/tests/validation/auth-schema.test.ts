@@ -69,6 +69,21 @@ describe("passwordSchema", () => {
       );
     }
   });
+
+  it("サロゲートペアを4バイトとしてカウントする", () => {
+    const result = passwordSchema.safeParse("😀".repeat(2));
+    expect(result.success).toBe(true);
+  });
+
+  it("孤立した高サロゲートを3バイトとして扱う", () => {
+    const result = passwordSchema.safeParse("\uD800");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "パスワードは8バイト以上で入力してください",
+      );
+    }
+  });
 });
 
 describe("loginInputSchema", () => {
