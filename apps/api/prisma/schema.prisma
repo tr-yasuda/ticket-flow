@@ -8,12 +8,13 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid()) @map("id")
-  email         String         @unique @map("email")
-  passwordHash  String         @map("password_hash")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  refreshTokens RefreshToken[]
+  id                  String             @id @default(uuid()) @map("id")
+  email               String             @unique @map("email")
+  passwordHash        String             @map("password_hash")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  refreshTokens       RefreshToken[]
+  organizationMembers OrganizationMember[]
 
   @@map("users")
 }
@@ -40,11 +41,26 @@ model Ticket {
 }
 
 model Organization {
-  id        String   @id @default(uuid()) @map("id")
-  name      String   @map("name")
-  slug      String   @unique @map("slug")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String             @id @default(uuid()) @map("id")
+  name      String             @map("name")
+  slug      String             @unique @map("slug")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+  members   OrganizationMember[]
 
   @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid()) @map("id")
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           String       @map("role")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
 }

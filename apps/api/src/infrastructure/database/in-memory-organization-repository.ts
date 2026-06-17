@@ -49,4 +49,8 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
   async delete(id: OrganizationId): Promise<void> {
     return this.repository.delete(id);
   }
+
+  withTransaction(): OrganizationRepository {
+    return this;
+  }
 }

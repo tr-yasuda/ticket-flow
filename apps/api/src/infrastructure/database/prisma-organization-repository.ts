@@ -9,7 +9,9 @@ import { rehydrateOrganization } from "../../domain/organization.js";
 import { DuplicateSlugError } from "../../domain/repository-error.js";
 
 export class PrismaOrganizationRepository implements OrganizationRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient | Prisma.TransactionClient,
+  ) {}
 
   async findById(id: OrganizationId): Promise<Organization | null> {
     const record = await this.prisma.organization.findUnique({ where: { id } });
@@ -89,6 +91,10 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     slug: string;
   }): Organization {
     return rehydrateOrganization(record.id, record.name, record.slug);
+  }
+
+  withTransaction(tx: unknown): OrganizationRepository {
+    return new PrismaOrganizationRepository(tx as Prisma.TransactionClient);
   }
 }
 

@@ -1,14 +1,14 @@
 import { HTTPException } from "hono/http-exception";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AuthDependencies } from "../../../src/presentation/app";
+import type { AppDependencies } from "../../../src/presentation/app";
 import { createApp } from "../../../src/presentation/app";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function createTestApp(overrides?: Partial<AuthDependencies>) {
+function createTestApp(overrides?: Partial<AppDependencies>) {
   return createApp({
     userRepository: {
       findById: async () => null,
@@ -23,6 +23,30 @@ function createTestApp(overrides?: Partial<AuthDependencies>) {
       findAll: async () => [],
       save: async () => {},
       delete: async () => {},
+    },
+    organizationRepository: {
+      findById: async () => null,
+      findBySlug: async () => null,
+      findByName: async () => [],
+      findAll: async () => [],
+      save: async () => {},
+      delete: async () => {},
+      withTransaction() {
+        return this;
+      },
+    },
+    organizationMemberRepository: {
+      findById: async () => null,
+      findByOrganizationIdAndUserId: async () => null,
+      findAll: async () => [],
+      save: async () => {},
+      delete: async () => {},
+      withTransaction() {
+        return this;
+      },
+    },
+    transactionRunner: {
+      run: async (callback) => callback(undefined),
     },
     hashPassword: async () => "hashed",
     verifyPassword: async () => false,
@@ -115,5 +139,38 @@ describe("createApp", () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
     expect(body.error.message).toBe("認証が必要です");
+  });
+
+  it("POST /api/organizations は未認証時に 401 を返す", async () => {
+    const app = createTestApp();
+
+    const response = await app.request("/api/organizations", {
+      method: "POST",
+      body: JSON.stringify({ name: "Acme Inc.", slug: "acme-inc" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  it("POST /api/organizations は認証済みユーザーが組織を作成できる", async () => {
+    const app = createTestApp();
+
+    const response = await app.request("/api/organizations", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer valid-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Acme Inc.", slug: "acme-inc" }),
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toMatchObject({ name: "Acme Inc.", slug: "acme-inc" });
   });
 });
