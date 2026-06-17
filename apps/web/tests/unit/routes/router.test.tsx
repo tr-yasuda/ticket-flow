@@ -4,23 +4,39 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import { AuthProvider } from "@/contexts/auth-context";
+import { clearTokens, setTokens } from "@/lib/token-storage";
 import { routeTree } from "@/routeTree.gen";
 
-function renderRoute(initialRoute: string) {
+function renderRoute(initialRoute: string, authenticated = false) {
+  if (authenticated) {
+    setTokens("mock-access-token", "mock-refresh-token");
+  } else {
+    clearTokens();
+  }
+
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [initialRoute] }),
     defaultPendingMinMs: 0,
   });
 
-  render(<RouterProvider router={router} />);
+  render(
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>,
+  );
 
   return router;
 }
 
 describe("routing", () => {
+  beforeEach(() => {
+    clearTokens();
+  });
+
   it("redirects / to /login", async () => {
     renderRoute("/");
 
@@ -57,8 +73,8 @@ describe("routing", () => {
     });
   });
 
-  it("renders /app inside AppShell", async () => {
-    renderRoute("/app");
+  it("renders /app inside AppShell when authenticated", async () => {
+    renderRoute("/app", true);
 
     await waitFor(() => {
       expect(
@@ -70,8 +86,38 @@ describe("routing", () => {
     });
   });
 
-  it("renders /app/:organizationId/tickets inside AppShell with typed param", async () => {
-    renderRoute("/app/org-123/tickets");
+  it("redirects /app to /login when not authenticated", async () => {
+    renderRoute("/app");
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "ログイン" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("redirects /login to /app when authenticated", async () => {
+    renderRoute("/login", true);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "アプリトップ" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("redirects /signup to /app when authenticated", async () => {
+    renderRoute("/signup", true);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "アプリトップ" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders /app/:organizationId/tickets inside AppShell with typed param when authenticated", async () => {
+    renderRoute("/app/org-123/tickets", true);
 
     await waitFor(() => {
       expect(
