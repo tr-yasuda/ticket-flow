@@ -44,6 +44,9 @@ pnpm run build:shared
 ```bash
 cd apps/api
 
+# .env を作成（初回のみ。必要に応じて値を編集）
+cp ../../.env.example .env
+
 # 初回または DB ファイルを削除した場合は、先に migrate を適用
 pnpm exec prisma migrate deploy --schema prisma/schema.prisma
 
