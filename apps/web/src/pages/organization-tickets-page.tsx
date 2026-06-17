@@ -2,9 +2,11 @@ import { Inbox } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/feedback";
+import { Button } from "@/components/ui/button";
 
 type OrganizationTicketsPageProps = {
   organizationId: string;
+  // TODO: #48, #49 のデータ取得基盤が整備されたら削除し、内部 state + データ取得 hook に置き換える
   initialState?: "loading" | "error" | "empty" | "data";
 };
 
@@ -21,7 +23,6 @@ export function OrganizationTicketsPage({
       <ErrorState
         title="チケットの取得に失敗しました"
         message="接続を確認して、もう一度お試しください。"
-        onRetry={() => {}}
       />
     );
   }
@@ -33,9 +34,7 @@ export function OrganizationTicketsPage({
         title="チケットがありません"
         description="新しいチケットを作成してください"
       >
-        <button className="mt-2 rounded bg-primary px-4 py-2 text-primary-foreground">
-          新規作成
-        </button>
+        <Button className="mt-2">新規作成</Button>
       </EmptyState>
     );
   }

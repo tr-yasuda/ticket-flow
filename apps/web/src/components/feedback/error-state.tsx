@@ -11,7 +11,7 @@ export type ErrorStateProps = {
 };
 
 export function ErrorState({
-  title = "エラーが発生しました",
+  title,
   message,
   onRetry,
   className,
@@ -19,6 +19,7 @@ export function ErrorState({
   return (
     <div
       data-testid="error-state"
+      role="alert"
       className={cn(
         "flex flex-col items-center justify-center gap-4 py-12 text-center",
         className,
@@ -26,7 +27,7 @@ export function ErrorState({
     >
       <AlertTriangle className="size-12 text-destructive" />
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
+        {title ? <h3 className="text-lg font-semibold">{title}</h3> : null}
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
       {onRetry && (

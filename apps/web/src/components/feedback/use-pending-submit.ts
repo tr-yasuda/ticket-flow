@@ -23,7 +23,9 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
       setError(null);
       setIsPending(true);
 
-      pendingRef.current = (async () => {
+      let currentPromise: Promise<TResult> | null = null;
+
+      currentPromise = (async () => {
         try {
           return await action(...args);
         } catch (err) {
@@ -32,10 +34,14 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
           setError(caughtError);
           throw caughtError;
         } finally {
-          pendingRef.current = null;
-          setIsPending(false);
+          if (pendingRef.current === currentPromise) {
+            pendingRef.current = null;
+            setIsPending(false);
+          }
         }
       })();
+
+      pendingRef.current = currentPromise;
 
       return pendingRef.current;
     },
