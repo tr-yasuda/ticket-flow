@@ -128,7 +128,7 @@ describe("認証ミドルウェア", () => {
 
     expect(response.status).toBe(401);
     const body = await response.json();
-    expect(body.error).toBeDefined();
+    expectUnauthorized(body);
   });
 
   it("リフレッシュトークンでは 401 を返す", async () => {
