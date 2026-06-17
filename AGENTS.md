@@ -52,8 +52,8 @@ apps/api/src/
   presentation/      # Hono handler（入力受付、出力変換）
 ```
 
-- `Repository<TEntity, TId>` (`src/domain/repository.ts`) が共通リポジトリ型
-- `InMemoryRepository<TEntity, TId>` (`src/infrastructure/database/in-memory-repository.ts`) を単体テストで使用
+- `Repository<TEntity, TId>` (`apps/api/src/domain/repository.ts`) が共通リポジトリ型
+- `InMemoryRepository<TEntity, TId>` (`apps/api/src/infrastructure/database/in-memory-repository.ts`) を単体テストで使用
 - 各ハンドラは `AuthDependencies` として依存を注入する形で実装
 
 ### フロントエンド (`apps/web`)
@@ -72,7 +72,7 @@ apps/api/src/
 
 ### 共有パッケージ (`packages/shared`)
 
-- 現在は `src/types/ticket.ts` の `Ticket` 型、`createTicket()`、`formatTicket()` を公開
+- 現在は `packages/shared/src/types/ticket.ts` の `Ticket` 型、`createTicket()`、`formatTicket()` を公開
 - API からも再エクスポート (`apps/api/src/index.ts`)
 - ビルドは `tsc` で `dist/` に出力
 
