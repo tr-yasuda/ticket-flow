@@ -26,4 +26,19 @@ describe("データベースヘルスチェック", () => {
     expect(health.status).toBe("unhealthy");
     expect(health.error).toBeInstanceOf(Error);
   });
+
+  it("Error 以外の値がスローされた場合も cause に元の情報を保持する", async () => {
+    const rawError = { message: "custom error object" };
+    const fakeClient: DatabaseQueryable = {
+      $queryRaw: async (): Promise<unknown> => {
+        throw rawError;
+      },
+    };
+
+    const health = await checkDatabaseHealth(fakeClient);
+
+    expect(health.status).toBe("unhealthy");
+    expect(health.error).toBeInstanceOf(Error);
+    expect(health.error?.cause).toBe(rawError);
+  });
 });
