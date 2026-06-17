@@ -218,6 +218,62 @@ seed は冪等に実装されており、同じデータが存在する場合は
 - **命名**: 関数・変数は camelCase、型は PascalCase。ファイル名は kebab-case
 - **barrel file**: API / shared で `index.ts` を使用。shadcn/ui コンポーネントは個別ファイルで named export し、`components/ui/index.ts` のような barrel は使用しない
 
+## Zod スキーマと入力検証
+
+本プロジェクトでは入力検証に [Zod](https://zod.dev/) を使用します。型推論とランタイム検証を両立させ、フロントエンドフォームとバックエンド API で共通の入力ルールを再利用します。
+
+### スキーマ配置ルール
+
+| 配置場所                             | 用途                                                                                                                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/validation/`    | フロントエンド・バックエンド両方で使う入力スキーマ。認証、チケット作成・更新など UI と API が共有するルールを置く。                                                                           |
+| `apps/api/src/presentation/schemas/` | API 特有のスキーマ（クエリパラメータ、ヘッダー、API 専用のリクエスト形状など）。現時点では `packages/shared` のスキーマで賄うため存在しないが、API 専用の形状が発生した場合はここに作成する。 |
+| `apps/web/src/lib/schemas/`          | フロントエンド特有のフォームスキーマ（ページ固有の検証、表示用の変換など）。現時点では `packages/shared` のスキーマを優先する。                                                               |
+
+### ドメイン検証との共存方針
+
+- **Zod は境界（入力受付）の検証を担当する**: リクエストボディやフォーム値の形状、形式、長さ、必須チェックなど。
+- **ドメイン層の手書き検証はビジネス不変条件を担当する**: メールアドレスの正規化、パスワードハッシュ化、重複チェック、集約ルールなど。現状の `apps/api/src/domain/user.ts` / `password.ts` / `ticket.ts` は原則としてそのまま維持する。
+- 入力スキーマとドメインルールが重複する場合、**Zod は「受け付けてはいけない値」を早期に弾き、ドメインは「業務として成立する値」を最終判定する**。
+
+### API 入力の検証層
+
+- **Hono handler 層で Zod 検証を行う**。`safeParse` により入力を検証し、成功時は application 層のユースケースに渡す。
+- **application 層は検証済みの DTO を受け取り、業務ロジックに専念する**。application 層で追加の検証が必要な場合は、あくまで業務ルールに基づく判定とする。
+
+### Zod エラーから共通エラー形式へのマッピング
+
+Zod の `issue.path[0]` をフィールド名、`issue.message` をメッセージとし、`packages/shared/src/types/api-response.ts` で定義する `ApiValidationErrorDetail` の配列に変換する。
+
+```ts
+const details: ApiValidationErrorDetail[] = [];
+for (const issue of error.issues) {
+  const field = issue.path[0];
+  if (typeof field !== "string") {
+    continue;
+  }
+  details.push({ field, message: issue.message });
+}
+return details;
+```
+
+API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, message, details)` を使用し、以下の共通レスポンス形式で HTTP 400 を返す。
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "入力内容を確認してください",
+    "details": [
+      { "field": "email", "message": "メールアドレスの形式が正しくありません" }
+    ]
+  }
+}
+```
+
+フロントエンドでは `apps/web/src/lib/validation.ts` の `mapZodErrorToFields` / `mapApiErrorToFields` を使い、クライアント側とサーバー側の両方の検証エラーを同一の `FieldErrors` 型に正規化して表示する。
+
 ## テスト方針
 
 - **ランナー**: Vitest（全パッケージ共通）
@@ -346,28 +402,30 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 ## よく参照するファイル
 
-| 用途                 | パス                                             |
-| -------------------- | ------------------------------------------------ |
-| ルート設定           | `package.json`、`pnpm-workspace.yaml`            |
-| API サーバー起動     | `apps/api/src/server.ts`                         |
-| API 公開エクスポート | `apps/api/src/index.ts`                          |
-| Hono アプリ生成      | `apps/api/src/presentation/app.ts`               |
-| Prisma スキーマ      | `apps/api/prisma/schema.prisma`                  |
-| DB 設定読み取り      | `apps/api/src/infrastructure/database/config.ts` |
-| トークン設定読み取り | `apps/api/src/infrastructure/token/config.ts`    |
-| Web エントリ         | `apps/web/src/main.tsx`                          |
-| Web HTML             | `apps/web/index.html`                            |
-| Web Vite 設定        | `apps/web/vite.config.ts`                        |
-| Web Vitest 設定      | `apps/web/vitest.config.ts`                      |
-| Web ルート定義       | `apps/web/src/routes/`                           |
-| Web API クライアント | `apps/web/src/lib/api-client.ts`                 |
-| shadcn/ui 設定       | `apps/web/components.json`                       |
-| 共有パッケージ       | `packages/shared/src/index.ts`                   |
-| CI 定義              | `.github/workflows/ci.yml`                       |
-| Lint 設定            | `.oxlintrc.json`                                 |
-| Format 設定          | `.oxfmtrc.jsonc`                                 |
-| Git フック           | `lefthook.yml`                                   |
-| コミットlint         | `.commitlintrc.json`                             |
+| 用途                       | パス                                             |
+| -------------------------- | ------------------------------------------------ |
+| ルート設定                 | `package.json`、`pnpm-workspace.yaml`            |
+| API サーバー起動           | `apps/api/src/server.ts`                         |
+| API 公開エクスポート       | `apps/api/src/index.ts`                          |
+| Hono アプリ生成            | `apps/api/src/presentation/app.ts`               |
+| Prisma スキーマ            | `apps/api/prisma/schema.prisma`                  |
+| DB 設定読み取り            | `apps/api/src/infrastructure/database/config.ts` |
+| トークン設定読み取り       | `apps/api/src/infrastructure/token/config.ts`    |
+| Web エントリ               | `apps/web/src/main.tsx`                          |
+| Web HTML                   | `apps/web/index.html`                            |
+| Web Vite 設定              | `apps/web/vite.config.ts`                        |
+| Web Vitest 設定            | `apps/web/vitest.config.ts`                      |
+| Web ルート定義             | `apps/web/src/routes/`                           |
+| Web API クライアント       | `apps/web/src/lib/api-client.ts`                 |
+| shadcn/ui 設定             | `apps/web/components.json`                       |
+| 共有パッケージ             | `packages/shared/src/index.ts`                   |
+| 共有 Zod スキーマ          | `packages/shared/src/validation/`                |
+| Web 入力検証ユーティリティ | `apps/web/src/lib/validation.ts`                 |
+| CI 定義                    | `.github/workflows/ci.yml`                       |
+| Lint 設定                  | `.oxlintrc.json`                                 |
+| Format 設定                | `.oxfmtrc.jsonc`                                 |
+| Git フック                 | `lefthook.yml`                                   |
+| コミットlint               | `.commitlintrc.json`                             |
 
 ---
 

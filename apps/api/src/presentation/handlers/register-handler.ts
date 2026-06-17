@@ -1,4 +1,10 @@
-import { registerInputSchema, type RegisterInput } from "@ticket-flow/shared";
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  mapZodErrorToValidationDetails,
+  registerInputSchema,
+  type RegisterInput,
+} from "@ticket-flow/shared";
 import type { Context } from "hono";
 
 import { registerUser } from "../../application/register-user.js";
@@ -10,25 +16,23 @@ export function createRegisterHandler(deps: RegisterUserDependencies) {
     try {
       body = await c.req.json();
     } catch {
-      return c.json({ error: "Invalid request body" }, 400);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.BAD_REQUEST,
+          "リクエストボディが不正です",
+        ),
+        400,
+      );
     }
 
     const parseResult = registerInputSchema.safeParse(body);
     if (!parseResult.success) {
-      const details = parseResult.error.issues
-        .map((issue) => ({
-          field: issue.path[0],
-          message: issue.message,
-        }))
-        .filter(
-          (detail): detail is { field: string; message: string } =>
-            typeof detail.field === "string",
-        );
       return c.json(
-        {
-          error: "入力内容を確認してください",
-          details,
-        },
+        createApiErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          "入力内容を確認してください",
+          mapZodErrorToValidationDetails(parseResult.error),
+        ),
         400,
       );
     }
@@ -38,8 +42,12 @@ export function createRegisterHandler(deps: RegisterUserDependencies) {
     const result = await registerUser(input, deps);
 
     if (!result.success) {
-      const status = result.error.type === "email-already-exists" ? 409 : 400;
-      return c.json({ error: result.error.message }, status);
+      const code =
+        result.error.type === "email-already-exists"
+          ? ApiErrorCode.CONFLICT
+          : ApiErrorCode.VALIDATION_ERROR;
+      const status = code === ApiErrorCode.CONFLICT ? 409 : 400;
+      return c.json(createApiErrorResponse(code, result.error.message), status);
     }
 
     return c.json(
