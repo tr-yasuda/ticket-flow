@@ -7,14 +7,16 @@ import { promisify } from "node:util";
 import { PrismaClient } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { createTestDatabaseUrl } from "../../../test-database-url.js";
+
 const execAsync = promisify(exec);
 
 const projectRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../../",
 );
-const seedTestDatabaseUrl = "file:./prisma/seed-test.db";
 const seedTestDatabasePath = resolve(projectRoot, "prisma/seed-test.db");
+const seedTestDatabaseUrl = createTestDatabaseUrl("prisma/seed-test.db");
 
 async function runPrismaMigrateDeploy(): Promise<void> {
   await execAsync(
