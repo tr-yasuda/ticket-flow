@@ -37,6 +37,17 @@ pnpm run setup
 pnpm run build:shared
 ```
 
+## データベース
+
+- Prisma + SQLite を使用する
+- マイグレーションファイルは `apps/api/prisma/migrations/` で管理する
+- 接続先は `DATABASE_URL` で指定する（例: `file:./dev.db`）
+- スキーマ変更時は Prisma のマイグレーションコマンドを使用する
+
+```bash
+pnpm --filter @ticket-flow/api exec prisma migrate dev --schema prisma/schema.prisma
+```
+
 ## 開発フロー
 
 1. Issue またはタスクを確認する

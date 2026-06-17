@@ -46,10 +46,10 @@ pnpm run lint
 pnpm run format:check
 pnpm run format
 
-# マイグレーション
-pnpm run migrate
-pnpm run migrate:rollback
-pnpm run migrate:create -- <description>
+# マイグレーション（Prisma + SQLite）
+pnpm --filter @ticket-flow/api exec prisma migrate dev --schema prisma/schema.prisma
+pnpm --filter @ticket-flow/api exec prisma migrate deploy --schema prisma/schema.prisma
+pnpm --filter @ticket-flow/api exec prisma generate --schema prisma/schema.prisma
 ```
 
 ## アーキテクチャ
@@ -71,8 +71,8 @@ pnpm run migrate:create -- <description>
 
 ### DB 接続
 
-- `src/infrastructure/database/config.ts` — `DATABASE_URL` の読み取り・検証
-- `src/infrastructure/database/pool.ts` — `pg.Pool` の生成
+- `src/infrastructure/database/config.ts` — `DATABASE_URL` の読み取り・検証（SQLite の `file:` URL のみ対応）
+- `src/infrastructure/database/prisma-client.ts` — Prisma Client の生成
 - `src/infrastructure/database/health-check.ts` — ヘルスチェック用ユーティリティ
 - DB 接続系の統合テストは `isDatabaseConfigured(process.env)`（`DATABASE_URL` の有無）でスキップ制御される
 
@@ -136,6 +136,6 @@ GitHub Actions (`ci.yml`) で以下を実行:
 
 - パッケージマネージャー: `pnpm@10.8.1`（`packageManager` 指定あり）
 - Node: `>=22.12.0`
-- Lint: `oxlint`。`migrations` は対象外
+- Lint: `oxlint`
 - Format: `oxfmt`。設定は `.oxfmtrc.jsonc`
 - TypeScript: 厳格モード有効。`noImplicitAny`, `strictNullChecks` 有効
