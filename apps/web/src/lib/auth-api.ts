@@ -33,8 +33,11 @@ export async function logout(): Promise<void> {
     return;
   }
 
-  await apiClient.post("auth/logout", {
-    headers: { Authorization: `Bearer ${refreshToken}` },
-  });
-  clearTokens();
+  try {
+    await apiClient.post("auth/logout", {
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    });
+  } finally {
+    clearTokens();
+  }
 }

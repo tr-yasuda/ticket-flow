@@ -82,20 +82,19 @@ async function performRefresh(): Promise<string> {
   return refreshingPromise;
 }
 
-const addAuthHeader: BeforeRequestHook = (request, options) => {
+const addAuthHeader: BeforeRequestHook = (request) => {
   const token = getAccessToken();
-  const headers = new Headers(options.headers);
-  if (token !== null && !headers.has("Authorization")) {
+  if (token === null) {
+    return;
+  }
+  const headers = new Headers(request.headers);
+  if (!headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
     return new Request(request, { headers });
   }
 };
 
-const refreshAccessToken: BeforeRetryHook = async ({
-  request,
-  options,
-  retryCount,
-}) => {
+const refreshAccessToken: BeforeRetryHook = async ({ request, retryCount }) => {
   if (retryCount !== 1) {
     return;
   }
@@ -108,7 +107,7 @@ const refreshAccessToken: BeforeRetryHook = async ({
       throw new ApiError("Refresh token is missing", 401);
     }
     setTokens(newAccessToken, refreshToken);
-    const headers = new Headers(options.headers);
+    const headers = new Headers(request.headers);
     headers.set("Authorization", `Bearer ${newAccessToken}`);
     return new Request(request, { headers });
   } catch (error) {
@@ -152,7 +151,11 @@ export const apiClient = ky.create({
       if (retryCount > 1) {
         return false;
       }
-      return error instanceof ApiError && error.status === 401;
+      return (
+        error instanceof ApiError &&
+        error.status === 401 &&
+        getRefreshToken() !== null
+      );
     },
   },
 });

@@ -40,6 +40,20 @@ describe("apiClient", () => {
     expect(request.headers.get("Authorization")).toBe("Bearer access-token");
   });
 
+  it("デフォルト設定で /api/<path> にリクエストする", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    globalThis.fetch = fetchMock;
+
+    await apiClient.get("protected");
+
+    const request = getFirstRequest(fetchMock);
+    expect(new URL(request.url).pathname).toBe("/api/protected");
+  });
+
   it("401 応答時にリフレッシュして元リクエストをリトライする", async () => {
     setTokens("expired-access", "refresh-token");
     const fetchMock = vi
