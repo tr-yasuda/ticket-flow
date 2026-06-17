@@ -155,3 +155,5 @@ apps/api/prisma/test.db
 apps/api/prisma/test.db-*
 apps/api/prisma/migrate-test.db
 apps/api/prisma/migrate-test.db-*
+apps/api/prisma/seed-test.db
+apps/api/prisma/seed-test.db-*
