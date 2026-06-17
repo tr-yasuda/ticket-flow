@@ -4,10 +4,16 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthProvider } from "@/contexts/auth-context";
+import { clearTokens, setTokens } from "@/lib/token-storage";
 import { OrganizationTicketsPageView } from "@/pages/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
+
+beforeEach(() => {
+  clearTokens();
+});
 
 const sampleTickets = [
   {
@@ -26,13 +32,25 @@ const sampleTickets = [
   },
 ];
 
-function renderRoute(initialRoute: string) {
+function renderRoute(initialRoute: string, authenticated = false) {
+  if (authenticated) {
+    setTokens("mock-access-token", "mock-refresh-token");
+  } else {
+    clearTokens();
+  }
+
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [initialRoute] }),
     defaultPendingMinMs: 0,
   });
-  render(<RouterProvider router={router} />);
+
+  render(
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>,
+  );
+
   return router;
 }
 
@@ -116,7 +134,7 @@ describe("OrganizationTicketsPageView", () => {
 
 describe("OrganizationTicketsPage", () => {
   it("organizationId とチケット一覧を表示する", async () => {
-    renderRoute("/app/demo-org-001/tickets");
+    renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
         screen.getByRole("heading", { name: "チケット" }),
@@ -129,7 +147,7 @@ describe("OrganizationTicketsPage", () => {
   });
 
   it("ページ切り替えで表示チケットが変わる", async () => {
-    renderRoute("/app/demo-org-001/tickets");
+    renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(screen.getByText("ログイン画面の UI 改善")).toBeInTheDocument();
     });
@@ -150,7 +168,7 @@ describe("OrganizationTicketsPage", () => {
   });
 
   it("行クリックで詳細 URL へ遷移する", async () => {
-    const router = renderRoute("/app/demo-org-001/tickets");
+    const router = renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
