@@ -14,11 +14,14 @@ function getFirstRequest(fetchMock: ReturnType<typeof vi.fn>): Request {
 }
 
 describe("apiClient", () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     clearTokens();
   });
 
   afterEach(() => {
+    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 

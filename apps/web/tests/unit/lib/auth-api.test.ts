@@ -9,11 +9,14 @@ import {
 } from "@/lib/token-storage";
 
 describe("auth-api", () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     clearTokens();
   });
 
   afterEach(() => {
+    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
