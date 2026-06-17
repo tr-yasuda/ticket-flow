@@ -340,6 +340,8 @@ Conventional Branching に従います。
 ### Issue / PR
 
 - Issue 作成補助: `pnpm run create-issue -- --title "..." --body-file <path> [--label ...]`
+  - `--body-file` はプロジェクトルート（`package.json` があるディレクトリ）を基準にした相対パス、または絶対パスで指定します
+  - サブディレクトリや `.worktree/` 内から実行しても、パス解決の基準は変わりません
   - テンプレート本文の YAML frontmatter（`---` 〜 `---`）は自動で除去されます
 - PR テンプレート: `.github/pull_request_template.md`
 - Issue テンプレート: `.github/ISSUE_TEMPLATE/task.md`
