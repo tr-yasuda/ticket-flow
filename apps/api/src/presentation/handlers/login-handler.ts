@@ -42,12 +42,15 @@ export function createLoginHandler(deps: LoginUserDependencies) {
     const result = await loginUser(input, deps);
 
     if (!result.success) {
+      const isValidationError = result.error.type === "invalid-email";
       return c.json(
         createApiErrorResponse(
-          ApiErrorCode.AUTH_UNAUTHORIZED,
+          isValidationError
+            ? ApiErrorCode.VALIDATION_ERROR
+            : ApiErrorCode.AUTH_UNAUTHORIZED,
           result.error.message,
         ),
-        401,
+        isValidationError ? 400 : 401,
       );
     }
 
