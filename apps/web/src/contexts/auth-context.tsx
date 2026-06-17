@@ -111,7 +111,6 @@ export function AuthProvider({
           : new Error("Failed to logout"),
       );
     } finally {
-      clearTokens();
       setState({ type: "unauthenticated" });
     }
   }, []);
