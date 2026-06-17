@@ -1,3 +1,4 @@
+import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
@@ -35,7 +36,13 @@ function createTestApp() {
   app.get("/api/protected/me", (c) => {
     const userId = c.get("userId");
     if (userId === undefined) {
-      return c.json({ error: "Unauthorized" }, 401);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_UNAUTHORIZED,
+          "認証が必要です",
+        ),
+        401,
+      );
     }
     return c.json({ userId }, 200);
   });
@@ -44,6 +51,16 @@ function createTestApp() {
 
 async function createAccessToken(userId: string): Promise<string> {
   return generateAccessToken({ userId }, testConfig);
+}
+
+function expectUnauthorized(body: unknown) {
+  expect(body).toEqual({
+    success: false,
+    error: {
+      code: ApiErrorCode.AUTH_UNAUTHORIZED,
+      message: "認証が必要です",
+    },
+  });
 }
 
 describe("認証ミドルウェア", () => {
@@ -67,7 +84,7 @@ describe("認証ミドルウェア", () => {
 
     expect(response.status).toBe(401);
     const body = await response.json();
-    expect(body.error).toBeDefined();
+    expectUnauthorized(body);
   });
 
   it("Bearer スキームでない場合は 401 を返す", async () => {
@@ -79,7 +96,7 @@ describe("認証ミドルウェア", () => {
 
     expect(response.status).toBe(401);
     const body = await response.json();
-    expect(body.error).toBeDefined();
+    expectUnauthorized(body);
   });
 
   it("無効なアクセストークンでは 401 を返す", async () => {
@@ -95,7 +112,7 @@ describe("認証ミドルウェア", () => {
 
     expect(response.status).toBe(401);
     const body = await response.json();
-    expect(body.error).toBeDefined();
+    expectUnauthorized(body);
   });
 
   it("期限切れのアクセストークンでは 401 を返す", async () => {
@@ -127,7 +144,7 @@ describe("認証ミドルウェア", () => {
 
     expect(response.status).toBe(401);
     const body = await response.json();
-    expect(body.error).toBeDefined();
+    expectUnauthorized(body);
   });
 
   it("Bearer とトークンの間に複数スペースがあってもトークンを抽出する", async () => {
