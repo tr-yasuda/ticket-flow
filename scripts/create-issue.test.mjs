@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, it, expect, vi } from "vitest";
 
 import { consumeValue, parseArgs, stripFrontmatter } from "./create-issue.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function captureExit(action) {
   const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
@@ -154,6 +160,12 @@ describe("stripFrontmatter", () => {
     expect(stripFrontmatter(content)).toBe("body\r\n");
   });
 
+  it("handles mixed CRLF and LF line endings", () => {
+    const content = "---\r\ntitle: x\n---\nbody\n";
+
+    expect(stripFrontmatter(content)).toBe("body\n");
+  });
+
   it("handles an empty frontmatter block", () => {
     const content = "---\n---\nbody\n";
 
@@ -162,6 +174,12 @@ describe("stripFrontmatter", () => {
 
   it("does not break when frontmatter YAML contains --- inside a value", () => {
     const content = '---\ntitle: "foo --- bar"\n---\nbody\n';
+
+    expect(stripFrontmatter(content)).toBe("body\n");
+  });
+
+  it("does not treat --- on its own line inside a YAML literal block as the closing delimiter", () => {
+    const content = "---\ndescription: |\n  ---\n  some text\n---\nbody\n";
 
     expect(stripFrontmatter(content)).toBe("body\n");
   });
@@ -182,5 +200,22 @@ describe("stripFrontmatter", () => {
     const content = "---\ntitle: x\n---\n";
 
     expect(stripFrontmatter(content)).toBe("");
+  });
+
+  it("returns the content unchanged when the closing delimiter is missing", () => {
+    const content = "---\ntitle: x\nbody\n";
+
+    expect(stripFrontmatter(content)).toBe(content);
+  });
+
+  it("works with the issue template task.md", () => {
+    const template = readFileSync(
+      resolve(__dirname, "../.github/ISSUE_TEMPLATE/task.md"),
+      "utf8",
+    );
+    const result = stripFrontmatter(template);
+
+    expect(result.startsWith("---")).toBe(false);
+    expect(result.includes("## 目的と背景")).toBe(true);
   });
 });
