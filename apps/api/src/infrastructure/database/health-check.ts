@@ -16,7 +16,10 @@ export async function checkDatabaseHealth(
   } catch (error) {
     return {
       status: "unhealthy",
-      error: error instanceof Error ? error : new Error("Unknown error"),
+      error:
+        error instanceof Error
+          ? error
+          : new Error("Unknown error", { cause: error }),
     };
   }
 }

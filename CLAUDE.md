@@ -134,7 +134,7 @@ GitHub Actions (`ci.yml`) で以下を実行:
 
 ## 制約・注意点
 
-- パッケージマネージャー: `pnpm@10.8.1`（`packageManager` 指定あり）
+- パッケージマネージャー: `pnpm@11.7.0`（`packageManager` 指定あり）
 - Node: `>=22.12.0`
 - Lint: `oxlint`
 - Format: `oxfmt`。設定は `.oxfmtrc.jsonc`
