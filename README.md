@@ -1,6 +1,6 @@
 # ticket-flow
 
-マルチテナント SaaS 向けチケット管理システムの基盤プロジェクトです。
+マルチテナント SaaS 向けチケット管理システムの基盤プロジェクトです。  
 責務分離を意識したレイヤードアーキテクチャを採用し、後続の技術導入を見据えた構造を整備しています。
 
 ## プロジェクト概要
@@ -9,22 +9,152 @@
 - **対象**: マルチテナント SaaS
 - **設計方針**: 過度な抽象化を避け、必要最小限の構造から始める
 
-## ディレクトリ構造
+## MVP ワークフロー
+
+現在の MVP は「開発者のセットアップ → ユーザー登録 → ログイン → 組織選択 → チケット管理」という流れを想定しています。
+
+```mermaid
+flowchart TD
+    Start([開始]) --> Setup[開発者: 環境構築<br/>pnpm install / pnpm run setup]
+    Setup --> BuildShared[@ticket-flow/shared をビルド<br/>pnpm run build:shared]
+    BuildShared --> LoadEnv[.env を読み込む<br/>cd apps/api && set -a && source .env && set +a]
+    LoadEnv --> ApiDev[API サーバー起動<br/>pnpm run dev]
+    BuildShared --> WebDev[Web 開発サーバー起動<br/>pnpm run dev]
+    ApiDev --> Seed[マイグレーション適用 &<br/>Seed データ投入]
+    WebDev --> User[ユーザーがブラウザでアクセス]
+    Seed --> User
+    User --> Signup[/サインアップ/]
+    Signup --> Login[/ログイン/]
+    Login --> Onboarding[/組織選択・作成/]
+    Onboarding --> Tickets[/チケット一覧/]
+    Tickets --> Create[/チケット作成/]
+    Tickets --> Edit[/チケット編集 / ステータス更新/]
+    Create --> Tickets
+    Edit --> Tickets
+```
+
+### 主な画面遷移
+
+| パス                           | 役割                    |
+| ------------------------------ | ----------------------- |
+| `/login`                       | ログイン                |
+| `/signup`                      | 新規ユーザー登録        |
+| `/app`                         | アプリトップ / 組織選択 |
+| `/app/$organizationId/tickets` | 組織ごとのチケット一覧  |
+
+## アーキテクチャ概要
+
+```mermaid
+flowchart TD
+    subgraph Web["Frontend: apps/web"]
+        WUI[React 19 + TanStack Router<br/>shadcn/ui + Tailwind CSS]
+        WForm[TanStack React Form]
+        WClient[ky API Client]
+        WState[token-storage.ts]
+    end
+
+    subgraph API["Backend: apps/api"]
+        WH[Hono Handler]
+        MW[Auth Middleware]
+        UC[ユースケース]
+        DM[ドメイン]
+        PR[Prisma Repository]
+        DB[(SQLite)]
+    end
+
+    Shared[("packages/shared<br/>共通型 / Zod スキーマ")]
+
+    WUI --> WForm
+    WForm --> Shared
+    WUI --> WClient
+    WClient --> WState
+    WClient --> WH
+    WH --> MW
+    WH --> UC
+    UC --> DM
+    UC --> PR
+    PR --> DB
+    WH --> Shared
+    UC --> Shared
+    DM --> Shared
+```
+
+### 各レイヤーの役割
+
+| レイヤー       | パッケージ        | 責務                                                     |
+| -------------- | ----------------- | -------------------------------------------------------- |
+| フロントエンド | `apps/web`        | ユーザーインターフェース、API 呼び出し、フォーム状態管理 |
+| バックエンド   | `apps/api`        | HTTP 入力受付、認証、ユースケース実行、永続化            |
+| 共有           | `packages/shared` | フロントエンド・バックエンド双方で使う型と Zod スキーマ  |
+
+### データフロー
+
+1. ユーザーが `apps/web` の画面から入力する
+2. `ky` を使って `apps/api` の Hono handler にリクエストを送信する
+3. 認証が必要なエンドポイントでは、Hono handler が `AuthMiddleware` で認証した上でユースケースを呼び出す
+4. ユースケースはドメインルールを使って業務ロジックを実行し、Prisma repository でデータを永続化する
+5. レスポンスは `packages/shared` の共通型に沿って返却され、フロントエンドで表示する
+
+## 技術スタック
+
+| カテゴリ       | 技術                        | 用途                             |
+| -------------- | --------------------------- | -------------------------------- |
+| フロントエンド | React 19                    | UI ライブラリ                    |
+| フロントエンド | Vite 8                      | ビルドツール / 開発サーバー      |
+| フロントエンド | TanStack Router             | ファイルベースルーティング       |
+| フロントエンド | TanStack React Form         | フォーム状態管理                 |
+| フロントエンド | shadcn/ui + Tailwind CSS v4 | UI コンポーネント / スタイリング |
+| フロントエンド | ky                          | HTTP クライアント                |
+| バックエンド   | Hono + @hono/node-server    | Web フレームワーク               |
+| バックエンド   | Prisma + SQLite             | ORM / データベース               |
+| バックエンド   | jose                        | JWT の発行・検証                 |
+| バックエンド   | bcrypt                      | パスワードハッシュ化             |
+| 共有           | Zod                         | 入力検証 / 型共有                |
+| 開発基盤       | TypeScript                  | 言語（厳格モード）               |
+| 開発基盤       | pnpm workspaces             | モノレポ管理                     |
+| 開発基盤       | Vitest                      | テストランナー                   |
+| 開発基盤       | oxlint / oxfmt              | Lint / Format                    |
+| 開発基盤       | lefthook / commitlint       | Git フック / コミット検証        |
+
+## ディレクトリ構成
 
 ```text
-src/
-  domain/          # ドメインロジック、エンティティ、値オブジェクト
-  application/     # ユースケース、サービス、ドメインロジックの調整
-  infrastructure/  # 外部サービス、DB、API クライアントなどの詳細
-  presentation/    # 入力の受け渡し、返却形式への変換（handler/controller）
-
-tests/
-  unit/            # 単体テスト
-  integration/     # 統合テスト
-  e2e/             # E2E テスト
+ticket-flow/
+├── apps/
+│   ├── api/                  # バックエンド API（Hono + Prisma）
+│   │   ├── prisma/           # スキーマ・マイグレーション・seed
+│   │   ├── src/
+│   │   │   ├── domain/       # エンティティ・値オブジェクト・ドメインルール
+│   │   │   ├── application/  # ユースケース
+│   │   │   ├── infrastructure/ # DB / トークン設定 / サーバー
+│   │   │   └── presentation/ # Hono handler / middleware
+│   │   └── tests/
+│   │       ├── unit/         # 単体テスト
+│   │       └── integration/  # 統合テスト
+│   └── web/                  # フロントエンド（React + Vite）
+│       ├── src/
+│       │   ├── components/   # UI コンポーネント
+│       │   ├── hooks/        # React hooks
+│       │   ├── lib/          # API クライアント・ユーティリティ
+│       │   ├── mocks/        # MSW ハンドラ
+│       │   ├── pages/        # ページコンポーネント
+│       │   └── routes/       # TanStack Router ルート
+│       └── tests/            # 単体テスト
+├── packages/
+│   └── shared/               # 共通型・Zod スキーマ
+│       ├── src/types/
+│       └── src/validation/
+└── scripts/                  # ルートスクリプト
 ```
 
 ## セットアップ手順
+
+### 前提条件
+
+- Node.js `>=22.12.0`
+- pnpm `11.7.0`（`packageManager` フィールドで固定）
+
+### インストール
 
 ```bash
 # 依存関係をインストール
@@ -33,9 +163,58 @@ pnpm install
 # lefthook の Git フックをセットアップ（初回のみ）
 pnpm run setup
 
-# apps/api を開発する場合は @ticket-flow/shared を事前にビルド
+# @ticket-flow/shared を事前にビルド（API 開発 / テスト前に必要）
 pnpm run build:shared
 ```
+
+## ローカル開発手順
+
+```bash
+# 1. 環境変数ファイルを作成し、JWT_SECRET を設定する
+cp .env.example apps/api/.env
+# apps/api/.env の JWT_SECRET を 32 バイト以上の値に変更する
+
+# 2. 依存関係をインストールし、shared をビルドする
+pnpm install
+pnpm run build:shared
+
+# 3. ターミナル 1: API サーバーを起動（マイグレーション・seed も自動実行）
+#    API はコード上で .env を自動読み込みしないため、起動前に環境変数として読み込む
+cd apps/api
+set -a && source .env && set +a
+pnpm run dev
+
+# 4. ターミナル 2: Web 開発サーバーを起動
+#    リポジトリルートで実行してください
+pnpm run dev
+```
+
+`set -a && source .env && set +a` は bash / zsh の例です。`.env` に `export` が付いていない場合でも変数を環境変数としてエクスポートするため、`set -a` が必要です。PowerShell 等をお使いの場合は、`.env` の値を環境変数として読み込んでください。
+
+### 起動後の確認
+
+| サービス | デフォルト URL        | 備考              |
+| -------- | --------------------- | ----------------- |
+| Web      | http://localhost:5173 | Vite 開発サーバー |
+| API      | http://localhost:3000 | Hono + Node.js    |
+
+### 環境変数
+
+#### バックエンド（`apps/api/.env`）
+
+| 変数名                   | 必須 | 例                       | 説明                                              |
+| ------------------------ | ---- | ------------------------ | ------------------------------------------------- |
+| `DATABASE_URL`           | 必須 | `file:./dev.db`          | SQLite の接続文字列（`file:` プロトコルのみ許可） |
+| `JWT_SECRET`             | 必須 | `your-32-byte-secret...` | 32 バイト以上                                     |
+| `JWT_ACCESS_EXPIRES_IN`  | 必須 | `15m`                    | アクセストークンの有効期限                        |
+| `JWT_REFRESH_EXPIRES_IN` | 必須 | `7d`                     | リフレッシュトークンの有効期限                    |
+| `PORT`                   | 任意 | `3000`                   | API サーバーのポート（未設定時は `3000`）         |
+
+#### フロントエンド
+
+| 変数名              | 必須 | 例     | 説明                                                                 |
+| ------------------- | ---- | ------ | -------------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | 任意 | `/api` | API のベース URL（未設定または空文字の場合 `/api` にフォールバック） |
 
 ## データベース
 
@@ -125,7 +304,7 @@ chore/update-markdown-lint-config
 
 ## コミットメッセージの検証
 
-コミットメッセージは Conventional Commits 形式で記述し、commitlint で検証する。
+コミットメッセージは Conventional Commits 形式で記述し、commitlint で検証する。  
 ローカルでは lefthook の `commit-msg` フックが自動的に commitlint を実行する。
 
 ```bash
@@ -144,3 +323,17 @@ pnpm run commitlint
 - `application`: ユースケースを実現するサービスを置く
 - `domain`: ドメインルールと不変条件を表現する
 - `infrastructure`: 永続化や外部 API 連携の詳細を閉じ込める
+
+## 主要な設計決定事項
+
+| 決定事項                     | 選定                              | 理由                                                                                                                        |
+| ---------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| データベース                 | Prisma + SQLite                   | MVP 期は運用負荷を抑えつつ、型安全な ORM とマイグレーション管理を得るため。将来的な RDBMS 移行も Prisma により容易に行える  |
+| フロントエンドフレームワーク | React 19                          | 並列レンダリングなどの最新機能を活用し、将来の拡張に備えるため                                                              |
+| ルーティング                 | TanStack Router（ファイルベース） | ルート定義とファイル配置を一致させ、新規開発者が画面構成を把握しやすくするため                                              |
+| スタイリング                 | Tailwind CSS v4 + shadcn/ui       | ユーティリティファーストで一貫したデザインを保ち、shadcn/ui でアクセシビリティを担保したコンポーネントを組み立てるため      |
+| HTTP クライアント            | ky                                | `fetch` ベースで軽量かつ、Bearer ヘッダー付与・401 時のリトライなどを簡潔に実装できるため                                   |
+| 認証トークン保存             | メモリ上のみ                      | localStorage 等への永続化を避け、XSS によるトークン漏洩リスクを減らすため（現時点ではページリロードでログインが解除される） |
+| 入力検証                     | Zod in `packages/shared`          | フロントエンドとバックエンドで同一の検証ルールを再利用し、不整合を防ぐため                                                  |
+| モノレポ管理                 | pnpm workspaces                   | フロントエンド・バックエンド・共有パッケージを同一リポジトリで一貫管理し、型共有とビルド連携を容易にするため                |
+| アーキテクチャ               | レイヤードアーキテクチャ          | ドメイン・ユースケース・インフラ・プレゼンテーションを分離し、テスト容易性と保守性を高めるため                              |
