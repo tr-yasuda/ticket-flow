@@ -17,8 +17,9 @@
 flowchart TD
     Start([開始]) --> Setup[開発者: 環境構築<br/>pnpm install / pnpm run setup]
     Setup --> BuildShared[@ticket-flow/shared をビルド<br/>pnpm run build:shared]
-    BuildShared --> ApiDev[API サーバー起動<br/>pnpm --filter @ticket-flow/api dev]
-    BuildShared --> WebDev[Web サーバー起動<br/>pnpm run dev]
+    BuildShared --> LoadEnv[.env を読み込む<br/>cd apps/api && set -a && source .env && set +a]
+    LoadEnv --> ApiDev[API サーバー起動<br/>pnpm run dev]
+    BuildShared --> WebDev[Web 開発サーバー起動<br/>pnpm run dev]
     ApiDev --> Seed[マイグレーション適用 &<br/>Seed データ投入]
     WebDev --> User[ユーザーがブラウザでアクセス]
     Seed --> User
@@ -90,7 +91,7 @@ flowchart TD
 
 1. ユーザーが `apps/web` の画面から入力する
 2. `ky` を使って `apps/api` の Hono handler にリクエストを送信する
-3. Hono handler は `AuthMiddleware` で認可し、ユースケースを呼び出す
+3. 認証が必要なエンドポイントでは、Hono handler が `AuthMiddleware` で認可した上でユースケースを呼び出す
 4. ユースケースはドメインルールを使って業務ロジックを実行し、Prisma repository でデータを永続化する
 5. レスポンスは `packages/shared` の共通型に沿って返却され、フロントエンドで表示する
 
