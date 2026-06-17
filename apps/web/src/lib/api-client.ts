@@ -25,7 +25,10 @@ type RefreshResponse = Readonly<{ accessToken: string }>;
 let refreshingPromise: Promise<string> | null = null;
 
 function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL ?? "/api";
+  const value = import.meta.env.VITE_API_BASE_URL?.trim();
+  // 空文字列も未設定と同様に扱い、"/api" にフォールバックする。
+  // ?? では空文字列はフォールバック対象にならないため || を使用している。
+  return value || "/api";
 }
 
 function buildApiUrl(path: string): string {
