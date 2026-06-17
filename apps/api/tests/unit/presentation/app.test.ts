@@ -1,7 +1,11 @@
 import { HTTPException } from "hono/http-exception";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../../../src/presentation/app";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function createTestApp() {
   return createApp({
@@ -43,9 +47,7 @@ describe("createApp", () => {
   });
 
   it("予期しないエラーは 500 Internal Server Error として返される", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const app = createTestApp();
     app.get("/api/test/unexpected", () => {
       throw new Error("Something went wrong");
@@ -55,6 +57,5 @@ describe("createApp", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Internal Server Error" });
-    consoleErrorSpy.mockRestore();
   });
 });
