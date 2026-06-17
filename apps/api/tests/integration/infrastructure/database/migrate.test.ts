@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { createTestDatabaseUrl } from "../../../test-database-url.js";
+
 const execAsync = promisify(exec);
 
 const projectRoot = resolve(
@@ -13,7 +15,7 @@ const projectRoot = resolve(
   "../../../../",
 );
 const migrateTestDatabasePath = resolve(projectRoot, "prisma/migrate-test.db");
-const migrateTestDatabaseUrl = `file:${migrateTestDatabasePath.replace(/\\/g, "/")}`;
+const migrateTestDatabaseUrl = createTestDatabaseUrl("prisma/migrate-test.db");
 
 async function runPrismaMigrateDeploy(): Promise<void> {
   await execAsync(

@@ -1,10 +1,11 @@
 import { exec } from "node:child_process";
-import { resolve } from "node:path";
 import { promisify } from "node:util";
+
+import { createTestDatabaseUrl } from "./test-database-url.js";
 
 const execAsync = promisify(exec);
 
-const defaultTestDatabaseUrl = `file:${resolve(process.cwd(), "prisma/test.db").replace(/\\/g, "/")}`;
+const defaultTestDatabaseUrl = createTestDatabaseUrl("prisma/test.db");
 
 async function runPrismaMigrateDeploy(): Promise<void> {
   await execAsync(
