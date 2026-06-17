@@ -156,7 +156,7 @@ pnpm --filter @ticket-flow/api exec prisma migrate deploy --schema prisma/schema
   - `noImplicitAny: true`、`strictNullChecks: true`
   - API / shared は `module: NodeNext`、`moduleResolution: NodeNext`
   - Web は `module: ESNext`、`moduleResolution: bundler`、`jsx: react-jsx`
-- **import 拡張子**: API / shared の ESM では `.js` 拡張子を含める（`src/domain/user.js` など）
+- **import 拡張子**: API / shared の ESM では相対パスに `.js` 拡張子を含める（`./domain/password.js` や `../domain/user-repository.js` など）
 - **命名**: 関数・変数は camelCase、型は PascalCase。ファイル名は kebab-case
 
 ## テスト方針
