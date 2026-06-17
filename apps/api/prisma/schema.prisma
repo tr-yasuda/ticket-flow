@@ -47,5 +47,4 @@ model Organization {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("organizations")
-  @@index([slug])
 }

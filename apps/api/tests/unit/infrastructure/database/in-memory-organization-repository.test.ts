@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { createOrganization } from "../../../../src/domain/organization.js";
+import { DuplicateSlugError } from "../../../../src/domain/repository-error.js";
 import { InMemoryOrganizationRepository } from "../../../../src/infrastructure/database/in-memory-organization-repository.js";
 
 describe("InMemoryOrganizationRepository", () => {
@@ -29,6 +30,15 @@ describe("InMemoryOrganizationRepository", () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]).toEqual(acme);
+  });
+
+  it("組織名で一致しない場合は空配列を返す", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("zzz");
+
+    expect(results).toHaveLength(0);
   });
 
   it("slug で組織を取得できる", async () => {
@@ -68,6 +78,17 @@ describe("InMemoryOrganizationRepository", () => {
 
     const found = await repository.findById(organization.id);
     expect(found).toEqual(updated);
+  });
+
+  it("save で重複した slug を保存しようとすると DuplicateSlugError", async () => {
+    const acme = createOrganization("Acme", "acme");
+    await repository.save(acme);
+
+    const other = createOrganization("Other", "acme");
+
+    await expect(repository.save(other)).rejects.toBeInstanceOf(
+      DuplicateSlugError,
+    );
   });
 
   it("delete で組織を削除できる", async () => {

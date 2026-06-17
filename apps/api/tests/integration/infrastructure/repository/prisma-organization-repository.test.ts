@@ -42,6 +42,15 @@ describe("PrismaOrganizationRepository 統合テスト", () => {
     expect(results[0]).toEqual(acme);
   });
 
+  it("組織名で一致しない場合は空配列を返す", async () => {
+    const organization = createOrganization("Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("zzz");
+
+    expect(results).toHaveLength(0);
+  });
+
   it("findById で存在しない ID に対して null を返す", async () => {
     const found = await repository.findById("not-found");
 
@@ -55,6 +64,12 @@ describe("PrismaOrganizationRepository 統合テスト", () => {
     const found = await repository.findBySlug("acme");
 
     expect(found).toEqual(organization);
+  });
+
+  it("findBySlug で存在しない slug に対して null を返す", async () => {
+    const found = await repository.findBySlug("not-found");
+
+    expect(found).toBeNull();
   });
 
   it("findBySlug は大文字小文字を区別しない", async () => {

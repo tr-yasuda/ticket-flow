@@ -3,6 +3,7 @@ import type {
   Organization,
   OrganizationId,
 } from "../../domain/organization.js";
+import { DuplicateSlugError } from "../../domain/repository-error.js";
 import { InMemoryRepository } from "./in-memory-repository.js";
 
 export class InMemoryOrganizationRepository implements OrganizationRepository {
@@ -37,6 +38,10 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async save(entity: Organization): Promise<void> {
+    const existing = await this.findBySlug(entity.slug);
+    if (existing !== null && existing.id !== entity.id) {
+      throw new DuplicateSlugError();
+    }
     return this.repository.save(entity);
   }
 

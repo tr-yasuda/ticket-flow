@@ -8,8 +8,21 @@ describe("createOrganization", () => {
 
     expect(organization.name).toBe("Acme");
     expect(organization.slug).toBe("acme");
-    expect(typeof organization.id).toBe("string");
-    expect(organization.id).not.toBe("");
+    expect(organization.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+  });
+
+  it("名前の前後の空白はトリムされる", () => {
+    const organization = createOrganization("  Acme  ", "acme");
+
+    expect(organization.name).toBe("Acme");
+  });
+
+  it("slug の大文字は小文字に正規化される", () => {
+    const organization = createOrganization("Acme", "ACME-CORP");
+
+    expect(organization.slug).toBe("acme-corp");
   });
 
   it("空の名前ではエラー", () => {
@@ -20,18 +33,45 @@ describe("createOrganization", () => {
     expect(() => createOrganization("   ", "acme")).toThrow("name is required");
   });
 
-  it("空の slug ではエラー", () => {
-    expect(() => createOrganization("Acme", "")).toThrow("slug is required");
+  it("200 文字を超える名前ではエラー", () => {
+    const longName = "a".repeat(201);
+    expect(() => createOrganization(longName, "acme")).toThrow(
+      "Organization name must be 200 characters or fewer",
+    );
   });
 
-  it("slug に許可されない文字が含まれる場合はエラー", () => {
+  it("空の slug ではエラー", () => {
+    expect(() => createOrganization("Acme", "")).toThrow(
+      "slug format is invalid",
+    );
+  });
+
+  it("許可されない文字を含む slug ではエラー", () => {
     expect(() => createOrganization("Acme", "acme corp")).toThrow(
       "slug format is invalid",
     );
     expect(() => createOrganization("Acme", "acme_corp")).toThrow(
       "slug format is invalid",
     );
-    expect(() => createOrganization("Acme", "Acme")).toThrow(
+  });
+
+  it("ハイフンで繋がれた英数字の slug は有効", () => {
+    const organization = createOrganization("Acme", "acme-corp-123");
+
+    expect(organization.slug).toBe("acme-corp-123");
+  });
+
+  it("先頭または末尾がハイフンの slug ではエラー", () => {
+    expect(() => createOrganization("Acme", "-acme")).toThrow(
+      "slug format is invalid",
+    );
+    expect(() => createOrganization("Acme", "acme-")).toThrow(
+      "slug format is invalid",
+    );
+  });
+
+  it("連続するハイフンの slug ではエラー", () => {
+    expect(() => createOrganization("Acme", "acme--corp")).toThrow(
       "slug format is invalid",
     );
   });

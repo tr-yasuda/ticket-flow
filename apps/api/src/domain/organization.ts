@@ -13,11 +13,11 @@ const MAX_SLUG_LENGTH = 200;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isNonEmptyString(value: string): boolean {
-  return value.trim().length > 0;
+  return value.length > 0;
 }
 
 function isValidNameLength(name: string): boolean {
-  return name.trim().length <= MAX_NAME_LENGTH;
+  return name.length <= MAX_NAME_LENGTH;
 }
 
 function isValidSlug(slug: string): boolean {
@@ -43,10 +43,6 @@ function validateOrganization(
     );
   }
 
-  if (slug.trim().length === 0) {
-    throw new Error("slug is required");
-  }
-
   if (!isValidSlug(slug)) {
     throw new Error("slug format is invalid");
   }
@@ -58,8 +54,20 @@ function validateOrganization(
   };
 }
 
+function normalizeName(name: string): string {
+  return name.trim();
+}
+
+function normalizeSlug(slug: string): string {
+  return slug.trim().toLowerCase();
+}
+
 export function createOrganization(name: string, slug: string): Organization {
-  return validateOrganization(randomUUID(), name, slug);
+  return validateOrganization(
+    randomUUID(),
+    normalizeName(name),
+    normalizeSlug(slug),
+  );
 }
 
 export function rehydrateOrganization(
@@ -67,5 +75,5 @@ export function rehydrateOrganization(
   name: string,
   slug: string,
 ): Organization {
-  return validateOrganization(id, name, slug);
+  return validateOrganization(id, normalizeName(name), normalizeSlug(slug));
 }
