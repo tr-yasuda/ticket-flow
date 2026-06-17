@@ -24,14 +24,14 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
   }
 
   async findByName(name: string): Promise<readonly Organization[]> {
-    const query = name.trim().toLowerCase();
+    const query = escapeLikePattern(name.trim().toLowerCase());
     // SQLite 上で大文字小文字を区別せず部分一致検索する
     const records = await this.prisma.$queryRaw<
       Array<{ id: string; name: string; slug: string }>
     >`
       SELECT id, name, slug
       FROM "organizations"
-      WHERE LOWER(name) LIKE '%' || ${query} || '%'
+      WHERE LOWER(name) LIKE '%' || ${query} || '%' ESCAPE '\\'
       ORDER BY created_at ASC
     `;
     return records.map((record) => this.toOrganization(record));
@@ -114,4 +114,8 @@ function isSlugConstraintViolation(
   }
 
   return false;
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }

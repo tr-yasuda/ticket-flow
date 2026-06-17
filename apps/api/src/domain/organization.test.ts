@@ -92,6 +92,9 @@ describe("rehydrateOrganization", () => {
     expect(() => rehydrateOrganization("", "Acme", "acme")).toThrow(
       "id is required",
     );
+    expect(() => rehydrateOrganization("   ", "Acme", "acme")).toThrow(
+      "id is required",
+    );
     expect(() => rehydrateOrganization("org-1", "", "acme")).toThrow(
       "name is required",
     );

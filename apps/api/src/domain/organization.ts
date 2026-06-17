@@ -13,7 +13,7 @@ const MAX_SLUG_LENGTH = 200;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isNonEmptyString(value: string): boolean {
-  return value.length > 0;
+  return value.trim().length > 0;
 }
 
 function isValidNameLength(name: string): boolean {

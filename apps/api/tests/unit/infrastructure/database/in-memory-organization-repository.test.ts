@@ -42,6 +42,16 @@ describe("InMemoryOrganizationRepository", () => {
     expect(results[0]).toEqual(organization);
   });
 
+  it("組織名に含まれる LIKE ワイルドカードをリテラルとして検索できる", async () => {
+    const organization = createOrganization("100% Acme", "acme");
+    await repository.save(organization);
+
+    const results = await repository.findByName("100%");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual(organization);
+  });
+
   it("組織名で一致しない場合は空配列を返す", async () => {
     const organization = createOrganization("Acme", "acme");
     await repository.save(organization);
