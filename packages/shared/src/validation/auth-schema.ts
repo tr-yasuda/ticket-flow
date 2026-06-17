@@ -8,22 +8,10 @@ function byteLength(value: string): number {
 
 export const emailSchema = z
   .string({ error: "メールアドレスを入力してください" })
-  .superRefine((value, ctx) => {
-    if (value === "") {
-      ctx.addIssue({
-        code: "custom",
-        message: "メールアドレスを入力してください",
-      });
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+(?![\s\S])/.test(value)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "メールアドレスの形式が正しくありません",
-      });
-    }
-  });
+  .min(1, { message: "メールアドレスを入力してください" })
+  .pipe(
+    z.string().email({ message: "メールアドレスの形式が正しくありません" }),
+  );
 
 export const passwordSchema = z
   .string({ error: "パスワードを入力してください" })
