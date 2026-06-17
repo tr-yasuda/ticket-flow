@@ -144,7 +144,7 @@ export function OrganizationTicketsPage({ organizationId }: OrganizationTicketsP
 ## テスト方針
 
 - 各コンポーネントについて Vitest + Testing Library の単体テストを作成
-- `usePending-submit` については以下を検証
+- `usePendingSubmit` については以下を検証
   - 正常実行時に結果を返す
   - 実行中の重複呼び出しを無視する
   - エラー発生時に `error` を設定する

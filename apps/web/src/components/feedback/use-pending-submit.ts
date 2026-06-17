@@ -61,11 +61,13 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
   );
 
   const reset = useCallback(() => {
+    if (pendingRef.current !== null) {
+      return;
+    }
     if (isMountedRef.current) {
       setError(null);
       setIsPending(false);
     }
-    pendingRef.current = null;
   }, []);
 
   return { execute, isPending, error, reset };

@@ -19,13 +19,15 @@ export function InlineError({ message, onRetry, className }: InlineErrorProps) {
     >
       <AlertCircle className="size-4" />
       <AlertTitle>エラー</AlertTitle>
-      <AlertDescription className="flex items-center justify-between gap-4">
-        <span>{message}</span>
-        {onRetry && (
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            再試行
-          </Button>
-        )}
+      <AlertDescription>
+        <div className="flex items-center justify-between gap-4">
+          <span>{message}</span>
+          {onRetry && (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              再試行
+            </Button>
+          )}
+        </div>
       </AlertDescription>
     </Alert>
   );
