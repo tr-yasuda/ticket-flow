@@ -104,7 +104,6 @@ const refreshAccessToken: BeforeRetryHook = async ({ request, retryCount }) => {
     const newAccessToken = await performRefresh();
     const refreshToken = getRefreshToken();
     if (refreshToken === null) {
-      clearTokens();
       throw new ApiError("Refresh token is missing", 401);
     }
     setTokens(newAccessToken, refreshToken);
