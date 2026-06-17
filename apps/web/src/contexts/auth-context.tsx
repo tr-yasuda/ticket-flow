@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { ReactElement, ReactNode } from "react";
 
@@ -15,7 +16,12 @@ import {
   type AuthResponse,
   type CurrentUser,
 } from "@/lib/auth-api";
-import { clearTokens, getAccessToken, setTokens } from "@/lib/token-storage";
+import {
+  clearTokens,
+  getAccessToken,
+  setTokens,
+  subscribeAccessToken,
+} from "@/lib/token-storage";
 
 type AuthState =
   | { type: "loading" }
@@ -47,6 +53,17 @@ export function AuthProvider({
   const [state, setState] = useState<AuthState>(getInitialAuthState);
   const [error, setError] = useState<Error | null>(null);
   const didInitialize = useRef(false);
+
+  const accessToken = useSyncExternalStore(
+    subscribeAccessToken,
+    getAccessToken,
+  );
+
+  useEffect(() => {
+    if (accessToken === null && state.type !== "unauthenticated") {
+      setState({ type: "unauthenticated" });
+    }
+  }, [accessToken, state.type]);
 
   const initialize = useCallback(async () => {
     const token = getAccessToken();
@@ -100,7 +117,6 @@ export function AuthProvider({
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    const accessToken = getAccessToken();
     const isAuthenticated =
       state.type === "authenticated" && accessToken !== null;
     const user = isAuthenticated ? state.user : null;
@@ -113,7 +129,7 @@ export function AuthProvider({
       login,
       logout,
     };
-  }, [state, error, login, logout]);
+  }, [state, accessToken, error, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
