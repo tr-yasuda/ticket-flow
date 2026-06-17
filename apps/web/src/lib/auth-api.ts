@@ -12,15 +12,30 @@ type AuthResponse = Readonly<{
   refreshToken: string;
 }>;
 
+function isApiSuccessResponse(
+  value: unknown,
+): value is ApiSuccessResponse<AuthResponse> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "success" in value &&
+    value.success === true &&
+    "data" in value &&
+    typeof (value as { data: { accessToken?: unknown } }).data.accessToken ===
+      "string"
+  );
+}
+
 async function postAuth(
   endpoint: "auth/login" | "auth/register",
   input: LoginInput | RegisterInput,
 ): Promise<AuthResponse> {
-  const response = await apiClient
+  const body = await apiClient
     .post(endpoint, { json: input })
-    .json<ApiSuccessResponse<AuthResponse>>();
-  setTokens(response.data.accessToken, response.data.refreshToken);
-  return response.data;
+    .json<AuthResponse | ApiSuccessResponse<AuthResponse>>();
+  const data = isApiSuccessResponse(body) ? body.data : body;
+  setTokens(data.accessToken, data.refreshToken);
+  return data;
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {

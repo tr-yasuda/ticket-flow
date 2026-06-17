@@ -16,6 +16,7 @@ function extractBearerToken(authorization: string | null): string | null {
 }
 
 const accessToken = "mock-access-token";
+const refreshedAccessToken = `${accessToken}-refreshed`;
 const refreshToken = "mock-refresh-token";
 
 export const authHandlers = [
@@ -82,12 +83,12 @@ export const authHandlers = [
   }),
 
   http.post("/api/auth/logout", () => {
-    return HttpResponse.json(createApiSuccessResponse(null), { status: 200 });
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.get("/api/auth/me", ({ request }) => {
     const token = extractBearerToken(request.headers.get("Authorization"));
-    if (token !== accessToken) {
+    if (token !== accessToken && token !== refreshedAccessToken) {
       return HttpResponse.json(
         createApiErrorResponse(
           ApiErrorCode.AUTH_UNAUTHORIZED,
@@ -118,7 +119,7 @@ export const authHandlers = [
     }
 
     return HttpResponse.json(
-      createApiSuccessResponse({ accessToken: `${accessToken}-refreshed` }),
+      createApiSuccessResponse({ accessToken: refreshedAccessToken }),
       { status: 200 },
     );
   }),

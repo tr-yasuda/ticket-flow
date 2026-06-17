@@ -101,9 +101,14 @@ async function performRefresh(): Promise<string> {
         throw new ApiError("Refresh failed", response.status);
       }
 
-      const body = (await response.json()) as
-        | RefreshResponse
-        | { success: true; data: RefreshResponse };
+      let body: RefreshResponse | { success: true; data: RefreshResponse };
+      try {
+        body = (await response.json()) as
+          | RefreshResponse
+          | { success: true; data: RefreshResponse };
+      } catch {
+        throw new ApiError("Invalid refresh response", 500);
+      }
 
       let accessToken: string;
       if ("success" in body && body.success === true) {

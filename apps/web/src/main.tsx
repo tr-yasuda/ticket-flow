@@ -2,6 +2,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { isMswEnabled } from "@/mocks/env.js";
 import { routeTree } from "@/routeTree.gen";
 
 import "./index.css";
@@ -15,7 +16,7 @@ declare module "@tanstack/react-router" {
 }
 
 async function enableMocking(): Promise<void> {
-  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_MSW !== "true") {
+  if (!isMswEnabled()) {
     return;
   }
 

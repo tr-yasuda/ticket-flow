@@ -6,7 +6,11 @@ import {
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
-import { demoTickets } from "../data/tickets.js";
+import { demoTickets, type MockTicket } from "../data/tickets.js";
+
+function isValidStatus(status: string): status is MockTicket["status"] {
+  return ["open", "in-progress", "closed"].includes(status);
+}
 
 export const ticketHandlers = [
   http.get("/api/organizations/:id/tickets", ({ params }) => {
@@ -74,7 +78,10 @@ export const ticketHandlers = [
       );
     }
 
-    const status = typeof body.status === "string" ? body.status : "open";
+    const status =
+      typeof body.status === "string" && isValidStatus(body.status)
+        ? body.status
+        : "open";
 
     return HttpResponse.json(
       createApiSuccessResponse({
