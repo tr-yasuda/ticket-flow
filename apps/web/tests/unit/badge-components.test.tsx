@@ -8,7 +8,7 @@ import { TicketStatusBadge } from "@/components/ticket-status-badge";
 describe("TicketStatusBadge", () => {
   it.each([
     ["open", "未対応", "default"],
-    ["in_progress", "対応中", "secondary"],
+    ["in-progress", "対応中", "secondary"],
     ["resolved", "解決済み", "outline"],
     ["closed", "完了", "ghost"],
   ] as const)(

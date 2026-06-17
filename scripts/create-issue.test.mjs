@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 
 import { describe, it, expect, vi } from "vitest";
 
-import { consumeValue, parseArgs, stripFrontmatter } from "./create-issue.js";
+import {
+  consumeValue,
+  parseArgs,
+  resolveBodyFilePath,
+  stripFrontmatter,
+} from "./create-issue.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -217,5 +222,27 @@ describe("stripFrontmatter", () => {
 
     expect(result.startsWith("---")).toBe(false);
     expect(result.includes("## 目的と背景")).toBe(true);
+  });
+});
+
+describe("resolveBodyFilePath", () => {
+  it("resolves a relative path from the project root even when cwd is a subdirectory", () => {
+    const originalCwd = process.cwd();
+    try {
+      process.chdir(resolve(__dirname, "../apps/web"));
+      const result = resolveBodyFilePath(".github/ISSUE_TEMPLATE/task.md");
+
+      expect(result).toBe(
+        resolve(__dirname, "../.github/ISSUE_TEMPLATE/task.md"),
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("returns an absolute path unchanged", () => {
+    const absolutePath = resolve(__dirname, "body.md");
+
+    expect(resolveBodyFilePath(absolutePath)).toBe(absolutePath);
   });
 });
