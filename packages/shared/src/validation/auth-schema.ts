@@ -7,14 +7,14 @@ function byteLength(value: string): number {
 }
 
 export const emailSchema = z
-  .string({ error: "メールアドレスを入力してください" })
+  .string({ message: "メールアドレスを入力してください" })
   .min(1, { message: "メールアドレスを入力してください" })
   .pipe(
     z.string().email({ message: "メールアドレスの形式が正しくありません" }),
   );
 
 export const passwordSchema = z
-  .string({ error: "パスワードを入力してください" })
+  .string({ message: "パスワードを入力してください" })
   .superRefine((value, ctx) => {
     if (value === "") {
       ctx.addIssue({
@@ -39,10 +39,10 @@ export const passwordSchema = z
   });
 
 export const loginPasswordSchema = z
-  .string({ error: "パスワードを入力してください" })
-  .min(1, { error: "パスワードを入力してください" })
+  .string({ message: "パスワードを入力してください" })
+  .min(1, { message: "パスワードを入力してください" })
   .refine((value) => byteLength(value) <= 72, {
-    error: "パスワードは72バイト以内で入力してください",
+    message: "パスワードは72バイト以内で入力してください",
   });
 
 export const loginInputSchema = z.object({
