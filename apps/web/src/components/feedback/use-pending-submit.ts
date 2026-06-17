@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface UsePendingSubmitReturn<TArgs extends unknown[], TResult> {
   execute: (...args: TArgs) => Promise<TResult>;
@@ -13,6 +13,13 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const pendingRef = useRef<Promise<TResult> | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const execute = useCallback(
     async (...args: TArgs): Promise<TResult> => {
@@ -31,12 +38,16 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
         } catch (err) {
           const caughtError =
             err instanceof Error ? err : new Error(String(err));
-          setError(caughtError);
+          if (isMountedRef.current) {
+            setError(caughtError);
+          }
           throw caughtError;
         } finally {
           if (pendingRef.current === currentPromise) {
             pendingRef.current = null;
-            setIsPending(false);
+            if (isMountedRef.current) {
+              setIsPending(false);
+            }
           }
         }
       })();
@@ -49,8 +60,10 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
   );
 
   const reset = useCallback(() => {
-    setError(null);
-    setIsPending(false);
+    if (isMountedRef.current) {
+      setError(null);
+      setIsPending(false);
+    }
     pendingRef.current = null;
   }, []);
 
