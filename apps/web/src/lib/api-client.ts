@@ -17,6 +17,7 @@ export class ApiError extends Error {
     public readonly status: number,
   ) {
     super(message);
+    this.name = "ApiError";
   }
 }
 
@@ -52,10 +53,7 @@ async function performRefresh(): Promise<string> {
     try {
       const response = await fetch(buildApiUrl("/auth/refresh"), {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
