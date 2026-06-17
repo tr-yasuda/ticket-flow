@@ -43,6 +43,7 @@ type AppShellProps = {
   children?: ReactNode;
   organizationName?: string;
   user?: AppShellUser;
+  onLogout?: () => void;
 };
 
 const navItems = [
@@ -51,7 +52,13 @@ const navItems = [
   { label: "Settings", href: "#", icon: Settings },
 ] as const;
 
-function UserNav({ user }: { user: AppShellUser }) {
+function UserNav({
+  user,
+  onLogout,
+}: {
+  user: AppShellUser;
+  onLogout?: () => void;
+}) {
   const displayName = user.name ?? user.email;
   const initial = user.email.charAt(0).toUpperCase();
 
@@ -89,7 +96,7 @@ function UserNav({ user }: { user: AppShellUser }) {
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={onLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
@@ -102,6 +109,7 @@ export function AppShell({
   children,
   organizationName = "Acme Inc.",
   user = { email: "user@example.com" },
+  onLogout,
 }: AppShellProps): React.ReactElement {
   return (
     <SidebarProvider>
@@ -130,7 +138,7 @@ export function AppShell({
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <UserNav user={user} />
+          <UserNav user={user} onLogout={onLogout} />
         </SidebarFooter>
       </Sidebar>
 
@@ -139,7 +147,7 @@ export function AppShell({
           <SidebarTrigger />
           <span className="font-semibold">{organizationName}</span>
           <div className="ml-auto">
-            <UserNav user={user} />
+            <UserNav user={user} onLogout={onLogout} />
           </div>
         </header>
         <section className="flex-1 p-6">{children}</section>
