@@ -24,9 +24,12 @@ describe("auth-api", () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          user: { id: "user-1", email: "user@example.com" },
-          accessToken: "access-token",
-          refreshToken: "refresh-token",
+          success: true,
+          data: {
+            user: { id: "user-1", email: "user@example.com" },
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+          },
         }),
         { status: 201 },
       ),
@@ -47,9 +50,12 @@ describe("auth-api", () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          user: { id: "user-1", email: "user@example.com" },
-          accessToken: "access-token",
-          refreshToken: "refresh-token",
+          success: true,
+          data: {
+            user: { id: "user-1", email: "user@example.com" },
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+          },
         }),
         { status: 200 },
       ),

@@ -1,3 +1,5 @@
+import { type ApiSuccessResponse } from "@ticket-flow/shared";
+
 import { apiClient } from "./api-client";
 import { clearTokens, getRefreshToken, setTokens } from "./token-storage";
 
@@ -10,20 +12,23 @@ type AuthResponse = Readonly<{
   refreshToken: string;
 }>;
 
-export async function register(input: RegisterInput): Promise<AuthResponse> {
+async function postAuth(
+  endpoint: "auth/login" | "auth/register",
+  input: LoginInput | RegisterInput,
+): Promise<AuthResponse> {
   const response = await apiClient
-    .post("auth/register", { json: input })
-    .json<AuthResponse>();
-  setTokens(response.accessToken, response.refreshToken);
-  return response;
+    .post(endpoint, { json: input })
+    .json<ApiSuccessResponse<AuthResponse>>();
+  setTokens(response.data.accessToken, response.data.refreshToken);
+  return response.data;
+}
+
+export async function register(input: RegisterInput): Promise<AuthResponse> {
+  return postAuth("auth/register", input);
 }
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  const response = await apiClient
-    .post("auth/login", { json: input })
-    .json<AuthResponse>();
-  setTokens(response.accessToken, response.refreshToken);
-  return response;
+  return postAuth("auth/login", input);
 }
 
 export async function logout(): Promise<void> {
