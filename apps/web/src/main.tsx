@@ -14,14 +14,27 @@ declare module "@tanstack/react-router" {
   }
 }
 
+async function enableMocking(): Promise<void> {
+  if (import.meta.env.VITE_ENABLE_MSW !== "true") {
+    return;
+  }
+
+  const { worker } = await import("./mocks/browser.js");
+  await worker.start({
+    onUnhandledRequest: "bypass",
+  });
+}
+
 const container = document.getElementById("root");
 
 if (container === null) {
   throw new Error("Root element not found");
 }
 
-createRoot(container).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+enableMocking().then(() => {
+  createRoot(container).render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  );
+});
