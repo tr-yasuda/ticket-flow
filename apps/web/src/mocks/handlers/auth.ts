@@ -104,4 +104,22 @@ export const authHandlers = [
       { status: 200 },
     );
   }),
+
+  http.post("/api/auth/refresh", ({ request }) => {
+    const token = extractBearerToken(request.headers.get("Authorization"));
+    if (token !== refreshToken) {
+      return HttpResponse.json(
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_UNAUTHORIZED,
+          "無効なリフレッシュトークンです",
+        ),
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json(
+      createApiSuccessResponse({ accessToken: `${accessToken}-refreshed` }),
+      { status: 200 },
+    );
+  }),
 ];

@@ -1,13 +1,17 @@
-import { createApiSuccessResponse } from "@ticket-flow/shared";
+import {
+  createApiSuccessResponse,
+  type ApiSuccessResponse,
+} from "@ticket-flow/shared";
 import { describe, expect, it } from "vitest";
 
 import { apiClient } from "@/lib/api-client";
+import type { MockTicket } from "@/mocks/data/tickets.js";
 
 describe("ticket mock handlers", () => {
   it("デモ組織のチケット一覧を取得できる", async () => {
     const response = await apiClient
       .get("organizations/demo-org-001/tickets")
-      .json();
+      .json<ApiSuccessResponse<MockTicket[]>>();
 
     expect(response.success).toBe(true);
     expect(Array.isArray(response.data)).toBe(true);
@@ -48,7 +52,7 @@ describe("ticket mock handlers", () => {
       .post("organizations/demo-org-001/tickets", {
         json: { title: "New Ticket" },
       })
-      .json();
+      .json<ApiSuccessResponse<MockTicket>>();
 
     expect(response.success).toBe(true);
     expect(response.data.title).toBe("New Ticket");
