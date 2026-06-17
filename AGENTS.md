@@ -203,17 +203,17 @@ Conventional Branching に従います。
 
 `description` は英語の kebab-case、小文字で始めます。
 
-| type | 用途 |
-| --- | --- |
-| `feature/` | 新機能 |
-| `bugfix/` | バグ修正 |
-| `hotfix/` | 緊急バグ修正 |
-| `release/` | リリース準備 |
-| `docs/` | ドキュメント変更 |
-| `style/` | 振る舞いに影響しない整形 |
-| `refactor/` | 構造変更 |
-| `test/` | テスト追加・修正 |
-| `chore/` | 補助ツール・依存関係更新 |
+| type        | 用途                     |
+| ----------- | ------------------------ |
+| `feature/`  | 新機能                   |
+| `bugfix/`   | バグ修正                 |
+| `hotfix/`   | 緊急バグ修正             |
+| `release/`  | リリース準備             |
+| `docs/`     | ドキュメント変更         |
+| `style/`    | 振る舞いに影響しない整形 |
+| `refactor/` | 構造変更                 |
+| `test/`     | テスト追加・修正         |
+| `chore/`    | 補助ツール・依存関係更新 |
 
 ### コミットメッセージ
 
@@ -287,26 +287,26 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 ## よく参照するファイル
 
-| 用途 | パス |
-| --- | --- |
-| ルート設定 | `package.json`、`pnpm-workspace.yaml` |
-| API サーバー起動 | `apps/api/src/server.ts` |
-| API 公開エクスポート | `apps/api/src/index.ts` |
-| Hono アプリ生成 | `apps/api/src/presentation/app.ts` |
-| Prisma スキーマ | `apps/api/prisma/schema.prisma` |
-| DB 設定読み取り | `apps/api/src/infrastructure/database/config.ts` |
-| トークン設定読み取り | `apps/api/src/infrastructure/token/config.ts` |
-| Web エントリ | `apps/web/src/main.tsx` |
-| Web HTML | `apps/web/index.html` |
-| Web Vite 設定 | `apps/web/vite.config.ts` |
-| Web Vitest 設定 | `apps/web/vitest.config.ts` |
-| shadcn/ui 設定 | `apps/web/components.json` |
-| 共有パッケージ | `packages/shared/src/index.ts` |
-| CI 定義 | `.github/workflows/ci.yml` |
-| Lint 設定 | `.oxlintrc.json` |
-| Format 設定 | `.oxfmtrc.jsonc` |
-| Git フック | `lefthook.yml` |
-| コミットlint | `.commitlintrc.json` |
+| 用途                 | パス                                             |
+| -------------------- | ------------------------------------------------ |
+| ルート設定           | `package.json`、`pnpm-workspace.yaml`            |
+| API サーバー起動     | `apps/api/src/server.ts`                         |
+| API 公開エクスポート | `apps/api/src/index.ts`                          |
+| Hono アプリ生成      | `apps/api/src/presentation/app.ts`               |
+| Prisma スキーマ      | `apps/api/prisma/schema.prisma`                  |
+| DB 設定読み取り      | `apps/api/src/infrastructure/database/config.ts` |
+| トークン設定読み取り | `apps/api/src/infrastructure/token/config.ts`    |
+| Web エントリ         | `apps/web/src/main.tsx`                          |
+| Web HTML             | `apps/web/index.html`                            |
+| Web Vite 設定        | `apps/web/vite.config.ts`                        |
+| Web Vitest 設定      | `apps/web/vitest.config.ts`                      |
+| shadcn/ui 設定       | `apps/web/components.json`                       |
+| 共有パッケージ       | `packages/shared/src/index.ts`                   |
+| CI 定義              | `.github/workflows/ci.yml`                       |
+| Lint 設定            | `.oxlintrc.json`                                 |
+| Format 設定          | `.oxfmtrc.jsonc`                                 |
+| Git フック           | `lefthook.yml`                                   |
+| コミットlint         | `.commitlintrc.json`                             |
 
 ---
 
