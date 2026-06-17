@@ -1,17 +1,12 @@
-import { createRoute } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
-import { Route as rootRoute } from "@/routes/__root";
+type OrganizationTicketsPageProps = {
+  organizationId: string;
+};
 
-export const Route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/app/$organizationId/tickets",
-  component: OrganizationTicketsPage,
-});
-
-function OrganizationTicketsPage(): ReactElement {
-  const { organizationId } = Route.useParams();
-
+export function OrganizationTicketsPage({
+  organizationId,
+}: OrganizationTicketsPageProps): ReactElement {
   return (
     <div>
       <h1 className="text-2xl font-bold">Tickets</h1>
