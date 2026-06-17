@@ -23,5 +23,6 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 
 export default async function setup(): Promise<void> {
   const databaseUrl = getTestDatabaseUrl();
+  process.env.DATABASE_URL = databaseUrl;
   await runPrismaMigrateDeploy(databaseUrl);
 }
