@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { login, logout, register } from "@/lib/auth-api";
+import { getCurrentUser, login, logout, register } from "@/lib/auth-api";
 import {
   clearTokens,
   getAccessToken,
@@ -92,5 +92,64 @@ describe("auth-api", () => {
     expect(fetchMock).toHaveBeenCalled();
     const [request] = fetchMock.mock.calls[0] as [Request];
     expect(request.headers.get("Authorization")).toBe("Bearer refresh-token");
+  });
+
+  describe("getCurrentUser", () => {
+    it("success: true でラップされたレスポンスから current user を取得する", async () => {
+      setTokens("access-token", "refresh-token");
+      mockFetch(
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                user: { id: "user-1", email: "user@example.com" },
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const user = await getCurrentUser();
+
+      expect(user).toEqual({ id: "user-1", email: "user@example.com" });
+    });
+
+    it("ラップされていないレスポンスから current user を取得する", async () => {
+      setTokens("access-token", "refresh-token");
+      mockFetch(
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              user: { id: "user-2", email: "other@example.com" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const user = await getCurrentUser();
+
+      expect(user).toEqual({ id: "user-2", email: "other@example.com" });
+    });
+
+    it("不正なレスポンスの場合はエラーを投げる", async () => {
+      setTokens("access-token", "refresh-token");
+      mockFetch(
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ success: true, data: { user: { id: 123 } } }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      await expect(getCurrentUser()).rejects.toThrow(
+        "Invalid current user response",
+      );
+    });
   });
 });

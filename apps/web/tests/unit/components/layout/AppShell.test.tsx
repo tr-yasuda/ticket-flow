@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -24,5 +25,23 @@ describe("AppShell", () => {
   it("derives the avatar fallback from the user's email initial", () => {
     render(<AppShell user={{ email: "alice@example.com" }} />);
     expect(screen.getAllByText("A")).toHaveLength(2);
+  });
+
+  it("calls onLogout when the user selects Log out", async () => {
+    const onLogout = vi.fn();
+    render(
+      <AppShell user={{ email: "alice@example.com" }} onLogout={onLogout} />,
+    );
+
+    const header = screen.getByRole("banner");
+    const menuButton = within(header).getByRole("button", {
+      name: "Open user menu",
+    });
+    await userEvent.click(menuButton);
+
+    const logoutItem = screen.getByRole("menuitem", { name: /Log out/i });
+    await userEvent.click(logoutItem);
+
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });
