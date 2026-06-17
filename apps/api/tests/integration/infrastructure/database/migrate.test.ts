@@ -12,8 +12,8 @@ const projectRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../../",
 );
-const migrateTestDatabaseUrl = "file:./prisma/migrate-test.db";
 const migrateTestDatabasePath = resolve(projectRoot, "prisma/migrate-test.db");
+const migrateTestDatabaseUrl = `file:${migrateTestDatabasePath.replace(/\\/g, "/")}`;
 
 async function runPrismaMigrateDeploy(): Promise<void> {
   await execAsync(
