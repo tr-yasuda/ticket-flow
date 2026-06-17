@@ -1,46 +1,25 @@
-# Issue #105: PostgreSQL / node-pg-migrate 関連の削除とドキュメント更新
+# Issue #123: [UI] ルーティング基盤を導入する（TanStack Router, public/protected routes, NotFound, AppShell under protected, typed params）
 
-## 概要
+`apps/web` にルーティング基盤を導入し、public routes（/login, /signup）と protected routes（/app, /app/:organizationId/tickets 等）を分離する。AppShell は protected route 配下に配置する。型安全な URL params を導入する。
 
-Prisma + SQLite への移行が完了したら、PostgreSQL / `node-pg-migrate` 関連の依存・スクリプト・ドキュメントを削除し、コードベースをクリーンに保つ。
+## Labels
 
-## 受け入れ条件
-
-- [x] `apps/api/package.json` から `pg`、`@types/pg`、`node-pg-migrate` を削除する
-- [x] `apps/api/scripts/migrate.js` を削除する
-- [x] `apps/api/node-pg-migrate.config.json` を削除する
-- [x] `migrations/` ディレクトリ（`node-pg-migrate` 用）を削除する（Prisma 用マイグレーションは `apps/api/prisma/migrations/` にある）
-- [x] `README.md` / `CLAUDE.md` の DB 接続・マイグレーション説明を Prisma + SQLite に更新する
-- [x] PostgreSQL 専用 env（`DATABASE_SSL`、`DATABASE_SSL_REJECT_UNAUTHORIZED` 等）の記述を削除する
-- [x] `pnpm install` 後に `pg` 関連パッケージが node_modules に残らないことを確認する
-
-## レビュー観点
-
-- 不要なコード・ファイルが完全に削除されているか
-- ドキュメントが実装と一致しているか
-
-## 検証コマンド
-
-```bash
-pnpm install
-pnpm run typecheck
-pnpm run lint
-pnpm run format:check
-pnpm run test
-```
-
-## スコープ外
-
-- スキーマ変更
-- 新機能追加
-
-## ラベル
-
-- priority:P2
+- epic:ui
+- priority:P0
 - type:setup
 
-## 依存関係
+## Acceptance Criteria
 
-- #102
-- #103
-- #104
+- [ ] TanStack Router をインストール・設定する
+- [ ] public route 定義: `/login`, `/signup`
+- [ ] protected route 定義: `/app`, `/app/:organizationId/tickets`
+- [ ] AppShell コンポーネントが protected route 配下に配置される
+- [ ] 未定義パスへの NotFound 画面を実装する
+- [ ] URL params に型付けが適用される（`organizationId: string`）
+- [ ] ルーティング設定に対するテストを追加する
+
+## Out of Scope
+
+- 認証ガード（AuthProvider 実装は別 Issue で対応）
+- 実際の画面コンポーネント（Signup, Login 等は別 Issue）
+- データフェッチ
