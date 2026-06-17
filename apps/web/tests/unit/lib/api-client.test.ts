@@ -62,9 +62,16 @@ describe("apiClient", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-        }),
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ accessToken: "new-access" }), {
@@ -91,9 +98,16 @@ describe("apiClient", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-        }),
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ error: "Invalid token" }), {
