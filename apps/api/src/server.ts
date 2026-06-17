@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 
-import { hashPassword } from "./domain/password.js";
+import { hashPassword, verifyPassword } from "./domain/password.js";
 import { generateAccessToken, generateRefreshToken } from "./domain/token.js";
 import { loadDatabaseConfig } from "./infrastructure/database/config.js";
 import { createPrismaClient } from "./infrastructure/database/prisma-client.js";
@@ -19,6 +19,7 @@ const tokenConfig = loadTokenConfig(process.env);
 const app = createApp({
   userRepository,
   hashPassword,
+  verifyPassword,
   generateAccessToken: async (userId) =>
     generateAccessToken({ userId }, tokenConfig),
   generateRefreshToken: async (userId) =>
