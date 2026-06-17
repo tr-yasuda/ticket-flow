@@ -46,32 +46,58 @@ packages/
 ```text
 apps/api/src/
   domain/            # エンティティ、値オブジェクト、ドメインルール、リポジトリインターフェース
-  application/       # ユースケース（register-user / login-user / logout-user）
+  application/       # ユースケース（register-user / login-user / logout-user / refresh-token）
   infrastructure/    # Prisma / DB / トークン設定 / サーバーポートなどの詳細
   presentation/      # Hono handler（入力受付、出力変換）
 ```
 
 - `Repository<TEntity, TId>` (`apps/api/src/domain/repository.ts`) が共通リポジトリ型
 - `InMemoryRepository<TEntity, TId>` (`apps/api/src/infrastructure/database/in-memory-repository.ts`) を単体テストで使用
+- `UserRepository` / `RefreshTokenRepository` / `TicketRepository` は `Repository` を拡張したドメイン層のインターフェース
 - 各ハンドラは `AuthDependencies` として依存を注入する形で実装
+- `createAuthMiddleware` (`apps/api/src/presentation/middleware/auth-middleware.ts`) は実装されているが、現時点では `createApp` では未使用
 
 ### フロントエンド (`apps/web`)
 
 - **フレームワーク**: React 19 + Vite 8
+- **ルーティング**: TanStack Router（ファイルベースルーティング、`@tanstack/router-plugin/vite` で自動生成）
+  - ルート定義は `apps/web/src/routes/` に配置
+  - 生成ファイルは `apps/web/src/routeTree.gen.ts`（手動編集禁止、lint / format 対象外）
 - **スタイリング**: Tailwind CSS v4（`apps/web/src/index.css` で `@import "tailwindcss"`）
 - **UI ライブラリ**: shadcn/ui（`components.json` で `style: new-york`、`iconLibrary: lucide`）
   - 内部で `@base-ui/react` / `radix-ui` / `lucide-react` / `class-variance-authority` / `tailwind-merge` を使用
 - **テーマ**: `next-themes`（ライト / ダーク / システム）
 - **トースト**: `sonner`
 - **フォント**: Geist Variable（`@fontsource-variable/geist`）
+- **HTTP クライアント**: `ky`（`apps/web/src/lib/api-client.ts`）
 - **エイリアス**: `@/` → `./src`（Vite / Vitest / TypeScript すべてで共通）
 - **エントリポイント**: `apps/web/src/main.tsx`
 - **HTML**: `apps/web/index.html`
 - **ビルド出力**: `apps/web/dist/`
 
+#### 現在の画面構成
+
+```text
+/              # ルート → /login へリダイレクト
+/login         # ログイン画面（仮のタイトル表示のみ）
+/signup        # 新規登録画面（仮のタイトル表示のみ）
+/app           # アプリレイアウト（AppShell）
+/app/          # アプリトップ
+/app/$organizationId/tickets  # 組織ごとのチケット一覧（仮のタイトル表示のみ）
+```
+
+#### 認証関連のクライアント実装
+
+- `apps/web/src/lib/token-storage.ts` — アクセストークン / リフレッシュトークンのインメモリ保持
+- `apps/web/src/lib/api-client.ts` — `ky` インスタンス。Bearer ヘッダー付与、401 時のリフレッシュトークン再試行、ApiError 変換を実装
+- `apps/web/src/lib/auth-api.ts` — register / login / logout API 呼び出し
+- `apps/web/src/lib/api-error.ts` — API エラーメッセージの分類とトースト表示支援
+- `apps/web/src/hooks/use-toast.ts` — `sonner` ラッパー
+- `apps/web/src/hooks/use-api-error-handler.ts` — API エラーをトーストに変換する hook
+
 ### 共有パッケージ (`packages/shared`)
 
-- 現在は `packages/shared/src/types/ticket.ts` の `Ticket` 型、`createTicket()`、`formatTicket()` を公開
+- `packages/shared/src/types/ticket.ts` で `Ticket` 型、`createTicket()`、`formatTicket()` を公開
 - API からも再エクスポート (`apps/api/src/index.ts`)
 - ビルドは `tsc` で `dist/` に出力
 
@@ -120,6 +146,9 @@ pnpm run typecheck
 # 全テストを一度実行（shared ビルドも実施）
 pnpm run test
 
+# ルートのスクリプトテストのみ
+pnpm run test:scripts
+
 # ウォッチモード
 pnpm run test:watch
 
@@ -140,41 +169,73 @@ pnpm run format         # oxfmt での整形適用
 ```bash
 # Prisma（SQLite）のマイグレーション適用
 pnpm --filter @ticket-flow/api exec prisma migrate deploy --schema prisma/schema.prisma
+
+# マイグレーションを新規作成（スキーマ変更時）
+pnpm --filter @ticket-flow/api exec prisma migrate dev --schema prisma/schema.prisma
 ```
+
+### Seed データ
+
+```bash
+cd apps/api
+
+# .env を作成（初回のみ。必要に応じて値を編集）
+cp ../../.env.example .env
+
+# 手動で seed を実行
+pnpm run db:seed
+
+# または dev 起動時に自動投入（migrate も含む）
+pnpm run dev
+```
+
+#### デモアカウント
+
+| 項目     | 値                 |
+| -------- | ------------------ |
+| email    | `demo@example.com` |
+| password | `demo1234`         |
+
+seed は冪等に実装されており、同じデータが存在する場合は更新されます。本番環境（`NODE_ENV=production`）では実行できません。
 
 ## コードスタイルガイドライン
 
 - **フォーマッタ**: `oxfmt`（設定: `.oxfmtrc.jsonc`）
   - `printWidth: 80`、`tabWidth: 2`、スペースインデント、セミコロンあり
   - ダブルクォート、`trailingComma: all`、改行 `lf`
+  - import ソート有効
 - **Linter**: `oxlint`（設定: `.oxlintrc.json`）
   - `no-unused-vars: error`
   - `typescript/no-explicit-any: error`
-  - 対象外: `dist/`、`node_modules/`
+  - 対象外: `dist/`、`node_modules/`、`**/src/routeTree.gen.ts`
 - **EditorConfig**: UTF-8、LF、2 スペースインデント、最終改行あり
 - **TypeScript**: 厳格モード有効
   - `noImplicitAny: true`、`strictNullChecks: true`
   - API / shared は `module: NodeNext`、`moduleResolution: NodeNext`
   - Web は `module: ESNext`、`moduleResolution: bundler`、`jsx: react-jsx`
+  - Web では `noUnusedLocals` / `noUnusedParameters` / `noFallthroughCasesInSwitch` も有効
 - **import 拡張子**: API / shared の ESM では相対パスに `.js` 拡張子を含める（`./domain/password.js` や `../domain/user-repository.js` など）
 - **命名**: 関数・変数は camelCase、型は PascalCase。ファイル名は kebab-case
+- **barrel file**: API / shared で `index.ts` を使用。shadcn/ui コンポーネントは個別ファイルで named export し、`components/ui/index.ts` のような barrel は使用しない
 
 ## テスト方針
 
 - **ランナー**: Vitest（全パッケージ共通）
 - **API**: `environment: node`、globals 有効
+  - `apps/api/tests/globalSetup.ts` で `apps/api/prisma/test.db` へ migrate deploy を実行
   - `apps/api/tests/setup.ts` で `DATABASE_URL` が未設定の場合、`apps/api/prisma/test.db` をデフォルトに設定
   - `@prisma/*` は `server.deps.external` で外部化
 - **Web**: `environment: happy-dom`、globals 有効
   - `apps/web/tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
 - **Shared**: `environment: node`
+- **ルートスクリプト**: `vitest.config.ts`（`scripts/**/*.test.mjs`）
 - **カバレッジ**: `@vitest/coverage-v8`
   - API / shared: `src/**/*.ts`
   - Web: `src/**/*.ts`、`src/**/*.tsx`
 - **テスト種別**
   - `apps/api/tests/unit/` — ドメイン / アプリケーション / ハンドラ / インフラの単体テスト
-  - `apps/api/tests/integration/` — DB 接続・リポジトリ・マイグレーションの統合テスト
-  - `apps/web/tests/unit/` — コンポーネント / hook / lib の単体テスト
+  - `apps/api/tests/integration/` — DB 接続・リポジトリ・マイグレーション・seed の統合テスト
+  - `apps/web/tests/unit/` — コンポーネント / hook / lib / router の単体テスト
   - E2E テストは現状ありません
 
 ### テストで使う主要な補助クラス
@@ -259,8 +320,13 @@ JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 - `JWT_SECRET` は `loadTokenConfig()` で 32 バイト以上を検証
-- `DATABASE_URL` は `loadDatabaseConfig()` でプロトコル検証
+- `DATABASE_URL` は `loadDatabaseConfig()` で `file:` プロトコルのみを許可
+- `PORT` は未設定時 `3000`（`parsePort`）
 - コード上では `.env` を自動読み込みする仕組みはありません。ローカル実行時は各自のシェル環境または `.env` 読み込みツールで設定してください
+
+### フロントエンド環境変数
+
+- `VITE_API_BASE_URL` — API のベース URL。未設定または空文字の場合 `/api` にフォールバック（`apps/web/src/lib/api-client.ts`）
 
 ### セキュリティ上の実装方針
 
@@ -270,6 +336,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 - JWT は `HS256`、発行時に `tokenType` クレームを含め、アクセストークン / リフレッシュトークンを区別
 - `logout` 時は `Authorization: Bearer <refresh_token>` を受け取り、該当ハッシュのトークンを削除
 - `DuplicateEmailError` などのドメインエラーをリポジトリ層から伝播させ、ハンドラで適切な HTTP ステータスに変換
+- トークン類はメモリ上にのみ保持（`token-storage.ts`）。現時点では localStorage 等への永続化は行わない
 
 ### 注意点
 
@@ -292,6 +359,8 @@ JWT_REFRESH_EXPIRES_IN=7d
 | Web HTML             | `apps/web/index.html`                            |
 | Web Vite 設定        | `apps/web/vite.config.ts`                        |
 | Web Vitest 設定      | `apps/web/vitest.config.ts`                      |
+| Web ルート定義       | `apps/web/src/routes/`                           |
+| Web API クライアント | `apps/web/src/lib/api-client.ts`                 |
 | shadcn/ui 設定       | `apps/web/components.json`                       |
 | 共有パッケージ       | `packages/shared/src/index.ts`                   |
 | CI 定義              | `.github/workflows/ci.yml`                       |
