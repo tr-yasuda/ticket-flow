@@ -12,17 +12,35 @@ type AuthResponse = Readonly<{
   refreshToken: string;
 }>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUser(value: unknown): value is { id: string; email: string } {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.email === "string"
+  );
+}
+
+function isAuthResponse(value: unknown): value is AuthResponse {
+  return (
+    isRecord(value) &&
+    isUser(value.user) &&
+    typeof value.accessToken === "string" &&
+    typeof value.refreshToken === "string"
+  );
+}
+
 function isApiSuccessResponse(
   value: unknown,
 ): value is ApiSuccessResponse<AuthResponse> {
   return (
-    typeof value === "object" &&
-    value !== null &&
-    "success" in value &&
+    isRecord(value) &&
     value.success === true &&
-    "data" in value &&
-    typeof (value as { data: { accessToken?: unknown } }).data.accessToken ===
-      "string"
+    isRecord(value.data) &&
+    isAuthResponse(value.data)
   );
 }
 

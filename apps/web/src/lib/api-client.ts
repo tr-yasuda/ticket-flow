@@ -47,7 +47,21 @@ export class ApiError extends Error {
   }
 }
 
-type RefreshResponse = Readonly<{ accessToken: string }>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function extractAccessToken(body: unknown): string | undefined {
+  if (!isRecord(body)) {
+    return undefined;
+  }
+  if (body.success === true && isRecord(body.data)) {
+    const token = body.data.accessToken;
+    return typeof token === "string" ? token : undefined;
+  }
+  const token = body.accessToken;
+  return typeof token === "string" ? token : undefined;
+}
 
 let refreshingPromise: Promise<string> | null = null;
 
@@ -101,23 +115,15 @@ async function performRefresh(): Promise<string> {
         throw new ApiError("Refresh failed", response.status);
       }
 
-      let body: RefreshResponse | { success: true; data: RefreshResponse };
+      let body: unknown;
       try {
-        body = (await response.json()) as
-          | RefreshResponse
-          | { success: true; data: RefreshResponse };
+        body = await response.json();
       } catch {
         throw new ApiError("Invalid refresh response", 500);
       }
 
-      let accessToken: string;
-      if ("success" in body && body.success === true) {
-        accessToken = body.data.accessToken;
-      } else {
-        accessToken = (body as RefreshResponse).accessToken;
-      }
-
-      if (typeof accessToken !== "string" || accessToken === "") {
+      const accessToken = extractAccessToken(body);
+      if (accessToken === undefined || accessToken === "") {
         throw new ApiError("Invalid refresh response", 500);
       }
       return accessToken;

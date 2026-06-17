@@ -26,16 +26,17 @@ async function enableMocking(): Promise<void> {
   });
 }
 
-const container = document.getElementById("root");
+function renderApp(): void {
+  const container = document.getElementById("root");
+  if (container === null) {
+    throw new Error("Root element not found");
+  }
 
-if (container === null) {
-  throw new Error("Root element not found");
-}
-
-enableMocking().then(() => {
   createRoot(container).render(
     <StrictMode>
       <RouterProvider router={router} />
     </StrictMode>,
   );
-});
+}
+
+enableMocking().finally(renderApp);
