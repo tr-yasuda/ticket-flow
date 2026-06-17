@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { clearTokens, getAccessToken } from "@/lib/token-storage";
+import { demoUser } from "@/mocks/data/users.js";
 import { routeTree } from "@/routeTree.gen";
 
 function renderRoute(initialRoute: string) {
@@ -95,10 +96,10 @@ describe("SignupPage", () => {
     await waitForSignupForm();
 
     fireEvent.change(screen.getByLabelText("メールアドレス"), {
-      target: { value: "demo@example.com" },
+      target: { value: demoUser.email },
     });
     fireEvent.change(screen.getByLabelText("パスワード"), {
-      target: { value: "demo1234" },
+      target: { value: demoUser.password },
     });
     fireEvent.click(screen.getByRole("button", { name: "アカウントを作成" }));
 
