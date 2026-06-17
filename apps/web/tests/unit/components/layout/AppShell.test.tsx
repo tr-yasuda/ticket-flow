@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -33,10 +33,11 @@ describe("AppShell", () => {
       <AppShell user={{ email: "alice@example.com" }} onLogout={onLogout} />,
     );
 
-    const menuButtons = screen.getAllByRole("button", {
+    const header = screen.getByRole("banner");
+    const menuButton = within(header).getByRole("button", {
       name: "Open user menu",
     });
-    await userEvent.click(menuButtons[0]);
+    await userEvent.click(menuButton);
 
     const logoutItem = screen.getByRole("menuitem", { name: /Log out/i });
     await userEvent.click(logoutItem);
