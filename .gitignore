@@ -155,3 +155,9 @@ apps/api/prisma/test.db
 apps/api/prisma/test.db-*
 apps/api/prisma/migrate-test.db
 apps/api/prisma/migrate-test.db-*
+
+# Git worktrees
+.worktree/
+
+# Claude Code editor settings
+.claude/
