@@ -1,6 +1,6 @@
 const { readFileSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
-const { resolve, join } = require("node:path");
+const { resolve, join, isAbsolute } = require("node:path");
 const { tmpdir } = require("node:os");
 
 function consumeValue(argv, index, flag) {
@@ -94,6 +94,13 @@ function stripFrontmatter(content) {
     .join("");
 }
 
+function resolveBodyFilePath(bodyFile) {
+  if (isAbsolute(bodyFile)) {
+    return bodyFile;
+  }
+  return resolve(__dirname, "..", bodyFile);
+}
+
 function main() {
   const { title, bodyFile, labels } = parseArgs(process.argv.slice(2));
   if (!title || !bodyFile) {
@@ -105,7 +112,9 @@ function main() {
 
   let body;
   try {
-    body = stripFrontmatter(readFileSync(resolve(bodyFile), "utf8"));
+    body = stripFrontmatter(
+      readFileSync(resolveBodyFilePath(bodyFile), "utf8"),
+    );
   } catch (error) {
     console.error(
       `Error: failed to read body file "${bodyFile}": ${formatErrorMessage(error)}`,
@@ -149,6 +158,7 @@ module.exports = {
   consumeValue,
   formatErrorMessage,
   parseArgs,
+  resolveBodyFilePath,
   stripFrontmatter,
   main,
 };
