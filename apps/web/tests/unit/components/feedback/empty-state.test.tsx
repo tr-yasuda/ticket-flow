@@ -30,4 +30,9 @@ describe("EmptyState", () => {
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
     expect(screen.getByText("データがありません")).toBeInTheDocument();
   });
+
+  it("className が反映される", () => {
+    render(<EmptyState title="データがありません" className="custom-class" />);
+    expect(screen.getByTestId("empty-state")).toHaveClass("custom-class");
+  });
 });

@@ -30,4 +30,9 @@ describe("ErrorState", () => {
     fireEvent.click(screen.getByRole("button", { name: "再試行" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
+
+  it("className が反映される", () => {
+    render(<ErrorState message="エラーです" className="custom-class" />);
+    expect(screen.getByTestId("error-state")).toHaveClass("custom-class");
+  });
 });

@@ -14,4 +14,9 @@ describe("LoadingSpinner", () => {
     render(<LoadingSpinner />);
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
+
+  it("className が反映される", () => {
+    render(<LoadingSpinner className="custom-class" />);
+    expect(screen.getByTestId("loading-spinner")).toHaveClass("custom-class");
+  });
 });
