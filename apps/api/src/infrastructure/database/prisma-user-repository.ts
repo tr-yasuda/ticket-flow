@@ -2,12 +2,12 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 import { DuplicateEmailError } from "../../domain/repository-error.js";
 import type { UserRepository } from "../../domain/user-repository.js";
-import type { User } from "../../domain/user.js";
+import type { User, UserId } from "../../domain/user.js";
 
 export class PrismaUserRepository implements UserRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: UserId): Promise<User | null> {
     const record = await this.prisma.user.findUnique({ where: { id } });
     return record ? this.toUser(record) : null;
   }
@@ -49,7 +49,7 @@ export class PrismaUserRepository implements UserRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: UserId): Promise<void> {
     try {
       await this.prisma.user.delete({ where: { id } });
     } catch (error) {

@@ -1,13 +1,13 @@
 import type { UserRepository } from "../../domain/user-repository.js";
-import type { User } from "../../domain/user.js";
+import type { User, UserId } from "../../domain/user.js";
 import { InMemoryRepository } from "./in-memory-repository.js";
 
 export class InMemoryUserRepository implements UserRepository {
-  private readonly repository = new InMemoryRepository<User, string>(
+  private readonly repository = new InMemoryRepository<User, UserId>(
     (user) => user.id,
   );
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: UserId): Promise<User | null> {
     return this.repository.findById(id);
   }
 
@@ -24,7 +24,7 @@ export class InMemoryUserRepository implements UserRepository {
     return this.repository.save(entity);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: UserId): Promise<void> {
     return this.repository.delete(id);
   }
 }

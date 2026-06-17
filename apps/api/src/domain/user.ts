@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+export type UserId = string;
+
 export type User = Readonly<{
   id: string;
   email: string;

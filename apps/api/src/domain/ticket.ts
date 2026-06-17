@@ -1,5 +1,7 @@
+export type TicketId = string;
+
 export type Ticket = Readonly<{
-  id: string;
+  id: TicketId;
   title: string;
   status: "open" | "in-progress" | "closed";
 }>;
@@ -14,7 +16,7 @@ function isValidTitleLength(title: string): boolean {
   return title.trim().length <= MAX_TICKET_TITLE_LENGTH;
 }
 
-export function createTicket(id: string, title: string): Ticket {
+export function createTicket(id: TicketId, title: string): Ticket {
   if (!isNonEmptyString(id)) {
     throw new Error("Ticket id is required");
   }
