@@ -1,26 +1,16 @@
 import type { Context, Next } from "hono";
 
+import { extractBearerToken } from "../extract-bearer-token.js";
+
 declare module "hono" {
   interface ContextVariableMap {
-    userId: string;
+    userId?: string;
   }
 }
 
 export type AuthMiddlewareDependencies = Readonly<{
   verifyAccessToken: (token: string) => Promise<{ userId: string }>;
 }>;
-
-function extractBearerToken(authorization: string | undefined): string | null {
-  if (authorization === undefined) {
-    return null;
-  }
-  const trimmed = authorization.trim();
-  const match = /^Bearer\s+(.+)$/i.exec(trimmed);
-  if (match === null) {
-    return null;
-  }
-  return match[1].trim();
-}
 
 export function createAuthMiddleware(deps: AuthMiddlewareDependencies) {
   return async (c: Context, next: Next) => {
@@ -29,12 +19,14 @@ export function createAuthMiddleware(deps: AuthMiddlewareDependencies) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    let payload: { userId: string };
     try {
-      const payload = await deps.verifyAccessToken(token);
-      c.set("userId", payload.userId);
-      await next();
+      payload = await deps.verifyAccessToken(token);
     } catch {
       return c.json({ error: "Unauthorized" }, 401);
     }
+
+    c.set("userId", payload.userId);
+    await next();
   };
 }

@@ -34,6 +34,9 @@ function createTestApp() {
   );
   app.get("/api/protected/me", (c) => {
     const userId = c.get("userId");
+    if (userId === undefined) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
     return c.json({ userId }, 200);
   });
   return app;
