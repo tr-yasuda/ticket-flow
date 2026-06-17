@@ -17,9 +17,7 @@ export function LoadingSpinner({ message, className }: LoadingSpinnerProps) {
       )}
     >
       <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      {message && (
-        <p className="text-sm text-muted-foreground">{message}</p>
-      )}
+      {message && <p className="text-sm text-muted-foreground">{message}</p>}
     </div>
   );
 }

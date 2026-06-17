@@ -1,5 +1,5 @@
-import { Inbox } from "lucide-react";
 import { render, screen } from "@testing-library/react";
+import { Inbox } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -17,8 +17,12 @@ describe("EmptyState", () => {
     );
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
     expect(screen.getByText("チケットがありません")).toBeInTheDocument();
-    expect(screen.getByText("新しいチケットを作成してください")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "新規作成" })).toBeInTheDocument();
+    expect(
+      screen.getByText("新しいチケットを作成してください"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "新規作成" }),
+    ).toBeInTheDocument();
   });
 
   it("最小限の props でも表示される", () => {

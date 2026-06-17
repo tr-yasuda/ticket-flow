@@ -10,11 +10,7 @@ export type InlineErrorProps = {
   className?: string;
 };
 
-export function InlineError({
-  message,
-  onRetry,
-  className,
-}: InlineErrorProps) {
+export function InlineError({ message, onRetry, className }: InlineErrorProps) {
   return (
     <Alert
       data-testid="inline-error"
@@ -26,12 +22,7 @@ export function InlineError({
       <AlertDescription className="flex items-center justify-between gap-4">
         <span>{message}</span>
         {onRetry && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
             再試行
           </Button>
         )}

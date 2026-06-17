@@ -20,7 +20,13 @@ describe("ErrorState", () => {
 
   it("onRetry が指定された場合、再試行ボタンを表示する", () => {
     const onRetry = vi.fn();
-    render(<ErrorState title="取得に失敗しました" message="エラーです" onRetry={onRetry} />);
+    render(
+      <ErrorState
+        title="取得に失敗しました"
+        message="エラーです"
+        onRetry={onRetry}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "再試行" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
