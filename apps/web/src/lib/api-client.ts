@@ -59,7 +59,12 @@ async function performRefresh(): Promise<string> {
         throw new ApiError("Refresh failed", response.status);
       }
 
-      const body = (await response.json()) as RefreshResponse;
+      let body: RefreshResponse;
+      try {
+        body = (await response.json()) as RefreshResponse;
+      } catch {
+        throw new ApiError("Invalid refresh response", 500);
+      }
       if (
         typeof body !== "object" ||
         body === null ||
@@ -135,9 +140,6 @@ const handleErrorResponse: AfterResponseHook = async (
 
 export const apiClient = ky.create({
   prefixUrl: getApiBaseUrl(),
-  headers: {
-    "Content-Type": "application/json",
-  },
   hooks: {
     beforeRequest: [addAuthHeader],
     beforeRetry: [refreshAccessToken],

@@ -11,7 +11,11 @@ type AuthResponse = Readonly<{
 }>;
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
-  return apiClient.post("auth/register", { json: input }).json<AuthResponse>();
+  const response = await apiClient
+    .post("auth/register", { json: input })
+    .json<AuthResponse>();
+  setTokens(response.accessToken, response.refreshToken);
+  return response;
 }
 
 export async function login(input: LoginInput): Promise<AuthResponse> {

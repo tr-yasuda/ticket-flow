@@ -39,6 +39,8 @@ describe("auth-api", () => {
 
     expect(result.user.email).toBe("user@example.com");
     expect(result.accessToken).toBe("access-token");
+    expect(getAccessToken()).toBe("access-token");
+    expect(getRefreshToken()).toBe("refresh-token");
   });
 
   it("login 成功時にトークンを保存する", async () => {
