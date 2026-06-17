@@ -10,7 +10,10 @@ import {
 } from "./domain/token.js";
 import { loadDatabaseConfig } from "./infrastructure/database/config.js";
 import { createPrismaClient } from "./infrastructure/database/prisma-client.js";
+import { PrismaOrganizationMemberRepository } from "./infrastructure/database/prisma-organization-member-repository.js";
+import { PrismaOrganizationRepository } from "./infrastructure/database/prisma-organization-repository.js";
 import { PrismaRefreshTokenRepository } from "./infrastructure/database/prisma-refresh-token-repository.js";
+import { PrismaTransactionRunner } from "./infrastructure/database/prisma-transaction-runner.js";
 import { PrismaUserRepository } from "./infrastructure/database/prisma-user-repository.js";
 import { parsePort } from "./infrastructure/server/port.js";
 import { loadTokenConfig } from "./infrastructure/token/config.js";
@@ -22,11 +25,19 @@ const databaseConfig = loadDatabaseConfig(process.env);
 const prisma = createPrismaClient(databaseConfig);
 const userRepository = new PrismaUserRepository(prisma);
 const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
+const organizationRepository = new PrismaOrganizationRepository(prisma);
+const organizationMemberRepository = new PrismaOrganizationMemberRepository(
+  prisma,
+);
+const transactionRunner = new PrismaTransactionRunner(prisma);
 const tokenConfig = loadTokenConfig(process.env);
 
 const app = createApp({
   userRepository,
   refreshTokenRepository,
+  organizationRepository,
+  organizationMemberRepository,
+  transactionRunner,
   hashPassword,
   verifyPassword,
   generateAccessToken: async (userId) =>

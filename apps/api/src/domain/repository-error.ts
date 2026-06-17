@@ -11,3 +11,10 @@ export class DuplicateSlugError extends Error {
     this.name = "DuplicateSlugError";
   }
 }
+
+export class DuplicateOrganizationMembershipError extends Error {
+  constructor(message = "User is already a member of this organization") {
+    super(message);
+    this.name = "DuplicateOrganizationMembershipError";
+  }
+}
