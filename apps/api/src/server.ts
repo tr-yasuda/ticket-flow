@@ -5,6 +5,7 @@ import { hashRefreshToken } from "./domain/refresh-token.js";
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyAccessToken,
   verifyRefreshToken,
 } from "./domain/token.js";
 import { loadDatabaseConfig } from "./infrastructure/database/config.js";
@@ -32,6 +33,7 @@ const app = createApp({
     generateAccessToken({ userId }, tokenConfig),
   generateRefreshToken: async (userId) =>
     generateRefreshToken({ userId }, tokenConfig),
+  verifyAccessToken: async (token) => verifyAccessToken(token, tokenConfig),
   verifyRefreshToken: async (token) => verifyRefreshToken(token, tokenConfig),
   hashRefreshToken,
 });

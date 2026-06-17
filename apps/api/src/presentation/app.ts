@@ -17,6 +17,7 @@ export type AuthDependencies = Readonly<{
   ) => Promise<boolean>;
   generateAccessToken: (userId: string) => Promise<string>;
   generateRefreshToken: (userId: string) => Promise<string>;
+  verifyAccessToken: (token: string) => Promise<{ userId: string }>;
   verifyRefreshToken: (token: string) => Promise<{ userId: string }>;
   hashRefreshToken: (token: string) => string;
 }>;

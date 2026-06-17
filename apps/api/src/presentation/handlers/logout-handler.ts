@@ -2,18 +2,7 @@ import type { Context } from "hono";
 
 import { logoutUser } from "../../application/logout-user.js";
 import type { LogoutUserDependencies } from "../../application/logout-user.js";
-
-function extractBearerToken(authorization: string | undefined): string | null {
-  if (authorization === undefined) {
-    return null;
-  }
-  const trimmed = authorization.trim();
-  const match = /^Bearer\s+(.+)$/i.exec(trimmed);
-  if (match === null) {
-    return null;
-  }
-  return match[1];
-}
+import { extractBearerToken } from "../extract-bearer-token.js";
 
 export function createLogoutHandler(deps: LogoutUserDependencies) {
   return async (c: Context) => {
