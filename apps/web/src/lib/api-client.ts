@@ -16,6 +16,25 @@ export type ApiErrorDetail = Readonly<{
   message: string;
 }>;
 
+function isApiErrorDetail(value: unknown): value is ApiErrorDetail {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).field === "string" &&
+    typeof (value as Record<string, unknown>).message === "string"
+  );
+}
+
+function parseDetails(
+  value: unknown,
+): ReadonlyArray<ApiErrorDetail> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const details = value.filter(isApiErrorDetail);
+  return details.length > 0 ? details : undefined;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -134,14 +153,12 @@ const handleErrorResponse: AfterResponseHook = async (
   const cloned = response.clone();
   try {
     const body = (await cloned.json()) as {
-      error?: string;
-      details?: ReadonlyArray<ApiErrorDetail>;
+      error?: unknown;
+      details?: unknown;
     };
-    throw new ApiError(
-      body.error ?? "Request failed",
-      response.status,
-      body.details,
-    );
+    const message =
+      typeof body.error === "string" ? body.error : "Request failed";
+    throw new ApiError(message, response.status, parseDetails(body.details));
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
