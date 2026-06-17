@@ -1,11 +1,18 @@
-import { ThemeProvider } from "next-themes";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+
+import { routeTree } from "./routeTree.gen";
 
 import "./index.css";
-import { Toaster } from "@/components/ui/sonner";
 
-import { App } from "./App";
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
 
 const container = document.getElementById("root");
 
@@ -15,14 +22,6 @@ if (container === null) {
 
 createRoot(container).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <App />
-      <Toaster
-        position="top-right"
-        duration={4000}
-        visibleToasts={5}
-        closeButton
-      />
-    </ThemeProvider>
+    <RouterProvider router={router} />
   </StrictMode>,
 );
