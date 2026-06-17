@@ -136,7 +136,7 @@ describe("apiClient", () => {
         { status: 400 },
       ),
     );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     try {
       await apiClient.get("protected");
@@ -162,7 +162,7 @@ describe("apiClient", () => {
         { status: 400 },
       ),
     );
-    globalThis.fetch = fetchMock;
+    mockFetch(fetchMock);
 
     try {
       await apiClient.get("protected");

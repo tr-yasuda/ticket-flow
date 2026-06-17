@@ -178,8 +178,14 @@ const handleErrorResponse: AfterResponseHook = async (
     }
     const legacyBody = body as { error?: unknown; details?: unknown };
     const message =
-      typeof legacyBody.error === "string" ? legacyBody.error : "Request failed";
-    throw new ApiError(message, response.status, parseDetails(legacyBody.details));
+      typeof legacyBody.error === "string"
+        ? legacyBody.error
+        : "Request failed";
+    throw new ApiError(
+      message,
+      response.status,
+      parseDetails(legacyBody.details),
+    );
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
