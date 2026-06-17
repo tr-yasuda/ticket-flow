@@ -60,6 +60,14 @@ async function performRefresh(): Promise<string> {
       }
 
       const body = (await response.json()) as RefreshResponse;
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        typeof body.accessToken !== "string" ||
+        body.accessToken === ""
+      ) {
+        throw new ApiError("Invalid refresh response", 500);
+      }
       return body.accessToken;
     } finally {
       refreshingPromise = null;
@@ -90,7 +98,11 @@ const refreshAccessToken: BeforeRetryHook = async ({
   try {
     const newAccessToken = await performRefresh();
     const refreshToken = getRefreshToken();
-    setTokens(newAccessToken, refreshToken ?? "");
+    if (refreshToken === null) {
+      clearTokens();
+      throw new ApiError("Refresh token is missing", 401);
+    }
+    setTokens(newAccessToken, refreshToken);
     const headers = new Headers(options.headers);
     headers.set("Authorization", `Bearer ${newAccessToken}`);
     return new Request(request, { headers });

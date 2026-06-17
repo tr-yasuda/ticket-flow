@@ -26,13 +26,12 @@ export async function refreshAccessToken(
 ): Promise<RefreshTokenResult> {
   try {
     await deps.verifyRefreshToken(input.refreshToken);
-  } catch (error) {
+  } catch {
     return {
       success: false,
       error: {
         type: "invalid-token",
-        message:
-          error instanceof Error ? error.message : "Invalid refresh token",
+        message: "Invalid refresh token",
       },
     };
   }
