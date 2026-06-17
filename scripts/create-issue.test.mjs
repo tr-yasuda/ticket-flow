@@ -226,12 +226,18 @@ describe("stripFrontmatter", () => {
 });
 
 describe("resolveBodyFilePath", () => {
-  it("resolves a relative path from the project root", () => {
-    const result = resolveBodyFilePath(".github/ISSUE_TEMPLATE/task.md");
+  it("resolves a relative path from the project root even when cwd is a subdirectory", () => {
+    const originalCwd = process.cwd();
+    try {
+      process.chdir(resolve(__dirname, "../apps/web"));
+      const result = resolveBodyFilePath(".github/ISSUE_TEMPLATE/task.md");
 
-    expect(result).toBe(
-      resolve(__dirname, "../.github/ISSUE_TEMPLATE/task.md"),
-    );
+      expect(result).toBe(
+        resolve(__dirname, "../.github/ISSUE_TEMPLATE/task.md"),
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("returns an absolute path unchanged", () => {

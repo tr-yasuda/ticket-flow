@@ -111,13 +111,12 @@ function main() {
   }
 
   let body;
+  const resolvedBodyFile = resolveBodyFilePath(bodyFile);
   try {
-    body = stripFrontmatter(
-      readFileSync(resolveBodyFilePath(bodyFile), "utf8"),
-    );
+    body = stripFrontmatter(readFileSync(resolvedBodyFile, "utf8"));
   } catch (error) {
     console.error(
-      `Error: failed to read body file "${bodyFile}": ${formatErrorMessage(error)}`,
+      `Error: failed to read body file "${resolvedBodyFile}" (provided: "${bodyFile}"): ${formatErrorMessage(error)}`,
     );
     process.exit(1);
   }
