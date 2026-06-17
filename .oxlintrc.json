@@ -5,5 +5,5 @@
     "no-unused-vars": "error",
     "typescript/no-explicit-any": "error"
   },
-  "ignorePatterns": ["dist", "node_modules", "src/routeTree.gen.ts"]
+  "ignorePatterns": ["dist", "node_modules", "**/src/routeTree.gen.ts"]
 }
