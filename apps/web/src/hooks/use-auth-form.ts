@@ -1,10 +1,10 @@
 import { useForm } from "@tanstack/react-form";
-import type { ZodSchema } from "zod";
+import type { ZodType } from "zod";
 
 import { mapApiErrorToFields, mapZodErrorToFields } from "@/lib/validation";
 
 type UseAuthFormOptions<TValues extends Record<string, unknown>> = Readonly<{
-  schema: ZodSchema<TValues>;
+  schema: ZodType<TValues>;
   defaultValues: TValues;
   onSubmit: (values: TValues) => Promise<void>;
 }>;

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 
 import type { RefreshTokenRepository } from "../domain/refresh-token-repository.js";
 import type { UserRepository } from "../domain/user-repository.js";
@@ -24,6 +25,13 @@ export type AuthDependencies = Readonly<{
 
 export function createApp(deps: AuthDependencies): Hono {
   const app = new Hono();
+  app.onError((err, c) => {
+    if (err instanceof HTTPException) {
+      return err.getResponse();
+    }
+    console.error("Unexpected error:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
+  });
   app.post("/api/auth/register", createRegisterHandler(deps));
   app.post("/api/auth/login", createLoginHandler(deps));
   app.post("/api/auth/logout", createLogoutHandler(deps));
