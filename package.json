@@ -14,8 +14,8 @@
     "test:coverage": "pnpm -r run --if-present test:coverage",
     "typecheck": "pnpm run build:shared && pnpm -r run typecheck",
     "lint": "oxlint .",
-    "format:check": "oxfmt . --check",
-    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check --ignore-path .oxfmtignore --ignore-path apps/web/.oxfmtignore",
+    "format": "oxfmt . --write --ignore-path .oxfmtignore --ignore-path apps/web/.oxfmtignore",
     "create-issue": "node scripts/create-issue.js",
     "commitlint": "git log -1 --pretty=%B | pnpm exec commitlint",
     "setup": "lefthook install"
