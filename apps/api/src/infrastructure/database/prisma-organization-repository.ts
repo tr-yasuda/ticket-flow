@@ -61,8 +61,7 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002" &&
-        isSlugConstraintViolation(error.meta)
+        error.code === "P2002"
       ) {
         throw new DuplicateSlugError();
       }
@@ -91,27 +90,4 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
   }): Organization {
     return rehydrateOrganization(record.id, record.name, record.slug);
   }
-}
-
-function isSlugConstraintViolation(
-  meta: Prisma.PrismaClientKnownRequestError["meta"],
-): boolean {
-  if (meta === undefined || meta.target === undefined) {
-    // Organization モデルの UNIQUE 制約は slug のみなので、
-    // meta が取得できない場合も slug 制約違反として扱う
-    return true;
-  }
-
-  const { target } = meta;
-  if (typeof target === "string") {
-    return target.includes("slug");
-  }
-
-  if (Array.isArray(target)) {
-    return target.some(
-      (field) => typeof field === "string" && field.includes("slug"),
-    );
-  }
-
-  return false;
 }
