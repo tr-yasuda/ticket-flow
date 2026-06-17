@@ -96,7 +96,7 @@ pnpm run build:shared
 pnpm run dev
 ```
 
-`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `apps/api` 内で `pnpm exec tsx ...` やビルド済み `dist/` を利用してください（現時点ではルートに api 専用の dev スクリプトはありません）。
+`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `apps/api` 内で `pnpm run build` を実行し、生成された `dist/server.js` を `node dist/server.js` で起動してください（現時点ではルートに api 専用の dev スクリプトはありません）。
 
 ### ビルド
 
@@ -224,7 +224,7 @@ Conventional Branching に従います。
 
 ### Worktree
 
-作業ブランチは `.worktrees/<branch-name>/` 以下に Git worktree として作成する運用が推奨されています（`.gitignore` で `.worktree/` は無視されますが、`.worktrees/` は無視されていません）。
+作業ブランチは `.worktrees/<branch-name>/` 以下に Git worktree として作成する運用が推奨されています（`.gitignore` で `.worktree/` と `.worktrees/` は無視されています）。
 
 ### Issue / PR
 
