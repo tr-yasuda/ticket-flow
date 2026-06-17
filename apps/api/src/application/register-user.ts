@@ -1,4 +1,5 @@
 import { validatePassword } from "../domain/password.js";
+import type { RefreshTokenRepository } from "../domain/refresh-token-repository.js";
 import { DuplicateEmailError } from "../domain/repository-error.js";
 import type { UserRepository } from "../domain/user-repository.js";
 import { createUser, validateEmail } from "../domain/user.js";
@@ -27,9 +28,11 @@ export type RegisterUserResult =
 
 export type RegisterUserDependencies = Readonly<{
   userRepository: UserRepository;
+  refreshTokenRepository: RefreshTokenRepository;
   hashPassword: (plainPassword: string) => Promise<string>;
   generateAccessToken: (userId: string) => Promise<string>;
   generateRefreshToken: (userId: string) => Promise<string>;
+  hashRefreshToken: (token: string) => string;
 }>;
 
 export async function registerUser(
@@ -94,6 +97,11 @@ export async function registerUser(
     deps.generateAccessToken(user.id),
     deps.generateRefreshToken(user.id),
   ]);
+
+  await deps.refreshTokenRepository.save({
+    tokenHash: deps.hashRefreshToken(refreshToken),
+    userId: user.id,
+  });
 
   return {
     success: true,

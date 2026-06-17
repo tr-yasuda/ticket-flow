@@ -1,3 +1,4 @@
+import type { RefreshTokenRepository } from "../domain/refresh-token-repository.js";
 import type { UserRepository } from "../domain/user-repository.js";
 import { validateEmail } from "../domain/user.js";
 import type { User } from "../domain/user.js";
@@ -24,12 +25,14 @@ export type LoginUserResult =
 
 export type LoginUserDependencies = Readonly<{
   userRepository: UserRepository;
+  refreshTokenRepository: RefreshTokenRepository;
   verifyPassword: (
     plainPassword: string,
     hashedPassword: string,
   ) => Promise<boolean>;
   generateAccessToken: (userId: string) => Promise<string>;
   generateRefreshToken: (userId: string) => Promise<string>;
+  hashRefreshToken: (token: string) => string;
 }>;
 
 export async function loginUser(
@@ -79,6 +82,11 @@ export async function loginUser(
     deps.generateAccessToken(user.id),
     deps.generateRefreshToken(user.id),
   ]);
+
+  await deps.refreshTokenRepository.save({
+    tokenHash: deps.hashRefreshToken(refreshToken),
+    userId: user.id,
+  });
 
   return {
     success: true,

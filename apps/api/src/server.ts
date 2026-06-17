@@ -1,9 +1,15 @@
 import { serve } from "@hono/node-server";
 
 import { hashPassword, verifyPassword } from "./domain/password.js";
-import { generateAccessToken, generateRefreshToken } from "./domain/token.js";
+import { hashRefreshToken } from "./domain/refresh-token.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "./domain/token.js";
 import { loadDatabaseConfig } from "./infrastructure/database/config.js";
 import { createPrismaClient } from "./infrastructure/database/prisma-client.js";
+import { PrismaRefreshTokenRepository } from "./infrastructure/database/prisma-refresh-token-repository.js";
 import { PrismaUserRepository } from "./infrastructure/database/prisma-user-repository.js";
 import { parsePort } from "./infrastructure/server/port.js";
 import { loadTokenConfig } from "./infrastructure/token/config.js";
@@ -14,16 +20,20 @@ const port = parsePort(process.env.PORT);
 const databaseConfig = loadDatabaseConfig(process.env);
 const prisma = createPrismaClient(databaseConfig);
 const userRepository = new PrismaUserRepository(prisma);
+const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
 const tokenConfig = loadTokenConfig(process.env);
 
 const app = createApp({
   userRepository,
+  refreshTokenRepository,
   hashPassword,
   verifyPassword,
   generateAccessToken: async (userId) =>
     generateAccessToken({ userId }, tokenConfig),
   generateRefreshToken: async (userId) =>
     generateRefreshToken({ userId }, tokenConfig),
+  verifyRefreshToken: async (token) => verifyRefreshToken(token, tokenConfig),
+  hashRefreshToken,
 });
 
 const server = serve({

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
 import type { RegisterUserDependencies } from "../../../../src/application/register-user";
+import { hashRefreshToken } from "../../../../src/domain/refresh-token";
 import { createRegisterHandler } from "../../../../src/presentation/handlers/register-handler";
 
 function createTestHandler(overrides?: Partial<RegisterUserDependencies>) {
@@ -13,9 +14,17 @@ function createTestHandler(overrides?: Partial<RegisterUserDependencies>) {
       save: async () => {},
       delete: async () => {},
     },
+    refreshTokenRepository: {
+      findById: async () => null,
+      findByTokenHash: async () => null,
+      findAll: async () => [],
+      save: async () => {},
+      delete: async () => {},
+    },
     hashPassword: async () => "hashed-password",
     generateAccessToken: async () => "access-token",
     generateRefreshToken: async () => "refresh-token",
+    hashRefreshToken,
     ...overrides,
   };
 

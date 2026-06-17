@@ -1,30 +1,39 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { registerUser } from "../../../src/application/register-user";
+import { hashRefreshToken } from "../../../src/domain/refresh-token";
+import type { RefreshTokenRepository } from "../../../src/domain/refresh-token-repository";
 import { DuplicateEmailError } from "../../../src/domain/repository-error";
 import type { UserRepository } from "../../../src/domain/user-repository";
+import { InMemoryRefreshTokenRepository } from "../../../src/infrastructure/database/in-memory-refresh-token-repository";
 import { InMemoryUserRepository } from "../../../src/infrastructure/database/in-memory-user-repository";
 
 function createTestDependencies(overrides?: {
   repository?: UserRepository;
+  refreshTokenRepository?: RefreshTokenRepository;
   hashPassword?: (password: string) => Promise<string>;
   generateAccessToken?: (userId: string) => Promise<string>;
   generateRefreshToken?: (userId: string) => Promise<string>;
+  hashRefreshToken?: (token: string) => string;
 }) {
   const repository = overrides?.repository ?? new InMemoryUserRepository();
   return {
     userRepository: repository,
+    refreshTokenRepository:
+      overrides?.refreshTokenRepository ?? new InMemoryRefreshTokenRepository(),
     hashPassword: overrides?.hashPassword ?? (async () => "hashed-password"),
     generateAccessToken:
       overrides?.generateAccessToken ?? (async () => "access-token"),
     generateRefreshToken:
       overrides?.generateRefreshToken ?? (async () => "refresh-token"),
+    hashRefreshToken: overrides?.hashRefreshToken ?? hashRefreshToken,
   };
 }
 
 describe("ユーザー登録ユースケース", () => {
   it("有効なメールアドレスとパスワードでユーザーが登録できる", async () => {
-    const deps = createTestDependencies();
+    const refreshTokenRepository = new InMemoryRefreshTokenRepository();
+    const deps = createTestDependencies({ refreshTokenRepository });
 
     const result = await registerUser(
       { email: "user@example.com", password: "password" },
@@ -37,6 +46,12 @@ describe("ユーザー登録ユースケース", () => {
     expect(result.data.user.passwordHash).toBe("hashed-password");
     expect(result.data.accessToken).toBe("access-token");
     expect(result.data.refreshToken).toBe("refresh-token");
+
+    const storedToken = await refreshTokenRepository.findByTokenHash(
+      hashRefreshToken(result.data.refreshToken),
+    );
+    expect(storedToken).not.toBeNull();
+    expect(storedToken?.userId).toBe(result.data.user.id);
   });
 
   it("無効なメールアドレスでは登録に失敗する", async () => {
@@ -133,5 +148,27 @@ describe("ユーザー登録ユースケース", () => {
     await registerUser({ email: "invalid-email", password: "password" }, deps);
 
     expect(hashPassword).not.toHaveBeenCalled();
+  });
+
+  it("登録失敗時はリフレッシュトークンが保存されない", async () => {
+    const repository = new InMemoryUserRepository();
+    await repository.save({
+      id: "existing-id",
+      email: "user@example.com",
+      passwordHash: "existing-hash",
+    });
+    const refreshTokenRepository = new InMemoryRefreshTokenRepository();
+    const deps = createTestDependencies({
+      repository,
+      refreshTokenRepository,
+    });
+
+    await registerUser(
+      { email: "user@example.com", password: "password" },
+      deps,
+    );
+
+    const tokens = await refreshTokenRepository.findAll();
+    expect(tokens).toHaveLength(0);
   });
 });
