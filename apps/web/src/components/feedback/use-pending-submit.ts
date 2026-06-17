@@ -16,6 +16,7 @@ export function usePendingSubmit<TArgs extends unknown[], TResult>(
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
