@@ -2,6 +2,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { AuthProvider } from "@/contexts/auth-context";
 import { isMswEnabled } from "@/mocks/env.js";
 import { routeTree } from "@/routeTree.gen";
 
@@ -34,7 +35,9 @@ function renderApp(): void {
 
   createRoot(container).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </StrictMode>,
   );
 }

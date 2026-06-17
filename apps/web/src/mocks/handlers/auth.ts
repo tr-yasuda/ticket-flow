@@ -86,7 +86,7 @@ export const authHandlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get("/api/auth/me", ({ request }) => {
+  http.get("/api/me", ({ request }) => {
     const token = extractBearerToken(request.headers.get("Authorization"));
     if (token !== accessToken && token !== refreshedAccessToken) {
       return HttpResponse.json(

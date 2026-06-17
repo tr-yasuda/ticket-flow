@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { login, register } from "@/lib/auth-api";
-import { clearTokens, getAccessToken } from "@/lib/token-storage";
+import { getCurrentUser, login, register } from "@/lib/auth-api";
+import { clearTokens, getAccessToken, setTokens } from "@/lib/token-storage";
 
 describe("auth mock handlers", () => {
   afterEach(() => {
@@ -39,5 +39,25 @@ describe("auth mock handlers", () => {
     await expect(
       register({ email: "demo@example.com", password: "password123" }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  describe("GET /api/me", () => {
+    it("有効なアクセストークンで current user を返す", async () => {
+      const loginResponse = await login({
+        email: "demo@example.com",
+        password: "demo1234",
+      });
+      setTokens(loginResponse.accessToken, loginResponse.refreshToken);
+
+      const user = await getCurrentUser();
+
+      expect(user.email).toBe("demo@example.com");
+    });
+
+    it("無効なアクセストークンでは 401 エラー", async () => {
+      setTokens("invalid-token", "invalid-refresh-token");
+
+      await expect(getCurrentUser()).rejects.toMatchObject({ status: 401 });
+    });
   });
 });
