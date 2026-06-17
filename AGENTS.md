@@ -95,7 +95,7 @@ pnpm run build:shared
 pnpm run dev
 ```
 
-`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `pnpm --filter @ticket-flow/api dev`、または `apps/api` 内で `pnpm run dev` を実行してください。
+`pnpm run dev` は `@ticket-flow/web` のみを起動します。API サーバーを起動する場合は `pnpm --filter @ticket-flow/api dev`（または `cd apps/api && pnpm run dev`）を実行してください。このスクリプトは DB マイグレーション・シードの適用後にビルドし、`node dist/server.js` でサーバーを起動します。
 
 ### ビルド
 
