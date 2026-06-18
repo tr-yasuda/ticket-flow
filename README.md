@@ -16,7 +16,7 @@
 ```mermaid
 flowchart TD
     Start([開始]) --> Setup[開発者: 環境構築<br>pnpm install / pnpm run setup]
-    Setup --> BuildShared[@ticket-flow/shared をビルド<br>pnpm run build:shared]
+    Setup --> BuildShared["@ticket-flow/shared をビルド<br>pnpm run build:shared"]
     BuildShared --> LoadEnv[.env を読み込む<br>cd apps/api && set -a && source .env && set +a]
     LoadEnv --> ApiDev[API サーバー起動<br>pnpm run dev]
     BuildShared --> WebDev[Web 開発サーバー起動<br>pnpm run dev]
