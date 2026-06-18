@@ -1,6 +1,6 @@
 import type {
   OrganizationMemberRepository,
-  OrganizationMembership,
+  OrganizationMemberWithOrganization,
 } from "../../domain/organization-member-repository.js";
 import type {
   OrganizationMember,
@@ -42,7 +42,7 @@ export class InMemoryOrganizationMemberRepository implements OrganizationMemberR
 
   async findByUserId(
     userId: string,
-  ): Promise<readonly OrganizationMembership[]> {
+  ): Promise<readonly OrganizationMemberWithOrganization[]> {
     const members = await this.repository.findAll();
     const organizations = (await this.organizationRepository?.findAll()) ?? [];
     const organizationById = new Map(
@@ -53,10 +53,12 @@ export class InMemoryOrganizationMemberRepository implements OrganizationMemberR
       .map((member) => {
         const organization = organizationById.get(member.organizationId);
         return {
+          membershipId: member.id,
           organizationId: member.organizationId,
+          userId: member.userId,
+          role: member.role,
           organizationName: organization?.name ?? "",
           organizationSlug: organization?.slug ?? "",
-          role: member.role,
         };
       });
   }

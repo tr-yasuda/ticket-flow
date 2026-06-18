@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 import type {
   OrganizationMemberRepository,
-  OrganizationMembership,
+  OrganizationMemberWithOrganization,
 } from "../../domain/organization-member-repository.js";
 import {
   organizationMemberRoles,
@@ -42,17 +42,19 @@ export class PrismaOrganizationMemberRepository implements OrganizationMemberRep
 
   async findByUserId(
     userId: string,
-  ): Promise<readonly OrganizationMembership[]> {
+  ): Promise<readonly OrganizationMemberWithOrganization[]> {
     const records = await this.prisma.organizationMember.findMany({
       where: { userId },
       include: { organization: true },
-      orderBy: { createdAt: "asc" },
+      orderBy: { organization: { name: "asc" } },
     });
     return records.map((record) => ({
+      membershipId: record.id,
       organizationId: record.organizationId,
+      userId: record.userId,
+      role: toOrganizationMemberRole(record.role),
       organizationName: record.organization.name,
       organizationSlug: record.organization.slug,
-      role: toOrganizationMemberRole(record.role),
     }));
   }
 

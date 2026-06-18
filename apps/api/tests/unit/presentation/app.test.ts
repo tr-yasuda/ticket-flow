@@ -38,6 +38,7 @@ function createTestApp(overrides?: Partial<AppDependencies>) {
     organizationMemberRepository: {
       findById: async () => null,
       findByOrganizationIdAndUserId: async () => null,
+      findByUserId: async () => [],
       findAll: async () => [],
       save: async () => {},
       delete: async () => {},
@@ -172,5 +173,52 @@ describe("createApp", () => {
     const body = await response.json();
     expect(body.success).toBe(true);
     expect(body.data).toMatchObject({ name: "Acme Inc.", slug: "acme-inc" });
+  });
+
+  it("GET /api/organizations は未認証時に 401 を返す", async () => {
+    const app = createTestApp();
+
+    const response = await app.request("/api/organizations");
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  it("GET /api/organizations は認証済みユーザーが所属組織一覧を取得できる", async () => {
+    const app = createTestApp({
+      organizationMemberRepository: {
+        findById: async () => null,
+        findByOrganizationIdAndUserId: async () => null,
+        findByUserId: async () => [
+          {
+            membershipId: "member-1",
+            organizationId: "org-1",
+            userId: "user-id",
+            role: "owner",
+            organizationName: "Acme",
+            organizationSlug: "acme",
+          },
+        ],
+        findAll: async () => [],
+        save: async () => {},
+        delete: async () => {},
+        withTransaction() {
+          return this;
+        },
+      },
+    });
+
+    const response = await app.request("/api/organizations", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.organizations).toEqual([
+      { id: "org-1", name: "Acme", slug: "acme", role: "owner" },
+    ]);
   });
 });

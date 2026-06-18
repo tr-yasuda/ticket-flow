@@ -220,4 +220,68 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
   it("delete で存在しない ID でも例外を投げない", async () => {
     await expect(repository.delete("missing-id")).resolves.toBeUndefined();
   });
+
+  it("findByUserId でユーザーの所属組織をロール付きで取得できる", async () => {
+    const organization1 = await createOrganizationRecord("Acme", "acme");
+    const organization2 = await createOrganizationRecord("Globex", "globex");
+    const user = await createUserRecord();
+    const member1 = createOrganizationMember(
+      organization1.id,
+      user.id,
+      "owner",
+    );
+    const member2 = createOrganizationMember(
+      organization2.id,
+      user.id,
+      "member",
+    );
+    await repository.save(member1);
+    await repository.save(member2);
+
+    const found = await repository.findByUserId(user.id);
+
+    expect(found).toHaveLength(2);
+    expect(found).toEqual([
+      {
+        membershipId: member1.id,
+        organizationId: organization1.id,
+        userId: user.id,
+        role: "owner",
+        organizationName: "Acme",
+        organizationSlug: "acme",
+      },
+      {
+        membershipId: member2.id,
+        organizationId: organization2.id,
+        userId: user.id,
+        role: "member",
+        organizationName: "Globex",
+        organizationSlug: "globex",
+      },
+    ]);
+  });
+
+  it("findByUserId で所属組織がない場合は空配列を返す", async () => {
+    const user = await createUserRecord();
+
+    const found = await repository.findByUserId(user.id);
+
+    expect(found).toEqual([]);
+  });
+
+  it("findByUserId は組織名の昇順で返す", async () => {
+    const organizationB = await createOrganizationRecord("Beta", "beta");
+    const organizationA = await createOrganizationRecord("Alpha", "alpha");
+    const user = await createUserRecord();
+    await repository.save(
+      createOrganizationMember(organizationB.id, user.id, "viewer"),
+    );
+    await repository.save(
+      createOrganizationMember(organizationA.id, user.id, "admin"),
+    );
+
+    const found = await repository.findByUserId(user.id);
+
+    expect(found.map((m) => m.organizationName)).toEqual(["Alpha", "Beta"]);
+  });
 });
