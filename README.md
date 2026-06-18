@@ -5,7 +5,7 @@
 
 ## プロジェクト概要
 
-- **目的**: チケット管理に必要なドメインロジック、ユースケース、インフラストラクチャ、プレゼンテーションを明確に分離した基盤を提供する
+- **目的**: チケット管理に必要なドメイン、サービス、コントローラー、ルーティングを明確に分離した基盤を提供する
 - **対象**: マルチテナント SaaS
 - **設計方針**: 過度な抽象化を避け、必要最小限の構造から始める
 
@@ -15,12 +15,12 @@
 
 ```mermaid
 flowchart TD
-    Start([開始]) --> Setup[開発者: 環境構築<br/>pnpm install / pnpm run setup]
-    Setup --> BuildShared[@ticket-flow/shared をビルド<br/>pnpm run build:shared]
-    BuildShared --> LoadEnv[.env を読み込む<br/>cd apps/api && set -a && source .env && set +a]
-    LoadEnv --> ApiDev[API サーバー起動<br/>pnpm run dev]
-    BuildShared --> WebDev[Web 開発サーバー起動<br/>pnpm run dev]
-    ApiDev --> Seed[マイグレーション適用 &<br/>Seed データ投入]
+    Start([開始]) --> Setup[開発者: 環境構築<br>pnpm install / pnpm run setup]
+    Setup --> BuildShared[@ticket-flow/shared をビルド<br>pnpm run build:shared]
+    BuildShared --> LoadEnv[.env を読み込む<br>cd apps/api && set -a && source .env && set +a]
+    LoadEnv --> ApiDev[API サーバー起動<br>pnpm run dev]
+    BuildShared --> WebDev[Web 開発サーバー起動<br>pnpm run dev]
+    ApiDev --> Seed[マイグレーション適用 &<br>Seed データ投入]
     WebDev --> User[ユーザーがブラウザでアクセス]
     Seed --> User
     User --> Signup[/サインアップ/]
@@ -47,35 +47,36 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Web["Frontend: apps/web"]
-        WUI[React 19 + TanStack Router<br/>shadcn/ui + Tailwind CSS]
+        WUI[React 19 + TanStack Router<br>shadcn/ui + Tailwind CSS]
         WForm[TanStack React Form]
         WClient[ky API Client]
         WState[token-storage.ts]
     end
 
     subgraph API["Backend: apps/api"]
-        WH[Hono Handler]
-        MW[Auth Middleware]
-        UC[ユースケース]
-        DM[ドメイン]
-        PR[Prisma Repository]
+        RT[Routes<br>Hono Router]
+        CT[Controllers<br>入力検証 / 認証]
+        SV[Services<br>ドメインロジック]
+        DM[Domain<br>値オブジェクト / ルール]
+        LIB[lib<br>PrismaClient / env]
         DB[(SQLite)]
     end
 
-    Shared[("packages/shared<br/>共通型 / Zod スキーマ")]
+    Shared[("packages/shared<br>共通型 / Zod スキーマ")]
 
     WUI --> WForm
     WForm --> Shared
     WUI --> WClient
     WClient --> WState
-    WClient --> WH
-    WH --> MW
-    WH --> UC
-    UC --> DM
-    UC --> PR
-    PR --> DB
-    WH --> Shared
-    UC --> Shared
+    WClient --> RT
+    RT --> CT
+    CT --> SV
+    SV --> DM
+    SV --> LIB
+    LIB --> DB
+    RT --> Shared
+    CT --> Shared
+    SV --> Shared
     DM --> Shared
 ```
 
@@ -84,15 +85,15 @@ flowchart TD
 | レイヤー       | パッケージ        | 責務                                                     |
 | -------------- | ----------------- | -------------------------------------------------------- |
 | フロントエンド | `apps/web`        | ユーザーインターフェース、API 呼び出し、フォーム状態管理 |
-| バックエンド   | `apps/api`        | HTTP 入力受付、認証、ユースケース実行、永続化            |
+| バックエンド   | `apps/api`        | HTTP 入力受付、認証、サービス実行、永続化                |
 | 共有           | `packages/shared` | フロントエンド・バックエンド双方で使う型と Zod スキーマ  |
 
 ### データフロー
 
 1. ユーザーが `apps/web` の画面から入力する
-2. `ky` を使って `apps/api` の Hono handler にリクエストを送信する
-3. 認証が必要なエンドポイントでは、Hono handler が `AuthMiddleware` で認証した上でユースケースを呼び出す
-4. ユースケースはドメインルールを使って業務ロジックを実行し、Prisma repository でデータを永続化する
+2. `ky` を使って `apps/api` の Hono router にリクエストを送信する
+3. 認証が必要なエンドポイントでは、controller が `authMiddleware` で認証した上で service を呼び出す
+4. service はドメインルールを使って業務ロジックを実行し、`PrismaClient` でデータを永続化する
 5. レスポンスは `packages/shared` の共通型に沿って返却され、フロントエンドで表示する
 
 ## 技術スタック
@@ -124,10 +125,11 @@ ticket-flow/
 │   ├── api/                  # バックエンド API（Hono + Prisma）
 │   │   ├── prisma/           # スキーマ・マイグレーション・seed
 │   │   ├── src/
-│   │   │   ├── domain/       # エンティティ・値オブジェクト・ドメインルール
-│   │   │   ├── application/  # ユースケース
-│   │   │   ├── infrastructure/ # DB / トークン設定 / サーバー
-│   │   │   └── presentation/ # Hono handler / middleware
+│   │   │   ├── routes/        # Hono アプリ・ルーティング定義
+│   │   │   ├── controllers/   # 入力検証・認証・レスポンス変換
+│   │   │   ├── services/      # ドメインロジック・トランザクション境界
+│   │   │   ├── domain/        # エンティティ・値オブジェクト・ドメインルール
+│   │   │   └── lib/           # PrismaClient / 環境変数検証
 │   │   └── tests/
 │   │       ├── unit/         # 単体テスト
 │   │       └── integration/  # 統合テスト
@@ -202,13 +204,13 @@ pnpm run dev
 
 #### バックエンド（`apps/api/.env`）
 
-| 変数名                   | 必須 | 例                       | 説明                                              |
-| ------------------------ | ---- | ------------------------ | ------------------------------------------------- |
-| `DATABASE_URL`           | 必須 | `file:./dev.db`          | SQLite の接続文字列（`file:` プロトコルのみ許可） |
-| `JWT_SECRET`             | 必須 | `your-32-byte-secret...` | 32 バイト以上                                     |
-| `JWT_ACCESS_EXPIRES_IN`  | 必須 | `15m`                    | アクセストークンの有効期限                        |
-| `JWT_REFRESH_EXPIRES_IN` | 必須 | `7d`                     | リフレッシュトークンの有効期限                    |
-| `PORT`                   | 任意 | `3000`                   | API サーバーのポート（未設定時は `3000`）         |
+| 変数名                   | 必須 | 例                       | 説明                                                                          |
+| ------------------------ | ---- | ------------------------ | ----------------------------------------------------------------------------- |
+| `DATABASE_URL`           | 任意 | `file:./dev.db`          | SQLite の接続文字列（`file:` プロトコルのみ許可、未設定時は `file:./dev.db`） |
+| `JWT_SECRET`             | 必須 | `your-32-byte-secret...` | 32 バイト以上                                                                 |
+| `JWT_ACCESS_EXPIRES_IN`  | 任意 | `15m`                    | アクセストークンの有効期限（未設定時は `15m`）                                |
+| `JWT_REFRESH_EXPIRES_IN` | 任意 | `7d`                     | リフレッシュトークンの有効期限（未設定時は `7d`）                             |
+| `PORT`                   | 任意 | `3000`                   | API サーバーのポート（未設定時は `3000`）                                     |
 
 #### フロントエンド
 
@@ -319,10 +321,11 @@ pnpm run commitlint
 
 ## レイヤーの責務
 
-- `presentation`: 入力を受け、サービスを呼び、返却形式へ写すだけにする
-- `application`: ユースケースを実現するサービスを置く
+- `routes`: Hono アプリ・ルーティング定義を置く
+- `controllers`: 入力検証・認証・レスポンス変換を行い、service を呼び出す
+- `services`: ドメインロジックとトランザクション境界を置く
 - `domain`: ドメインルールと不変条件を表現する
-- `infrastructure`: 永続化や外部 API 連携の詳細を閉じ込める
+- `lib`: `PrismaClient` や環境変数検証などの基盤詳細を閉じ込める
 
 ## 主要な設計決定事項
 
@@ -336,4 +339,4 @@ pnpm run commitlint
 | 認証トークン保存             | メモリ上のみ                      | localStorage 等への永続化を避け、XSS によるトークン漏洩リスクを減らすため（現時点ではページリロードでログインが解除される） |
 | 入力検証                     | Zod in `packages/shared`          | フロントエンドとバックエンドで同一の検証ルールを再利用し、不整合を防ぐため                                                  |
 | モノレポ管理                 | pnpm workspaces                   | フロントエンド・バックエンド・共有パッケージを同一リポジトリで一貫管理し、型共有とビルド連携を容易にするため                |
-| アーキテクチャ               | レイヤードアーキテクチャ          | ドメイン・ユースケース・インフラ・プレゼンテーションを分離し、テスト容易性と保守性を高めるため                              |
+| アーキテクチャ               | レイヤードアーキテクチャ          | routes / controllers / services / domain / lib を分離し、テスト容易性と保守性を高めるため                                   |

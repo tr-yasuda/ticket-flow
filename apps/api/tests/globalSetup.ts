@@ -19,5 +19,8 @@ async function runPrismaMigrateDeploy(): Promise<void> {
 
 export default async function setup(): Promise<void> {
   process.env.DATABASE_URL = defaultTestDatabaseUrl;
+  process.env.JWT_SECRET ??= "test-secret-that-is-at-least-32-bytes-long";
+  process.env.JWT_ACCESS_EXPIRES_IN ??= "15m";
+  process.env.JWT_REFRESH_EXPIRES_IN ??= "7d";
   await runPrismaMigrateDeploy();
 }

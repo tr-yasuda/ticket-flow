@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-`ticket-flow` は「マルチテナント SaaS 向けチケット管理システム」の基盤プロジェクトです。過度な抽象化を避け、ドメイン・ユースケース・インフラ・UI の責務を分離したレイヤードアーキテクチャを採用しています。
+`ticket-flow` は「マルチテナント SaaS 向けチケット管理システム」の基盤プロジェクトです。過度な抽象化を避け、routes / controllers / services / domain / lib の責務を分離したレイヤードアーキテクチャを採用しています。
 
 - **リポジトリ名**: `ticket-flow`
 - **バージョン**: `0.0.1`
@@ -33,29 +33,26 @@ packages/
 - **フレームワーク**: [Hono](https://hono.dev/) + `@hono/node-server`
 - **ORM / DB**: Prisma（スキーマ定義は `apps/api/prisma/schema.prisma`）
   - 現在の Prisma スキーマは `provider = "sqlite"` を使用
-  - DB 接続設定 (`apps/api/src/infrastructure/database/config.ts`) は `file:` プロトコルのみを許可
+  - DB 接続文字列は `apps/api/src/lib/env.ts` で検証し、`file:` プロトコルのみを許可
 - **認証**: JWT（`jose`）アクセストークン / リフレッシュトークン、パスワードは `bcrypt` でハッシュ化
 - **実行形式**: Node.js ESM（`"type": "module"`）
 - **主要エントリポイント**
   - `apps/api/src/server.ts` — 本番サーバー起動
   - `apps/api/src/index.ts` — パッケージ公開用エクスポート
-  - `apps/api/src/presentation/app.ts` — `createApp()` Hono アプリ生成
+  - `apps/api/src/routes/index.ts` — `createApp()` Hono アプリ生成
 
 #### レイヤー構成
 
 ```text
 apps/api/src/
-  domain/            # エンティティ、値オブジェクト、ドメインルール、リポジトリインターフェース
-  application/       # ユースケース（register-user / login-user / logout-user / refresh-token）
-  infrastructure/    # Prisma / DB / トークン設定 / サーバーポートなどの詳細
-  presentation/      # Hono handler（入力受付、出力変換）
+  routes/        # Hono アプリ・ルーティング定義
+  controllers/   # 入力検証・認証・レスポンス変換
+  services/      # ドメインロジック・トランザクション境界
+  domain/        # エンティティ、値オブジェクト、ドメインルール
+  lib/           # PrismaClient インスタンス・環境変数検証
 ```
 
-- `Repository<TEntity, TId>` (`apps/api/src/domain/repository.ts`) が共通リポジトリ型
-- `InMemoryRepository<TEntity, TId>` (`apps/api/src/infrastructure/database/in-memory-repository.ts`) を単体テストで使用
-- `UserRepository` / `RefreshTokenRepository` / `TicketRepository` は `Repository` を拡張したドメイン層のインターフェース
-- 各ハンドラは `AuthDependencies` として依存を注入する形で実装
-- `createAuthMiddleware` (`apps/api/src/presentation/middleware/auth-middleware.ts`) は `createApp` 内の `GET /api/me` で使用
+- `authMiddleware` (`apps/api/src/controllers/auth-middleware.ts`) は `createApp` 内の `/api/me`・`/api/organizations` で使用
 
 ### フロントエンド (`apps/web`)
 
@@ -224,11 +221,11 @@ seed は冪等に実装されており、同じデータが存在する場合は
 
 ### スキーマ配置ルール
 
-| 配置場所                             | 用途                                                                                                                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/shared/src/validation/`    | フロントエンド・バックエンド両方で使う入力スキーマ。認証、チケット作成・更新など UI と API が共有するルールを置く。                                                                           |
-| `apps/api/src/presentation/schemas/` | API 特有のスキーマ（クエリパラメータ、ヘッダー、API 専用のリクエスト形状など）。現時点では `packages/shared` のスキーマで賄うため存在しないが、API 専用の形状が発生した場合はここに作成する。 |
-| `apps/web/src/lib/schemas/`          | フロントエンド特有のフォームスキーマ（ページ固有の検証、表示用の変換など）。現時点では `packages/shared` のスキーマを優先する。                                                               |
+| 配置場所                            | 用途                                                                                                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/validation/`   | フロントエンド・バックエンド両方で使う入力スキーマ。認証、チケット作成・更新など UI と API が共有するルールを置く。                                                                           |
+| `apps/api/src/controllers/schemas/` | API 特有のスキーマ（クエリパラメータ、ヘッダー、API 専用のリクエスト形状など）。現時点では `packages/shared` のスキーマで賄うため存在しないが、API 専用の形状が発生した場合はここに作成する。 |
+| `apps/web/src/lib/schemas/`         | フロントエンド特有のフォームスキーマ（ページ固有の検証、表示用の変換など）。現時点では `packages/shared` のスキーマを優先する。                                                               |
 
 ### ドメイン検証との共存方針
 
@@ -238,8 +235,8 @@ seed は冪等に実装されており、同じデータが存在する場合は
 
 ### API 入力の検証層
 
-- **Hono handler 層で Zod 検証を行う**。`safeParse` により入力を検証し、成功時は application 層のユースケースに渡す。
-- **application 層は検証済みの DTO を受け取り、業務ロジックに専念する**。application 層で追加の検証が必要な場合は、あくまで業務ルールに基づく判定とする。
+- **controller 層で Zod 検証を行う**。`safeParse` により入力を検証し、成功時は service に渡す。
+- **service は検証済みの DTO を受け取り、業務ロジックに専念する**。service で追加の検証が必要な場合は、あくまで業務ルールに基づく判定とする。
 
 ### Zod エラーから共通エラー形式へのマッピング
 
@@ -278,8 +275,7 @@ API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, me
 
 - **ランナー**: Vitest（全パッケージ共通）
 - **API**: `environment: node`、globals 有効
-  - `apps/api/tests/globalSetup.ts` で `apps/api/prisma/test.db` へ migrate deploy を実行
-  - `apps/api/tests/setup.ts` で `DATABASE_URL` が未設定の場合、`apps/api/prisma/test.db` をデフォルトに設定
+  - `apps/api/tests/globalSetup.ts` で `apps/api/prisma/test.db` へ migrate deploy を実行し、未設定の環境変数（`DATABASE_URL` / `JWT_SECRET` / `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN`）をテスト用デフォルト値で設定
   - `@prisma/*` は `server.deps.external` で外部化
 - **Web**: `environment: happy-dom`、globals 有効
   - `apps/web/tests/setup.ts` で `@testing-library/jest-dom/vitest` を読み込み
@@ -289,17 +285,10 @@ API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, me
   - API / shared: `src/**/*.ts`
   - Web: `src/**/*.ts`、`src/**/*.tsx`
 - **テスト種別**
-  - `apps/api/tests/unit/` — ドメイン / アプリケーション / ハンドラ / インフラの単体テスト
-  - `apps/api/tests/integration/` — DB 接続・リポジトリ・マイグレーション・seed の統合テスト
+  - `apps/api/tests/unit/` — ドメイン / controller / service / lib の単体テスト
+  - `apps/api/tests/integration/` — DB 接続・service・マイグレーション・seed の統合テスト
   - `apps/web/tests/unit/` — コンポーネント / hook / lib / router の単体テスト
   - E2E テストは現状ありません
-
-### テストで使う主要な補助クラス
-
-- `InMemoryUserRepository`
-- `InMemoryRefreshTokenRepository`
-- `InMemoryTicketRepository`
-- `InMemoryRepository<TEntity, TId>`（汎用）
 
 ## 開発フローと規約
 
@@ -377,9 +366,10 @@ JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-- `JWT_SECRET` は `loadTokenConfig()` で 32 バイト以上を検証
-- `DATABASE_URL` は `loadDatabaseConfig()` で `file:` プロトコルのみを許可
-- `PORT` は未設定時 `3000`（`parsePort`）
+- 環境変数は `apps/api/src/lib/env.ts` で zod により検証
+  - `JWT_SECRET` は 32 バイト以上必須
+  - `DATABASE_URL` は `file:` プロトコルのみを許可、未設定時は `file:./dev.db`
+  - `PORT` は未設定時 `3000`、0 〜 65535 の範囲を許可
 - コード上では `.env` を自動読み込みする仕組みはありません。ローカル実行時は各自のシェル環境または `.env` 読み込みツールで設定してください
 
 ### フロントエンド環境変数
@@ -404,30 +394,30 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 ## よく参照するファイル
 
-| 用途                       | パス                                             |
-| -------------------------- | ------------------------------------------------ |
-| ルート設定                 | `package.json`、`pnpm-workspace.yaml`            |
-| API サーバー起動           | `apps/api/src/server.ts`                         |
-| API 公開エクスポート       | `apps/api/src/index.ts`                          |
-| Hono アプリ生成            | `apps/api/src/presentation/app.ts`               |
-| Prisma スキーマ            | `apps/api/prisma/schema.prisma`                  |
-| DB 設定読み取り            | `apps/api/src/infrastructure/database/config.ts` |
-| トークン設定読み取り       | `apps/api/src/infrastructure/token/config.ts`    |
-| Web エントリ               | `apps/web/src/main.tsx`                          |
-| Web HTML                   | `apps/web/index.html`                            |
-| Web Vite 設定              | `apps/web/vite.config.ts`                        |
-| Web Vitest 設定            | `apps/web/vitest.config.ts`                      |
-| Web ルート定義             | `apps/web/src/routes/`                           |
-| Web API クライアント       | `apps/web/src/lib/api-client.ts`                 |
-| shadcn/ui 設定             | `apps/web/components.json`                       |
-| 共有パッケージ             | `packages/shared/src/index.ts`                   |
-| 共有 Zod スキーマ          | `packages/shared/src/validation/`                |
-| Web 入力検証ユーティリティ | `apps/web/src/lib/validation.ts`                 |
-| CI 定義                    | `.github/workflows/ci.yml`                       |
-| Lint 設定                  | `.oxlintrc.json`                                 |
-| Format 設定                | `.oxfmtrc.jsonc`                                 |
-| Git フック                 | `lefthook.yml`                                   |
-| コミットlint               | `.commitlintrc.json`                             |
+| 用途                       | パス                                  |
+| -------------------------- | ------------------------------------- |
+| ルート設定                 | `package.json`、`pnpm-workspace.yaml` |
+| API サーバー起動           | `apps/api/src/server.ts`              |
+| API 公開エクスポート       | `apps/api/src/index.ts`               |
+| Hono アプリ生成            | `apps/api/src/routes/index.ts`        |
+| Prisma スキーマ            | `apps/api/prisma/schema.prisma`       |
+| 環境変数検証               | `apps/api/src/lib/env.ts`             |
+| PrismaClient               | `apps/api/src/lib/prisma.ts`          |
+| Web エントリ               | `apps/web/src/main.tsx`               |
+| Web HTML                   | `apps/web/index.html`                 |
+| Web Vite 設定              | `apps/web/vite.config.ts`             |
+| Web Vitest 設定            | `apps/web/vitest.config.ts`           |
+| Web ルート定義             | `apps/web/src/routes/`                |
+| Web API クライアント       | `apps/web/src/lib/api-client.ts`      |
+| shadcn/ui 設定             | `apps/web/components.json`            |
+| 共有パッケージ             | `packages/shared/src/index.ts`        |
+| 共有 Zod スキーマ          | `packages/shared/src/validation/`     |
+| Web 入力検証ユーティリティ | `apps/web/src/lib/validation.ts`      |
+| CI 定義                    | `.github/workflows/ci.yml`            |
+| Lint 設定                  | `.oxlintrc.json`                      |
+| Format 設定                | `.oxfmtrc.jsonc`                      |
+| Git フック                 | `lefthook.yml`                        |
+| コミットlint               | `.commitlintrc.json`                  |
 
 ---
 

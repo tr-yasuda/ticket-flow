@@ -1,13 +1,18 @@
+import { PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
-import { loadDatabaseConfig } from "../../../../src/infrastructure/database/config";
-import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check";
-import { createPrismaClient } from "../../../../src/infrastructure/database/prisma-client";
+import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check.js";
+import { env } from "../../../../src/lib/env.js";
 
 describe("データベース接続", () => {
   it("データベースに接続できる", async () => {
-    const config = loadDatabaseConfig(process.env);
-    const client = createPrismaClient(config);
+    const client = new PrismaClient({
+      datasources: {
+        db: {
+          url: env.DATABASE_URL,
+        },
+      },
+    });
 
     try {
       const health = await checkDatabaseHealth(client);

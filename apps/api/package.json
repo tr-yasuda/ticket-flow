@@ -24,11 +24,13 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.5",
+    "@hono/standard-validator": "^0.2.2",
     "@prisma/client": "^6.4.1",
     "@ticket-flow/shared": "workspace:*",
     "bcrypt": "^6.0.0",
     "hono": "^4.12.25",
-    "jose": "^6.2.3"
+    "jose": "^6.2.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

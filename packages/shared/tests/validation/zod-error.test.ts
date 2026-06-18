@@ -3,7 +3,7 @@ import { z } from "zod";
 import { mapZodErrorToValidationDetails } from "../../src/validation/zod-error.js";
 
 describe("mapZodErrorToValidationDetails", () => {
-  it("ZodError から ApiValidationErrorDetail[] を生成する", () => {
+  it("Zod issues から ApiValidationErrorDetail[] を生成する", () => {
     const schema = z.object({
       email: z.string().email("メールアドレスの形式が正しくありません"),
       password: z.string().min(8, "パスワードは8文字以上で入力してください"),
@@ -12,7 +12,7 @@ describe("mapZodErrorToValidationDetails", () => {
     const result = schema.safeParse({ email: "invalid", password: "short" });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const details = mapZodErrorToValidationDetails(result.error);
+      const details = mapZodErrorToValidationDetails(result.error.issues);
       expect(details).toEqual(
         expect.arrayContaining([
           { field: "email", message: "メールアドレスの形式が正しくありません" },
@@ -31,7 +31,7 @@ describe("mapZodErrorToValidationDetails", () => {
     const result = schema.safeParse([""]);
     expect(result.success).toBe(false);
     if (!result.success) {
-      const details = mapZodErrorToValidationDetails(result.error);
+      const details = mapZodErrorToValidationDetails(result.error.issues);
       expect(details).toEqual([]);
     }
   });

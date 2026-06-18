@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { SignJWT, errors, jwtVerify } from "jose";
 
 export type TokenPayload = Readonly<{
@@ -25,6 +27,7 @@ async function signToken(
   return new SignJWT({ ...payload, tokenType })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setJti(randomUUID())
     .setExpirationTime(expiresIn)
     .sign(encodeSecret(secret));
 }
