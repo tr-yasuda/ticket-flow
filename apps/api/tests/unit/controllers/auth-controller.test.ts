@@ -1,3 +1,8 @@
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  createApiSuccessResponse,
+} from "@ticket-flow/shared";
 import type { Context } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -190,7 +195,10 @@ describe("auth-controller", () => {
     it("リフレッシュ成功時にアクセストークンを返す", async () => {
       vi.spyOn(authService, "refreshAccessToken").mockResolvedValue({
         success: true,
-        data: { accessToken: "new-access-token" },
+        data: {
+          accessToken: "new-access-token",
+          refreshToken: "new-refresh-token",
+        },
       });
       const c = createTestContext({
         authorization: "Bearer refresh-token",
@@ -199,7 +207,10 @@ describe("auth-controller", () => {
       await refreshController(c);
 
       expect(c.json).toHaveBeenCalledWith(
-        { accessToken: "new-access-token" },
+        createApiSuccessResponse({
+          accessToken: "new-access-token",
+          refreshToken: "new-refresh-token",
+        }),
         200,
       );
     });
@@ -210,7 +221,10 @@ describe("auth-controller", () => {
       await refreshController(c);
 
       expect(c.json).toHaveBeenCalledWith(
-        { error: "Authorization header is required" },
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_UNAUTHORIZED,
+          "認証が必要です",
+        ),
         401,
       );
     });
