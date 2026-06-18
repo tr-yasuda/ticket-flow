@@ -73,7 +73,9 @@ export class InMemoryOrganizationMemberRepository implements OrganizationMemberR
         organizationSlug: organization?.slug ?? "",
       });
     }
-    return result;
+    return [...result].sort((a, b) =>
+      a.organizationName.localeCompare(b.organizationName),
+    );
   }
 
   withTransaction(_tx: unknown): OrganizationMemberRepository {
