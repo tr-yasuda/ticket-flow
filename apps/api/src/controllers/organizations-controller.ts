@@ -6,6 +6,7 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import type { OrganizationMemberRole } from "../domain/organization-member.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
@@ -68,4 +69,14 @@ export async function getOrganizationsController(c: Context) {
   }
 
   return c.json(createApiSuccessResponse(result.data), HttpStatus.OK);
+}
+
+export async function getOrganizationController(c: Context) {
+  const organizationId = c.get("organizationId") as string;
+  const organizationRole = c.get("organizationRole") as OrganizationMemberRole;
+
+  return c.json(
+    createApiSuccessResponse({ organizationId, organizationRole }),
+    HttpStatus.OK,
+  );
 }
