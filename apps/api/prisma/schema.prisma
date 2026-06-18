@@ -69,5 +69,6 @@ model OrganizationMember {
   user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
+  @@index([userId])
   @@map("organization_members")
 }
