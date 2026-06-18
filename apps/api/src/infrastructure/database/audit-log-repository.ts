@@ -20,6 +20,11 @@ function resolveTake(inputTake: number | undefined): number {
   return Math.min(Math.max(requested, 1), MAX_TAKE);
 }
 
+function resolveSkip(inputSkip: number | undefined): number {
+  const requested = inputSkip ?? 0;
+  return Math.max(requested, 0);
+}
+
 function toAuditLog(
   row: Prisma.AuditLogGetPayload<Record<string, never>>,
 ): AuditLog {
@@ -69,7 +74,7 @@ export async function findAuditLogsByOrganizationId(
     where: { organizationId: input.organizationId },
     orderBy: { createdAt: "desc" },
     take: resolveTake(input.take),
-    skip: input.skip ?? 0,
+    skip: resolveSkip(input.skip),
   });
 
   return rows.map(toAuditLog);
@@ -93,7 +98,7 @@ export async function findAuditLogsByEntity(
     },
     orderBy: { createdAt: "desc" },
     take: resolveTake(input.take),
-    skip: input.skip ?? 0,
+    skip: resolveSkip(input.skip),
   });
 
   return rows.map(toAuditLog);

@@ -214,9 +214,42 @@ describe("createAuditLog", () => {
     ).toThrow("oldValues must not contain circular references");
   });
 
+  it("同一オブジェクトの共有参照は循環参照と誤判定しない", () => {
+    const shared = { value: 1 };
+
+    expect(() =>
+      createAuditLog({
+        organizationId: "org-1",
+        actorId: "user-1",
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "created",
+        oldValues: { a: shared, b: shared },
+      }),
+    ).not.toThrow();
+  });
+
   it("oldValues のネスト深さが制限を超える場合はエラー", () => {
     let deep: Record<string, unknown> = { value: "bottom" };
     for (let index = 0; index < 11; index += 1) {
+      deep = { nested: deep };
+    }
+
+    expect(() =>
+      createAuditLog({
+        organizationId: "org-1",
+        actorId: "user-1",
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "created",
+        oldValues: deep,
+      }),
+    ).toThrow("oldValues must not exceed 10 levels deep");
+  });
+
+  it("極端に深いネストでも RangeError にならず検証できる", () => {
+    let deep: Record<string, unknown> = { value: "bottom" };
+    for (let index = 0; index < 5000; index += 1) {
       deep = { nested: deep };
     }
 

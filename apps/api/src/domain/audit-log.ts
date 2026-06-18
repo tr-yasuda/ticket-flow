@@ -41,6 +41,10 @@ function getJsonByteSize(value: unknown): number {
 }
 
 function getMaxDepth(value: unknown, currentDepth = 0): number {
+  if (currentDepth > MAX_JSON_DEPTH) {
+    return currentDepth;
+  }
+
   if (!isPlainObject(value) && !Array.isArray(value)) {
     return currentDepth;
   }
@@ -52,26 +56,44 @@ function getMaxDepth(value: unknown, currentDepth = 0): number {
     return currentDepth;
   }
 
-  return 1 + Math.max(...values.map((v) => getMaxDepth(v, currentDepth)));
+  let maxDepth = currentDepth;
+  for (const child of values) {
+    const childDepth = getMaxDepth(child, currentDepth + 1);
+    if (childDepth > maxDepth) {
+      maxDepth = childDepth;
+    }
+    if (maxDepth > MAX_JSON_DEPTH) {
+      return maxDepth;
+    }
+  }
+
+  return maxDepth;
 }
 
-function hasCircularReference(
-  value: unknown,
-  seen = new WeakSet<object>(),
-): boolean {
+function hasCircularReference(value: unknown, stack: unknown[] = []): boolean {
+  if (stack.length > MAX_JSON_DEPTH) {
+    return false;
+  }
+
   if (!isPlainObject(value) && !Array.isArray(value)) {
     return false;
   }
 
-  if (seen.has(value as object)) {
+  if (stack.includes(value as object)) {
     return true;
   }
-  seen.add(value as object);
 
+  const nextStack = [...stack, value];
   const values = Array.isArray(value)
     ? value
     : Object.values(value as Record<string, unknown>);
-  return values.some((v) => hasCircularReference(v, seen));
+  for (const child of values) {
+    if (hasCircularReference(child, nextStack)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function assertAuditLogValues(
