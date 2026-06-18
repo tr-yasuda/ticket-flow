@@ -2,12 +2,12 @@ import {
   ApiErrorCode,
   createApiErrorResponse,
   createApiSuccessResponse,
-  loginInputSchema,
-  mapZodErrorToValidationDetails,
-  registerInputSchema,
+  type LoginInput,
+  type RegisterInput,
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import { getValidatedJson } from "../lib/validated-json.js";
 import {
   loginUser,
   logoutUser,
@@ -26,32 +26,8 @@ export function extractBearerToken(
 }
 
 export async function registerController(c: Context) {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.BAD_REQUEST,
-        "リクエストボディが不正です",
-      ),
-      400,
-    );
-  }
-
-  const parseResult = registerInputSchema.safeParse(body);
-  if (!parseResult.success) {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.VALIDATION_ERROR,
-        "入力内容を確認してください",
-        mapZodErrorToValidationDetails(parseResult.error),
-      ),
-      400,
-    );
-  }
-
-  const result = await registerUser(parseResult.data);
+  const data = getValidatedJson<RegisterInput>(c);
+  const result = await registerUser(data);
 
   if (!result.success) {
     const code =
@@ -66,32 +42,8 @@ export async function registerController(c: Context) {
 }
 
 export async function loginController(c: Context) {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.BAD_REQUEST,
-        "リクエストボディが不正です",
-      ),
-      400,
-    );
-  }
-
-  const parseResult = loginInputSchema.safeParse(body);
-  if (!parseResult.success) {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.VALIDATION_ERROR,
-        "入力内容を確認してください",
-        mapZodErrorToValidationDetails(parseResult.error),
-      ),
-      400,
-    );
-  }
-
-  const result = await loginUser(parseResult.data);
+  const data = getValidatedJson<LoginInput>(c);
+  const result = await loginUser(data);
 
   if (!result.success) {
     const isValidationError = result.error.type === "invalid-email";

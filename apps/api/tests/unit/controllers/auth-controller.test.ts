@@ -19,7 +19,7 @@ function createTestContext({
   const json = vi.fn();
   const c = {
     req: {
-      json: vi.fn().mockResolvedValue(body),
+      valid: vi.fn().mockReturnValue(body),
       header: vi.fn().mockImplementation((name: string) => {
         if (name === "Authorization") {
           return authorization;

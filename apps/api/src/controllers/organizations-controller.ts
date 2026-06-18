@@ -2,11 +2,11 @@ import {
   ApiErrorCode,
   createApiErrorResponse,
   createApiSuccessResponse,
-  createOrganizationInputSchema,
-  mapZodErrorToValidationDetails,
+  type CreateOrganizationInput,
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import { getValidatedJson } from "../lib/validated-json.js";
 import { createOrganization } from "../services/organizations-service.js";
 
 export async function createOrganizationController(c: Context) {
@@ -18,34 +18,10 @@ export async function createOrganizationController(c: Context) {
     );
   }
 
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.BAD_REQUEST,
-        "リクエストボディが不正です",
-      ),
-      400,
-    );
-  }
-
-  const parseResult = createOrganizationInputSchema.safeParse(body);
-  if (!parseResult.success) {
-    return c.json(
-      createApiErrorResponse(
-        ApiErrorCode.VALIDATION_ERROR,
-        "入力内容を確認してください",
-        mapZodErrorToValidationDetails(parseResult.error),
-      ),
-      400,
-    );
-  }
-
+  const data = getValidatedJson<CreateOrganizationInput>(c);
   const result = await createOrganization({
-    name: parseResult.data.name,
-    slug: parseResult.data.slug,
+    name: data.name,
+    slug: data.slug,
     ownerUserId: userId,
   });
 
