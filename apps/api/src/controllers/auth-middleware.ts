@@ -35,14 +35,16 @@ export async function authMiddleware(c: Context, next: Next) {
     );
   }
 
+  let userId: string;
   try {
-    const { userId } = await verifyAccessToken(token, tokenConfig);
-    c.set("userId", userId);
-    await next();
+    ({ userId } = await verifyAccessToken(token, tokenConfig));
   } catch {
     return c.json(
       createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
       HttpStatus.UNAUTHORIZED,
     );
   }
+
+  c.set("userId", userId);
+  await next();
 }
