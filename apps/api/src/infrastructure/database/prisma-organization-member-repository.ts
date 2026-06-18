@@ -45,7 +45,18 @@ export class PrismaOrganizationMemberRepository implements OrganizationMemberRep
   ): Promise<readonly OrganizationMemberWithOrganization[]> {
     const records = await this.prisma.organizationMember.findMany({
       where: { userId },
-      include: { organization: true },
+      select: {
+        id: true,
+        organizationId: true,
+        userId: true,
+        role: true,
+        organization: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+      },
       orderBy: { organization: { name: "asc" } },
     });
     return records.map((record) => ({

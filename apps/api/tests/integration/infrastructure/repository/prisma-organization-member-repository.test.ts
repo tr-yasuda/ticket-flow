@@ -284,4 +284,28 @@ describe.sequential("PrismaOrganizationMemberRepository 統合テスト", () => 
 
     expect(found.map((m) => m.organizationName)).toEqual(["Alpha", "Beta"]);
   });
+
+  it("findByUserId は他のユーザーの組織を返さない", async () => {
+    const organizationForUserA = await createOrganizationRecord(
+      "User A Org",
+      "user-a-org",
+    );
+    const organizationForUserB = await createOrganizationRecord(
+      "User B Org",
+      "user-b-org",
+    );
+    const userA = await createUserRecord();
+    const userB = await createUserRecord();
+    await repository.save(
+      createOrganizationMember(organizationForUserA.id, userA.id, "owner"),
+    );
+    await repository.save(
+      createOrganizationMember(organizationForUserB.id, userB.id, "owner"),
+    );
+
+    const foundForUserA = await repository.findByUserId(userA.id);
+
+    expect(foundForUserA).toHaveLength(1);
+    expect(foundForUserA[0]?.organizationId).toBe(organizationForUserA.id);
+  });
 });

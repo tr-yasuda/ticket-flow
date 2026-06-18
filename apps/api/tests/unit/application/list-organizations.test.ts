@@ -7,22 +7,24 @@ import type {
 } from "../../../src/domain/organization-member-repository.js";
 
 function createMockRepository(
+  expectedUserId: string,
   memberships: OrganizationMemberWithOrganization[],
 ): OrganizationMemberRepository {
   return {
     findById: async () => null,
     findByOrganizationIdAndUserId: async () => null,
-    findByUserId: async () => memberships,
+    findByUserId: async (userId) =>
+      userId === expectedUserId ? memberships : [],
     findAll: async () => [],
     save: async () => {},
     delete: async () => {},
-    withTransaction: () => createMockRepository(memberships),
+    withTransaction: () => createMockRepository(expectedUserId, memberships),
   };
 }
 
 describe("listOrganizations", () => {
   it("ユーザーが所属する組織の一覧とロールを返す", async () => {
-    const repository = createMockRepository([
+    const repository = createMockRepository("user-1", [
       {
         membershipId: "member-1",
         organizationId: "org-1",
@@ -53,7 +55,7 @@ describe("listOrganizations", () => {
   });
 
   it("所属組織がない場合は空配列を返す", async () => {
-    const repository = createMockRepository([]);
+    const repository = createMockRepository("user-1", []);
 
     const result = await listOrganizations("user-1", {
       organizationMemberRepository: repository,

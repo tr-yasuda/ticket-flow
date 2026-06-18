@@ -1,10 +1,11 @@
 import type { OrganizationMemberRepository } from "../domain/organization-member-repository.js";
+import type { OrganizationMemberRole } from "../domain/organization-member.js";
 
 export type OrganizationWithRole = Readonly<{
   id: string;
   name: string;
   slug: string;
-  role: string;
+  role: OrganizationMemberRole;
 }>;
 
 export type ListOrganizationsSuccess = Readonly<{

@@ -48,19 +48,24 @@ export class InMemoryOrganizationMemberRepository implements OrganizationMemberR
     const organizationById = new Map(
       organizations.map((organization) => [organization.id, organization]),
     );
-    return members
-      .filter((member) => member.userId === userId)
-      .map((member) => {
-        const organization = organizationById.get(member.organizationId);
-        return {
-          membershipId: member.id,
-          organizationId: member.organizationId,
-          userId: member.userId,
-          role: member.role,
-          organizationName: organization?.name ?? "",
-          organizationSlug: organization?.slug ?? "",
-        };
+    const result: OrganizationMemberWithOrganization[] = [];
+    for (const member of members.filter((m) => m.userId === userId)) {
+      const organization = organizationById.get(member.organizationId);
+      if (organization === undefined) {
+        continue;
+      }
+      result.push({
+        membershipId: member.id,
+        organizationId: member.organizationId,
+        userId: member.userId,
+        role: member.role,
+        organizationName: organization.name,
+        organizationSlug: organization.slug,
       });
+    }
+    return result.sort((a, b) =>
+      a.organizationName.localeCompare(b.organizationName),
+    );
   }
 
   async save(entity: OrganizationMember): Promise<void> {
