@@ -1,7 +1,10 @@
 import type { Context, Next } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
-import { createRequireRoleMiddleware } from "../../../src/controllers/authorization-middleware.js";
+import {
+  createRequireRoleMiddleware,
+  FORBIDDEN_MESSAGE,
+} from "../../../src/controllers/authorization-middleware.js";
 import type { OrganizationMemberRole } from "../../../src/domain/organization-member.js";
 
 function createTestContext(role?: OrganizationMemberRole): {
@@ -75,7 +78,26 @@ describe("authorization-middleware", () => {
         success: false,
         error: expect.objectContaining({
           code: "AUTH_FORBIDDEN",
-          message: "この操作を行う権限がありません",
+          message: FORBIDDEN_MESSAGE,
+        }),
+      }),
+      403,
+    );
+  });
+
+  it("organizationRole に不正な値が設定されている場合は 403 を返す", async () => {
+    const middleware = createRequireRoleMiddleware("member");
+    const { c, next } = createTestContext("unknown" as OrganizationMemberRole);
+
+    await middleware(c, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "AUTH_FORBIDDEN",
+          message: FORBIDDEN_MESSAGE,
         }),
       }),
       403,
