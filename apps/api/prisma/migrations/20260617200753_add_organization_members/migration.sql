@@ -3,7 +3,7 @@ CREATE TABLE "organization_members" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "organization_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
-    "role" TEXT NOT NULL CHECK ("role" IN ('owner', 'admin', 'member', 'viewer')),
+    "role" TEXT NOT NULL,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL,
     CONSTRAINT "organization_members_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
