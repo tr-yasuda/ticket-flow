@@ -77,15 +77,27 @@ export async function refreshController(c: Context) {
   const token = extractBearerToken(c.req.header("Authorization"));
   if (token === null) {
     return c.json(
-      { error: "Authorization header is required" },
+      createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
       HttpStatus.UNAUTHORIZED,
     );
   }
 
   const result = await refreshAccessToken({ refreshToken: token });
   if (!result.success) {
-    return c.json({ error: result.error.message }, HttpStatus.UNAUTHORIZED);
+    return c.json(
+      createApiErrorResponse(
+        ApiErrorCode.AUTH_UNAUTHORIZED,
+        result.error.message,
+      ),
+      HttpStatus.UNAUTHORIZED,
+    );
   }
 
-  return c.json({ accessToken: result.data.accessToken }, HttpStatus.OK);
+  return c.json(
+    createApiSuccessResponse({
+      accessToken: result.data.accessToken,
+      refreshToken: result.data.refreshToken,
+    }),
+    HttpStatus.OK,
+  );
 }

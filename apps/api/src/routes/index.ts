@@ -1,3 +1,4 @@
+import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
@@ -16,18 +17,19 @@ export function createApp(): Hono {
     }
     console.error("Unexpected error:", err);
     return c.json(
-      { error: "Internal Server Error" },
+      createApiErrorResponse(
+        ApiErrorCode.INTERNAL_ERROR,
+        "Internal Server Error",
+      ),
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   });
 
   app.route("/api/auth", configureAuthRoutes());
 
-  app.use("/api/me", authMiddleware);
   app.use("/api/me/*", authMiddleware);
   app.route("/api/me", configureMeRoutes());
 
-  app.use("/api/organizations", authMiddleware);
   app.use("/api/organizations/*", authMiddleware);
   app.route("/api/organizations", configureOrganizationRoutes());
 
