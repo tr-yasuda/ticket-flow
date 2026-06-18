@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
 import { createApp } from "../../../src/routes/index.js";
@@ -63,6 +63,9 @@ describe("GET /api/organizations/:organizationId 組織スコープ検証", () =
   beforeEach(async () => {
     await cleanAll();
     app = createApp();
+  });
+  afterAll(async () => {
+    await cleanAll();
   });
 
   it("所属組織にアクセスできる", async () => {

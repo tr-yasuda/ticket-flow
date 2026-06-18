@@ -6,6 +6,7 @@ import {
   getOrganizationController,
   getOrganizationsController,
 } from "../../../src/controllers/organizations-controller.js";
+import type { OrganizationMemberRole } from "../../../src/domain/organization-member.js";
 import * as organizationsService from "../../../src/services/organizations-service.js";
 
 function createTestContext({
@@ -17,7 +18,7 @@ function createTestContext({
   body?: unknown;
   userId?: string;
   organizationId?: string;
-  organizationRole?: string;
+  organizationRole?: OrganizationMemberRole;
 } = {}): Context {
   const json = vi.fn();
   const c = {
