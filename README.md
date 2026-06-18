@@ -15,12 +15,12 @@
 
 ```mermaid
 flowchart TD
-    Start([開始]) --> Setup[開発者: 環境構築<br/>pnpm install / pnpm run setup]
-    Setup --> BuildShared[@ticket-flow/shared をビルド<br/>pnpm run build:shared]
-    BuildShared --> LoadEnv[.env を読み込む<br/>cd apps/api && set -a && source .env && set +a]
-    LoadEnv --> ApiDev[API サーバー起動<br/>pnpm run dev]
-    BuildShared --> WebDev[Web 開発サーバー起動<br/>pnpm run dev]
-    ApiDev --> Seed[マイグレーション適用 &<br/>Seed データ投入]
+    Start([開始]) --> Setup[開発者: 環境構築<br>pnpm install / pnpm run setup]
+    Setup --> BuildShared[@ticket-flow/shared をビルド<br>pnpm run build:shared]
+    BuildShared --> LoadEnv[.env を読み込む<br>cd apps/api && set -a && source .env && set +a]
+    LoadEnv --> ApiDev[API サーバー起動<br>pnpm run dev]
+    BuildShared --> WebDev[Web 開発サーバー起動<br>pnpm run dev]
+    ApiDev --> Seed[マイグレーション適用 &<br>Seed データ投入]
     WebDev --> User[ユーザーがブラウザでアクセス]
     Seed --> User
     User --> Signup[/サインアップ/]
@@ -47,22 +47,22 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Web["Frontend: apps/web"]
-        WUI[React 19 + TanStack Router<br/>shadcn/ui + Tailwind CSS]
+        WUI[React 19 + TanStack Router<br>shadcn/ui + Tailwind CSS]
         WForm[TanStack React Form]
         WClient[ky API Client]
         WState[token-storage.ts]
     end
 
     subgraph API["Backend: apps/api"]
-        RT[Routes<br/>Hono Router]
-        CT[Controllers<br/>入力検証 / 認証]
-        SV[Services<br/>ドメインロジック]
-        DM[Domain<br/>値オブジェクト / ルール]
-        LIB[lib<br/>PrismaClient / env]
+        RT[Routes<br>Hono Router]
+        CT[Controllers<br>入力検証 / 認証]
+        SV[Services<br>ドメインロジック]
+        DM[Domain<br>値オブジェクト / ルール]
+        LIB[lib<br>PrismaClient / env]
         DB[(SQLite)]
     end
 
-    Shared[("packages/shared<br/>共通型 / Zod スキーマ")]
+    Shared[("packages/shared<br>共通型 / Zod スキーマ")]
 
     WUI --> WForm
     WForm --> Shared
