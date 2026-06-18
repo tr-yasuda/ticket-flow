@@ -51,15 +51,22 @@ model Organization {
   @@map("organizations")
 }
 
+enum OrganizationMemberRole {
+  owner
+  admin
+  member
+  viewer
+}
+
 model OrganizationMember {
-  id             String       @id @default(uuid()) @map("id")
-  organizationId String       @map("organization_id")
-  userId         String       @map("user_id")
-  role           String       @map("role")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String                   @id @default(uuid()) @map("id")
+  organizationId String                   @map("organization_id")
+  userId         String                   @map("user_id")
+  role           OrganizationMemberRole   @map("role")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@map("organization_members")
