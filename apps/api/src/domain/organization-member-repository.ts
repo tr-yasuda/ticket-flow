@@ -5,13 +5,11 @@ import type {
 } from "./organization-member.js";
 import type { Repository } from "./repository.js";
 
-export type OrganizationMemberWithOrganization = Readonly<{
-  membershipId: string;
+export type OrganizationMembership = Readonly<{
   organizationId: string;
-  userId: string;
-  role: OrganizationMemberRole;
   organizationName: string;
   organizationSlug: string;
+  role: OrganizationMemberRole;
 }>;
 
 export type OrganizationMemberRepository = Repository<
@@ -23,8 +21,6 @@ export type OrganizationMemberRepository = Repository<
       organizationId: string,
       userId: string,
     ): Promise<OrganizationMember | null>;
-    findByUserId(
-      userId: string,
-    ): Promise<readonly OrganizationMemberWithOrganization[]>;
+    findByUserId(userId: string): Promise<readonly OrganizationMembership[]>;
     withTransaction(tx: unknown): OrganizationMemberRepository;
   }>;

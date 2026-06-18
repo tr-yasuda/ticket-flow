@@ -7,6 +7,7 @@ import type { OrganizationRepository } from "../domain/organization-repository.j
 import type { RefreshTokenRepository } from "../domain/refresh-token-repository.js";
 import type { UserRepository } from "../domain/user-repository.js";
 import { createCreateOrganizationHandler } from "./handlers/create-organization-handler.js";
+import { createListOrganizationsHandler } from "./handlers/list-organizations-handler.js";
 import { createLoginHandler } from "./handlers/login-handler.js";
 import { createLogoutHandler } from "./handlers/logout-handler.js";
 import { createMeHandler } from "./handlers/me-handler.js";
@@ -52,6 +53,11 @@ export function createApp(deps: AppDependencies): Hono {
     "/api/organizations",
     authMiddleware,
     createCreateOrganizationHandler(deps),
+  );
+  app.get(
+    "/api/organizations",
+    authMiddleware,
+    createListOrganizationsHandler(deps),
   );
 
   return app;

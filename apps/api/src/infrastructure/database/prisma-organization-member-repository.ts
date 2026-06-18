@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 import type {
   OrganizationMemberRepository,
-  OrganizationMemberWithOrganization,
+  OrganizationMembership,
 } from "../../domain/organization-member-repository.js";
 import {
   organizationMemberRoles,
@@ -40,44 +40,27 @@ export class PrismaOrganizationMemberRepository implements OrganizationMemberRep
     return record ? this.toOrganizationMember(record) : null;
   }
 
+  async findByUserId(
+    userId: string,
+  ): Promise<readonly OrganizationMembership[]> {
+    const records = await this.prisma.organizationMember.findMany({
+      where: { userId },
+      include: { organization: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return records.map((record) => ({
+      organizationId: record.organizationId,
+      organizationName: record.organization.name,
+      organizationSlug: record.organization.slug,
+      role: toOrganizationMemberRole(record.role),
+    }));
+  }
+
   async findAll(): Promise<readonly OrganizationMember[]> {
     const records = await this.prisma.organizationMember.findMany({
       orderBy: { createdAt: "asc" },
     });
     return records.map((record) => this.toOrganizationMember(record));
-  }
-
-  async findByUserId(
-    userId: string,
-  ): Promise<readonly OrganizationMemberWithOrganization[]> {
-    const records = await this.prisma.organizationMember.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        organizationId: true,
-        userId: true,
-        role: true,
-        organization: {
-          select: {
-            name: true,
-            slug: true,
-          },
-        },
-      },
-      orderBy: {
-        organization: {
-          name: "asc",
-        },
-      },
-    });
-    return records.map((record) => ({
-      membershipId: record.id,
-      organizationId: record.organizationId,
-      userId: record.userId,
-      role: toOrganizationMemberRole(record.role),
-      organizationName: record.organization.name,
-      organizationSlug: record.organization.slug,
-    }));
   }
 
   async save(entity: OrganizationMember): Promise<void> {
