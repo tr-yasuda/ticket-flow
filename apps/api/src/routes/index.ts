@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { authMiddleware } from "../controllers/auth-middleware.js";
-import { createAuthRoutes } from "./auth.js";
-import { createMeRoutes } from "./me.js";
-import { createOrganizationRoutes } from "./organizations.js";
+import { configureAuthRoutes } from "./auth.js";
+import { configureMeRoutes } from "./me.js";
+import { configureOrganizationRoutes } from "./organizations.js";
 
 export function createApp(): Hono {
   const app = new Hono();
@@ -17,11 +17,19 @@ export function createApp(): Hono {
     return c.json({ error: "Internal Server Error" }, 500);
   });
 
-  app.route("/api/auth", createAuthRoutes());
+  const authRoutes = new Hono();
+  configureAuthRoutes(authRoutes);
+  app.route("/api/auth", authRoutes);
+
   app.use("/api/me/*", authMiddleware);
-  app.route("/api/me", createMeRoutes());
+  const meRoutes = new Hono();
+  configureMeRoutes(meRoutes);
+  app.route("/api/me", meRoutes);
+
   app.use("/api/organizations/*", authMiddleware);
-  app.route("/api/organizations", createOrganizationRoutes());
+  const organizationRoutes = new Hono();
+  configureOrganizationRoutes(organizationRoutes);
+  app.route("/api/organizations", organizationRoutes);
 
   return app;
 }

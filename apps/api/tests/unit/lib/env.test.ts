@@ -15,4 +15,10 @@ describe("env", () => {
     expect(env.JWT_ACCESS_EXPIRES_IN).toBeTruthy();
     expect(env.JWT_REFRESH_EXPIRES_IN).toBeTruthy();
   });
+
+  it("PORT が有効なポート番号である", () => {
+    expect(env.PORT).toBeGreaterThanOrEqual(0);
+    expect(env.PORT).toBeLessThanOrEqual(65535);
+    expect(Number.isInteger(env.PORT)).toBe(true);
+  });
 });

@@ -1,11 +1,10 @@
 import { serve } from "@hono/node-server";
 
-import { parsePort } from "./infrastructure/server/port.js";
 import { env } from "./lib/env.js";
 import { prisma } from "./lib/prisma.js";
 import { createApp } from "./routes/index.js";
 
-const port = parsePort(env.PORT);
+const port = env.PORT;
 
 const app = createApp();
 

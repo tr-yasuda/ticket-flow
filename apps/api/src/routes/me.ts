@@ -1,9 +1,7 @@
-import { Hono } from "hono";
+import type { Hono } from "hono";
 
 import { meController } from "../controllers/me-controller.js";
 
-export function createMeRoutes(): Hono {
-  const routes = new Hono();
+export function configureMeRoutes(routes: Hono): void {
   routes.get("/", meController);
-  return routes;
 }
