@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
@@ -6,6 +8,10 @@ import {
   createOrganization,
   getOrganizationsByUserId,
 } from "../../../src/services/organizations-service.js";
+
+function uniqueEmail(prefix: string): string {
+  return `${prefix}-${randomUUID()}@example.com`;
+}
 
 async function cleanAll(): Promise<void> {
   await prisma.organizationMember.deleteMany();
@@ -77,7 +83,7 @@ describe("organizations-service 統合テスト", () => {
   describe("getOrganizationsByUserId", () => {
     it("ユーザーが所属する組織をロール付きで取得できる", async () => {
       const userResult = await registerUser({
-        email: "member@example.com",
+        email: uniqueEmail("member"),
         password: "password123",
       });
       expect(userResult.success).toBe(true);
@@ -91,6 +97,9 @@ describe("organizations-service 統合テスト", () => {
         ownerUserId: userResult.data.user.id,
       });
       expect(organization.success).toBe(true);
+      if (!organization.success) {
+        return;
+      }
 
       const result = await getOrganizationsByUserId({
         userId: userResult.data.user.id,
@@ -99,7 +108,7 @@ describe("organizations-service 統合テスト", () => {
       expect(result.success).toBe(true);
       expect(result.data.organizations).toEqual([
         {
-          id: expect.any(String),
+          id: organization.data.id,
           name: "Acme Inc.",
           slug: "acme-inc",
           role: "owner",
@@ -109,7 +118,7 @@ describe("organizations-service 統合テスト", () => {
 
     it("所属組織がない場合は空配列を返す", async () => {
       const userResult = await registerUser({
-        email: "nomember@example.com",
+        email: uniqueEmail("nomember"),
         password: "password123",
       });
       expect(userResult.success).toBe(true);
@@ -127,11 +136,11 @@ describe("organizations-service 統合テスト", () => {
 
     it("他ユーザーの組織を返さない", async () => {
       const userAResult = await registerUser({
-        email: "user-a@example.com",
+        email: uniqueEmail("user-a"),
         password: "password123",
       });
       const userBResult = await registerUser({
-        email: "user-b@example.com",
+        email: uniqueEmail("user-b"),
         password: "password123",
       });
       expect(userAResult.success).toBe(true);
@@ -156,7 +165,7 @@ describe("organizations-service 統合テスト", () => {
 
     it("組織名の昇順で返す", async () => {
       const userResult = await registerUser({
-        email: "sorted@example.com",
+        email: uniqueEmail("sorted"),
         password: "password123",
       });
       expect(userResult.success).toBe(true);
@@ -183,6 +192,54 @@ describe("organizations-service 統合テスト", () => {
       expect(result.data.organizations.map((o) => o.name)).toEqual([
         "Alpha",
         "Zeta",
+      ]);
+    });
+
+    it("owner 以外のロールも正しく返す", async () => {
+      const ownerResult = await registerUser({
+        email: uniqueEmail("owner"),
+        password: "password123",
+      });
+      const memberUserResult = await registerUser({
+        email: uniqueEmail("member-user"),
+        password: "password123",
+      });
+      expect(ownerResult.success).toBe(true);
+      expect(memberUserResult.success).toBe(true);
+      if (!ownerResult.success || !memberUserResult.success) {
+        return;
+      }
+
+      const organization = await createOrganization({
+        name: "Acme Inc.",
+        slug: "acme-inc",
+        ownerUserId: ownerResult.data.user.id,
+      });
+      expect(organization.success).toBe(true);
+      if (!organization.success) {
+        return;
+      }
+
+      await prisma.organizationMember.create({
+        data: {
+          organizationId: organization.data.id,
+          userId: memberUserResult.data.user.id,
+          role: "member",
+        },
+      });
+
+      const result = await getOrganizationsByUserId({
+        userId: memberUserResult.data.user.id,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.organizations).toEqual([
+        {
+          id: organization.data.id,
+          name: "Acme Inc.",
+          slug: "acme-inc",
+          role: "member",
+        },
       ]);
     });
   });

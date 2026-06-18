@@ -1,7 +1,13 @@
+import { randomUUID } from "node:crypto";
+
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
 import { createApp } from "../../../src/routes/index.js";
+
+function uniqueEmail(prefix: string): string {
+  return `${prefix}-${randomUUID()}@example.com`;
+}
 
 async function cleanAll(): Promise<void> {
   await prisma.organizationMember.deleteMany();
@@ -89,18 +95,28 @@ describe("createApp", () => {
     expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
   });
 
-  it("GET /api/organizations はアクセストークン付きで 200 を返す", async () => {
+  it("GET /api/organizations は所属組織を返す", async () => {
     const app = createApp();
     const registerResponse = await app.request("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({
-        email: "member@example.com",
+        email: uniqueEmail("member"),
         password: "password123",
       }),
       headers: { "Content-Type": "application/json" },
     });
     const registerBody = await registerResponse.json();
     const accessToken = registerBody.data.accessToken;
+
+    const createResponse = await app.request("/api/organizations", {
+      method: "POST",
+      body: JSON.stringify({ name: "Acme Inc.", slug: "acme-inc" }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const createBody = await createResponse.json();
 
     const response = await app.request("/api/organizations", {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -109,7 +125,14 @@ describe("createApp", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.success).toBe(true);
-    expect(body.data.organizations).toEqual([]);
+    expect(body.data.organizations).toEqual([
+      {
+        id: createBody.data.id,
+        name: "Acme Inc.",
+        slug: "acme-inc",
+        role: "owner",
+      },
+    ]);
   });
 
   it("GET /api/me はアクセストークン付きで 200 を返す", async () => {

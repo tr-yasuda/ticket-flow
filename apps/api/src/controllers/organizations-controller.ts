@@ -53,14 +53,19 @@ export async function createOrganizationController(c: Context) {
 }
 
 export async function getOrganizationsController(c: Context) {
-  const userId = c.get("userId");
-  if (userId === undefined) {
+  // authMiddleware guarantees userId is set for /api/organizations/*
+  const userId = c.get("userId") as string;
+
+  const result = await getOrganizationsByUserId({ userId });
+  if (!result.success) {
     return c.json(
-      createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
+      createApiErrorResponse(
+        ApiErrorCode.AUTH_UNAUTHORIZED,
+        result.error.message,
+      ),
       HttpStatus.UNAUTHORIZED,
     );
   }
 
-  const result = await getOrganizationsByUserId({ userId });
   return c.json(createApiSuccessResponse(result.data), HttpStatus.OK);
 }

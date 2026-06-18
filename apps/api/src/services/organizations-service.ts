@@ -3,7 +3,6 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import {
   createOrganizationMember,
   type OrganizationMemberRole,
-  toOrganizationMemberRole,
 } from "../domain/organization-member.js";
 import { createOrganization as createOrganizationEntity } from "../domain/organization.js";
 import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
@@ -39,10 +38,12 @@ export type GetOrganizationsByUserIdSuccess = Readonly<{
   organizations: readonly OrganizationWithRole[];
 }>;
 
-export type GetOrganizationsByUserIdResult = {
-  success: true;
-  data: GetOrganizationsByUserIdSuccess;
-};
+export type GetOrganizationsByUserIdResult =
+  | { success: true; data: GetOrganizationsByUserIdSuccess }
+  | {
+      success: false;
+      error: { type: "user-not-found"; message: string };
+    };
 
 export async function createOrganization(
   input: CreateOrganizationInput,
@@ -129,11 +130,18 @@ export async function getOrganizationsByUserId(
         },
       },
     },
-    orderBy: {
-      organization: {
-        name: "asc",
+    orderBy: [
+      {
+        organization: {
+          name: "asc",
+        },
       },
-    },
+      {
+        organization: {
+          id: "asc",
+        },
+      },
+    ],
   });
 
   return {
@@ -143,7 +151,7 @@ export async function getOrganizationsByUserId(
         id: membership.organization.id,
         name: membership.organization.name,
         slug: membership.organization.slug,
-        role: toOrganizationMemberRole(membership.role),
+        role: membership.role as OrganizationMemberRole,
       })),
     },
   };

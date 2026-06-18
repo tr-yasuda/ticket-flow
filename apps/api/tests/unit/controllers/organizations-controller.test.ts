@@ -93,27 +93,39 @@ describe("organizations-controller", () => {
   });
 
   it("認証済みユーザーが所属組織一覧を取得できる", async () => {
-    vi.spyOn(
-      organizationsService,
-      "getOrganizationsByUserId",
-    ).mockResolvedValue({
-      success: true,
-      data: {
-        organizations: [
-          { id: "org-1", name: "Acme Inc.", slug: "acme-inc", role: "owner" },
-        ],
-      },
-    });
+    const getOrganizationsByUserIdSpy = vi
+      .spyOn(organizationsService, "getOrganizationsByUserId")
+      .mockResolvedValue({
+        success: true,
+        data: {
+          organizations: [
+            {
+              id: "org-1",
+              name: "Acme Inc.",
+              slug: "acme-inc",
+              role: "owner",
+            },
+          ],
+        },
+      });
     const c = createTestContext({ userId: "user-id" });
 
     await getOrganizationsController(c);
 
+    expect(getOrganizationsByUserIdSpy).toHaveBeenCalledWith({
+      userId: "user-id",
+    });
     expect(c.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
         data: {
           organizations: [
-            { id: "org-1", name: "Acme Inc.", slug: "acme-inc", role: "owner" },
+            {
+              id: "org-1",
+              name: "Acme Inc.",
+              slug: "acme-inc",
+              role: "owner",
+            },
           ],
         },
       }),
@@ -121,32 +133,20 @@ describe("organizations-controller", () => {
     );
   });
 
-  it("未認証時に 401 を返す", async () => {
-    const c = createTestContext();
-
-    await getOrganizationsController(c);
-
-    expect(c.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({ code: "AUTH_UNAUTHORIZED" }),
-      }),
-      401,
-    );
-  });
-
   it("所属組織がない場合は空配列を返す", async () => {
-    vi.spyOn(
-      organizationsService,
-      "getOrganizationsByUserId",
-    ).mockResolvedValue({
-      success: true,
-      data: { organizations: [] },
-    });
+    const getOrganizationsByUserIdSpy = vi
+      .spyOn(organizationsService, "getOrganizationsByUserId")
+      .mockResolvedValue({
+        success: true,
+        data: { organizations: [] },
+      });
     const c = createTestContext({ userId: "user-id" });
 
     await getOrganizationsController(c);
 
+    expect(getOrganizationsByUserIdSpy).toHaveBeenCalledWith({
+      userId: "user-id",
+    });
     expect(c.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
