@@ -77,4 +77,67 @@ describe("createApp", () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
   });
+
+  it("GET /api/me はアクセストークン付きで 200 を返す", async () => {
+    const app = createApp();
+    const registerResponse = await app.request("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "user@example.com",
+        password: "password123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const registerBody = await registerResponse.json();
+    const accessToken = registerBody.data.accessToken;
+
+    const response = await app.request("/api/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.user.email).toBe("user@example.com");
+  });
+
+  it("POST /api/organizations はアクセストークン付きで 201 を返す", async () => {
+    const app = createApp();
+    const registerResponse = await app.request("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "user@example.com",
+        password: "password123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const registerBody = await registerResponse.json();
+    const accessToken = registerBody.data.accessToken;
+
+    const response = await app.request("/api/organizations", {
+      method: "POST",
+      body: JSON.stringify({ name: "Acme Inc.", slug: "acme-inc" }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.slug).toBe("acme-inc");
+  });
+
+  it("POST /api/auth/register で不正な JSON ボディの場合 400 を返す", async () => {
+    const app = createApp();
+
+    const response = await app.request("/api/auth/register", {
+      method: "POST",
+      body: "not-json",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    expect(response.status).toBe(400);
+  });
 });
