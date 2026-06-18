@@ -52,7 +52,7 @@ apps/api/src/
   lib/           # PrismaClient インスタンス・環境変数検証
 ```
 
-- `createAuthMiddleware` (`apps/api/src/controllers/auth-middleware.ts`) は `createApp` 内の `/api/me` で使用
+- `authMiddleware` (`apps/api/src/controllers/auth-middleware.ts`) は `createApp` 内の `/api/me`・`/api/organizations` で使用
 
 ### フロントエンド (`apps/web`)
 
