@@ -78,6 +78,40 @@ describe("createApp", () => {
     expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
   });
 
+  it("GET /api/organizations は未認証時に 401 を返す", async () => {
+    const app = createApp();
+
+    const response = await app.request("/api/organizations");
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  it("GET /api/organizations はアクセストークン付きで 200 を返す", async () => {
+    const app = createApp();
+    const registerResponse = await app.request("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "member@example.com",
+        password: "password123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const registerBody = await registerResponse.json();
+    const accessToken = registerBody.data.accessToken;
+
+    const response = await app.request("/api/organizations", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.organizations).toEqual([]);
+  });
+
   it("GET /api/me はアクセストークン付きで 200 を返す", async () => {
     const app = createApp();
     const registerResponse = await app.request("/api/auth/register", {

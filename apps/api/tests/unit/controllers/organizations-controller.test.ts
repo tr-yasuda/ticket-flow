@@ -1,7 +1,10 @@
 import type { Context } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createOrganizationController } from "../../../src/controllers/organizations-controller.js";
+import {
+  createOrganizationController,
+  getOrganizationsController,
+} from "../../../src/controllers/organizations-controller.js";
 import * as organizationsService from "../../../src/services/organizations-service.js";
 
 function createTestContext({
@@ -86,6 +89,70 @@ describe("organizations-controller", () => {
         error: expect.objectContaining({ code: "CONFLICT" }),
       }),
       409,
+    );
+  });
+
+  it("認証済みユーザーが所属組織一覧を取得できる", async () => {
+    vi.spyOn(
+      organizationsService,
+      "getOrganizationsByUserId",
+    ).mockResolvedValue({
+      success: true,
+      data: {
+        organizations: [
+          { id: "org-1", name: "Acme Inc.", slug: "acme-inc", role: "owner" },
+        ],
+      },
+    });
+    const c = createTestContext({ userId: "user-id" });
+
+    await getOrganizationsController(c);
+
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: {
+          organizations: [
+            { id: "org-1", name: "Acme Inc.", slug: "acme-inc", role: "owner" },
+          ],
+        },
+      }),
+      200,
+    );
+  });
+
+  it("未認証時に 401 を返す", async () => {
+    const c = createTestContext();
+
+    await getOrganizationsController(c);
+
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: "AUTH_UNAUTHORIZED" }),
+      }),
+      401,
+    );
+  });
+
+  it("所属組織がない場合は空配列を返す", async () => {
+    vi.spyOn(
+      organizationsService,
+      "getOrganizationsByUserId",
+    ).mockResolvedValue({
+      success: true,
+      data: { organizations: [] },
+    });
+    const c = createTestContext({ userId: "user-id" });
+
+    await getOrganizationsController(c);
+
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { organizations: [] },
+      }),
+      200,
     );
   });
 });
