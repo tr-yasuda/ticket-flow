@@ -7,6 +7,7 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   loginUser,
@@ -15,9 +16,7 @@ import {
   registerUser,
 } from "../services/auth-service.js";
 
-export function extractBearerToken(
-  authorization: string | undefined,
-): string | null {
+export function extractBearerToken(authorization?: string): string | null {
   if (authorization === undefined) {
     return null;
   }
@@ -34,11 +33,14 @@ export async function registerController(c: Context) {
       result.error.type === "email-already-exists"
         ? ApiErrorCode.CONFLICT
         : ApiErrorCode.VALIDATION_ERROR;
-    const status = code === ApiErrorCode.CONFLICT ? 409 : 400;
+    const status =
+      code === ApiErrorCode.CONFLICT
+        ? HttpStatus.CONFLICT
+        : HttpStatus.BAD_REQUEST;
     return c.json(createApiErrorResponse(code, result.error.message), status);
   }
 
-  return c.json(createApiSuccessResponse(result.data), 201);
+  return c.json(createApiSuccessResponse(result.data), HttpStatus.CREATED);
 }
 
 export async function loginController(c: Context) {
@@ -54,11 +56,11 @@ export async function loginController(c: Context) {
           : ApiErrorCode.AUTH_UNAUTHORIZED,
         result.error.message,
       ),
-      isValidationError ? 400 : 401,
+      isValidationError ? HttpStatus.BAD_REQUEST : HttpStatus.UNAUTHORIZED,
     );
   }
 
-  return c.json(createApiSuccessResponse(result.data), 200);
+  return c.json(createApiSuccessResponse(result.data), HttpStatus.OK);
 }
 
 export async function logoutController(c: Context) {
@@ -68,19 +70,22 @@ export async function logoutController(c: Context) {
     await logoutUser({ refreshToken: token });
   }
 
-  return c.body(null, 204);
+  return c.body(null, HttpStatus.NO_CONTENT);
 }
 
 export async function refreshController(c: Context) {
   const token = extractBearerToken(c.req.header("Authorization"));
   if (token === null) {
-    return c.json({ error: "Authorization header is required" }, 401);
+    return c.json(
+      { error: "Authorization header is required" },
+      HttpStatus.UNAUTHORIZED,
+    );
   }
 
   const result = await refreshAccessToken({ refreshToken: token });
   if (!result.success) {
-    return c.json({ error: result.error.message }, 401);
+    return c.json({ error: result.error.message }, HttpStatus.UNAUTHORIZED);
   }
 
-  return c.json({ accessToken: result.data.accessToken }, 200);
+  return c.json({ accessToken: result.data.accessToken }, HttpStatus.OK);
 }
