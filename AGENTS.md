@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-`ticket-flow` は「マルチテナント SaaS 向けチケット管理システム」の基盤プロジェクトです。過度な抽象化を避け、ドメイン・ユースケース・インフラ・UI の責務を分離したレイヤードアーキテクチャを採用しています。
+`ticket-flow` は「マルチテナント SaaS 向けチケット管理システム」の基盤プロジェクトです。過度な抽象化を避け、routes / controllers / services / domain / lib の責務を分離したレイヤードアーキテクチャを採用しています。
 
 - **リポジトリ名**: `ticket-flow`
 - **バージョン**: `0.0.1`
@@ -33,7 +33,7 @@ packages/
 - **フレームワーク**: [Hono](https://hono.dev/) + `@hono/node-server`
 - **ORM / DB**: Prisma（スキーマ定義は `apps/api/prisma/schema.prisma`）
   - 現在の Prisma スキーマは `provider = "sqlite"` を使用
-  - DB 接続設定 (`apps/api/src/infrastructure/database/config.ts`) は `file:` プロトコルのみを許可
+  - DB 接続文字列は `apps/api/src/lib/env.ts` で検証し、`file:` プロトコルのみを許可
 - **認証**: JWT（`jose`）アクセストークン / リフレッシュトークン、パスワードは `bcrypt` でハッシュ化
 - **実行形式**: Node.js ESM（`"type": "module"`）
 - **主要エントリポイント**
@@ -221,11 +221,11 @@ seed は冪等に実装されており、同じデータが存在する場合は
 
 ### スキーマ配置ルール
 
-| 配置場所                             | 用途                                                                                                                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/shared/src/validation/`    | フロントエンド・バックエンド両方で使う入力スキーマ。認証、チケット作成・更新など UI と API が共有するルールを置く。                                                                           |
-| `apps/api/src/presentation/schemas/` | API 特有のスキーマ（クエリパラメータ、ヘッダー、API 専用のリクエスト形状など）。現時点では `packages/shared` のスキーマで賄うため存在しないが、API 専用の形状が発生した場合はここに作成する。 |
-| `apps/web/src/lib/schemas/`          | フロントエンド特有のフォームスキーマ（ページ固有の検証、表示用の変換など）。現時点では `packages/shared` のスキーマを優先する。                                                               |
+| 配置場所                            | 用途                                                                                                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/validation/`   | フロントエンド・バックエンド両方で使う入力スキーマ。認証、チケット作成・更新など UI と API が共有するルールを置く。                                                                           |
+| `apps/api/src/controllers/schemas/` | API 特有のスキーマ（クエリパラメータ、ヘッダー、API 専用のリクエスト形状など）。現時点では `packages/shared` のスキーマで賄うため存在しないが、API 専用の形状が発生した場合はここに作成する。 |
+| `apps/web/src/lib/schemas/`         | フロントエンド特有のフォームスキーマ（ページ固有の検証、表示用の変換など）。現時点では `packages/shared` のスキーマを優先する。                                                               |
 
 ### ドメイン検証との共存方針
 
@@ -235,8 +235,8 @@ seed は冪等に実装されており、同じデータが存在する場合は
 
 ### API 入力の検証層
 
-- **Hono handler 層で Zod 検証を行う**。`safeParse` により入力を検証し、成功時は application 層のユースケースに渡す。
-- **application 層は検証済みの DTO を受け取り、業務ロジックに専念する**。application 層で追加の検証が必要な場合は、あくまで業務ルールに基づく判定とする。
+- **controller 層で Zod 検証を行う**。`safeParse` により入力を検証し、成功時は service に渡す。
+- **service は検証済みの DTO を受け取り、業務ロジックに専念する**。service で追加の検証が必要な場合は、あくまで業務ルールに基づく判定とする。
 
 ### Zod エラーから共通エラー形式へのマッピング
 
@@ -285,17 +285,10 @@ API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, me
   - API / shared: `src/**/*.ts`
   - Web: `src/**/*.ts`、`src/**/*.tsx`
 - **テスト種別**
-  - `apps/api/tests/unit/` — ドメイン / アプリケーション / ハンドラ / インフラの単体テスト
-  - `apps/api/tests/integration/` — DB 接続・リポジトリ・マイグレーション・seed の統合テスト
+  - `apps/api/tests/unit/` — ドメイン / controller / service / lib の単体テスト
+  - `apps/api/tests/integration/` — DB 接続・service・マイグレーション・seed の統合テスト
   - `apps/web/tests/unit/` — コンポーネント / hook / lib / router の単体テスト
   - E2E テストは現状ありません
-
-### テストで使う主要な補助クラス
-
-- `InMemoryUserRepository`
-- `InMemoryRefreshTokenRepository`
-- `InMemoryTicketRepository`
-- `InMemoryRepository<TEntity, TId>`（汎用）
 
 ## 開発フローと規約
 
