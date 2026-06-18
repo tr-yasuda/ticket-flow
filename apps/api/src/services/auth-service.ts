@@ -198,16 +198,20 @@ export async function loginUser(
     };
   }
 
-  const [accessToken, refreshToken] = await Promise.all([
-    generateAccessToken({ userId: user.id }, tokenConfig),
-    generateRefreshToken({ userId: user.id }, tokenConfig),
-  ]);
+  const { accessToken, refreshToken } = await db.$transaction(async (tx) => {
+    const [accessToken, refreshToken] = await Promise.all([
+      generateAccessToken({ userId: user.id }, tokenConfig),
+      generateRefreshToken({ userId: user.id }, tokenConfig),
+    ]);
 
-  await db.refreshToken.create({
-    data: {
-      tokenHash: hashRefreshToken(refreshToken),
-      userId: user.id,
-    },
+    await tx.refreshToken.create({
+      data: {
+        tokenHash: hashRefreshToken(refreshToken),
+        userId: user.id,
+      },
+    });
+
+    return { accessToken, refreshToken };
   });
 
   return {
@@ -267,7 +271,7 @@ export type RefreshAccessTokenInput = Readonly<{
 }>;
 
 export type RefreshAccessTokenResult =
-  | { success: true; data: { accessToken: string } }
+  | { success: true; data: { accessToken: string; refreshToken: string } }
   | { success: false; error: { type: "invalid-token"; message: string } };
 
 export async function refreshAccessToken(
@@ -286,9 +290,9 @@ export async function refreshAccessToken(
     };
   }
 
-  const tokenHash = hashRefreshToken(input.refreshToken);
+  const oldTokenHash = hashRefreshToken(input.refreshToken);
   const storedToken = await db.refreshToken.findUnique({
-    where: { tokenHash },
+    where: { tokenHash: oldTokenHash },
   });
   if (storedToken === null) {
     return {
@@ -300,9 +304,49 @@ export async function refreshAccessToken(
     };
   }
 
-  const accessToken = await generateAccessToken(
-    { userId: storedToken.userId },
-    tokenConfig,
-  );
-  return { success: true, data: { accessToken } };
+  const user = await db.user.findUnique({
+    where: { id: storedToken.userId },
+  });
+  if (user === null) {
+    return {
+      success: false,
+      error: {
+        type: "invalid-token",
+        message: "Invalid refresh token",
+      },
+    };
+  }
+
+  try {
+    const { accessToken, refreshToken } = await db.$transaction(async (tx) => {
+      await tx.refreshToken.delete({ where: { tokenHash: oldTokenHash } });
+      const [accessToken, refreshToken] = await Promise.all([
+        generateAccessToken({ userId: user.id }, tokenConfig),
+        generateRefreshToken({ userId: user.id }, tokenConfig),
+      ]);
+      await tx.refreshToken.create({
+        data: {
+          tokenHash: hashRefreshToken(refreshToken),
+          userId: user.id,
+        },
+      });
+      return { accessToken, refreshToken };
+    });
+
+    return { success: true, data: { accessToken, refreshToken } };
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return {
+        success: false,
+        error: {
+          type: "invalid-token",
+          message: "Invalid refresh token",
+        },
+      };
+    }
+    throw error;
+  }
 }

@@ -51,19 +51,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function extractAccessToken(body: unknown): string | undefined {
+function extractTokens(
+  body: unknown,
+): Readonly<{ accessToken?: string; refreshToken?: string }> {
   if (!isRecord(body)) {
-    return undefined;
+    return {};
   }
   if (body.success === true && isRecord(body.data)) {
-    const token = body.data.accessToken;
-    return typeof token === "string" ? token : undefined;
+    return {
+      accessToken:
+        typeof body.data.accessToken === "string"
+          ? body.data.accessToken
+          : undefined,
+      refreshToken:
+        typeof body.data.refreshToken === "string"
+          ? body.data.refreshToken
+          : undefined,
+    };
   }
-  const token = body.accessToken;
-  return typeof token === "string" ? token : undefined;
+  return {
+    accessToken:
+      typeof body.accessToken === "string" ? body.accessToken : undefined,
+    refreshToken:
+      typeof body.refreshToken === "string" ? body.refreshToken : undefined,
+  };
 }
 
-let refreshingPromise: Promise<string> | null = null;
+let refreshingPromise: Promise<
+  Readonly<{ accessToken: string; refreshToken: string }>
+> | null = null;
 
 function isApiErrorResponseLike(body: unknown): body is ApiErrorResponse {
   if (typeof body !== "object" || body === null) {
@@ -94,7 +110,9 @@ function buildApiUrl(path: string): string {
   return `${normalizedBase}${normalizedPath}`;
 }
 
-async function performRefresh(): Promise<string> {
+async function performRefresh(): Promise<
+  Readonly<{ accessToken: string; refreshToken: string }>
+> {
   const token = getRefreshToken();
   if (token === null) {
     throw new ApiError("Refresh token is missing", 401);
@@ -122,11 +140,14 @@ async function performRefresh(): Promise<string> {
         throw new ApiError("Invalid refresh response", 500);
       }
 
-      const accessToken = extractAccessToken(body);
+      const { accessToken, refreshToken } = extractTokens(body);
       if (accessToken === undefined || accessToken === "") {
         throw new ApiError("Invalid refresh response", 500);
       }
-      return accessToken;
+      return {
+        accessToken,
+        refreshToken: refreshToken ?? token,
+      };
     } finally {
       refreshingPromise = null;
     }
@@ -153,14 +174,10 @@ const refreshAccessToken: BeforeRetryHook = async ({ request, retryCount }) => {
   }
 
   try {
-    const newAccessToken = await performRefresh();
-    const refreshToken = getRefreshToken();
-    if (refreshToken === null) {
-      throw new ApiError("Refresh token is missing", 401);
-    }
-    setTokens(newAccessToken, refreshToken);
+    const { accessToken, refreshToken } = await performRefresh();
+    setTokens(accessToken, refreshToken);
     const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${newAccessToken}`);
+    headers.set("Authorization", `Bearer ${accessToken}`);
     return new Request(request, { headers });
   } catch (error) {
     clearTokens();
