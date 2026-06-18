@@ -88,7 +88,7 @@ export async function findAuditLogsByOrganizationId(
 ): Promise<AuditLog[]> {
   const rows = await db.auditLog.findMany({
     where: { organizationId: input.organizationId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: resolveTake(input.take),
     skip: resolveSkip(input.skip),
   });
@@ -112,7 +112,7 @@ export async function findAuditLogsByEntity(
       entityType: input.entityType,
       entityId: input.entityId,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: resolveTake(input.take),
     skip: resolveSkip(input.skip),
   });

@@ -89,6 +89,6 @@ model AuditLog {
   actor          User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
-  @@index([entityType, entityId, createdAt])
+  @@index([organizationId, entityType, entityId, createdAt])
   @@map("audit_logs")
 }

@@ -25,7 +25,7 @@ type ServiceResult<T> =
   | { success: true; data: T }
   | { success: false; error: AuditLogServiceError };
 
-export type SaveAuditLogInput = {
+export type SaveAuditLogInput = Readonly<{
   organizationId: string;
   actorId?: string | null;
   entityType: string;
@@ -33,7 +33,7 @@ export type SaveAuditLogInput = {
   action: string;
   oldValues?: AuditLogValues | null;
   newValues?: AuditLogValues | null;
-};
+}>;
 
 function isPrismaClientKnownRequestError(
   error: unknown,
@@ -107,9 +107,11 @@ export async function saveAuditLog(
   }
 }
 
-export type FindAuditLogsByOrganizationIdInput = {
-  organizationId: string;
-} & Pagination;
+export type FindAuditLogsByOrganizationIdInput = Readonly<
+  {
+    organizationId: string;
+  } & Pagination
+>;
 
 export async function findAuditLogsByOrganizationId(
   input: FindAuditLogsByOrganizationIdInput,
@@ -127,11 +129,13 @@ export async function findAuditLogsByOrganizationId(
   return { success: true, data: logs };
 }
 
-export type FindAuditLogsByEntityInput = {
-  organizationId: string;
-  entityType: string;
-  entityId: string;
-} & Pagination;
+export type FindAuditLogsByEntityInput = Readonly<
+  {
+    organizationId: string;
+    entityType: string;
+    entityId: string;
+  } & Pagination
+>;
 
 export async function findAuditLogsByEntity(
   input: FindAuditLogsByEntityInput,
