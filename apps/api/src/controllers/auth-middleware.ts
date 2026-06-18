@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 
 import { verifyAccessToken } from "../domain/token.js";
 import { env } from "../lib/env.js";
+import { HttpStatus } from "../lib/http-status.js";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -21,7 +22,7 @@ export async function authMiddleware(c: Context, next: Next) {
   if (authorization === undefined) {
     return c.json(
       createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
-      401,
+      HttpStatus.UNAUTHORIZED,
     );
   }
 
@@ -30,7 +31,7 @@ export async function authMiddleware(c: Context, next: Next) {
   if (token === undefined) {
     return c.json(
       createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
-      401,
+      HttpStatus.UNAUTHORIZED,
     );
   }
 
@@ -41,7 +42,7 @@ export async function authMiddleware(c: Context, next: Next) {
   } catch {
     return c.json(
       createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
-      401,
+      HttpStatus.UNAUTHORIZED,
     );
   }
 }

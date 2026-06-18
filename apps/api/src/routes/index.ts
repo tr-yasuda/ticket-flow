@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { authMiddleware } from "../controllers/auth-middleware.js";
+import { HttpStatus } from "../lib/http-status.js";
 import { configureAuthRoutes } from "./auth.js";
 import { configureMeRoutes } from "./me.js";
 import { configureOrganizationRoutes } from "./organizations.js";
@@ -14,7 +15,10 @@ export function createApp(): Hono {
       return err.getResponse();
     }
     console.error("Unexpected error:", err);
-    return c.json({ error: "Internal Server Error" }, 500);
+    return c.json(
+      { error: "Internal Server Error" },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   });
 
   app.route("/api/auth", configureAuthRoutes());
