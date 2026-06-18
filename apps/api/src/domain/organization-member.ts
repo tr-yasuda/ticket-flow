@@ -24,8 +24,25 @@ function isNonEmptyString(value: string): boolean {
   return value.trim().length > 0;
 }
 
-function isValidRole(role: string): role is OrganizationMemberRole {
+export function isValidRole(role: string): role is OrganizationMemberRole {
   return organizationMemberRoles.some((validRole) => validRole === role);
+}
+
+export const roleHierarchy: readonly OrganizationMemberRole[] = [
+  "viewer",
+  "member",
+  "admin",
+  "owner",
+];
+
+export function getRoleLevel(role: OrganizationMemberRole): number {
+  const level = roleHierarchy.indexOf(role);
+  if (level === -1) {
+    throw new Error(
+      `role must be one of ${organizationMemberRoles.join(", ")}`,
+    );
+  }
+  return level;
 }
 
 function validateOrganizationMember(
