@@ -8,7 +8,10 @@ import type { Context } from "hono";
 
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
-import { createOrganization } from "../services/organizations-service.js";
+import {
+  createOrganization,
+  getOrganizationsByUserId,
+} from "../services/organizations-service.js";
 
 export async function createOrganizationController(c: Context) {
   const userId = c.get("userId");
@@ -47,4 +50,17 @@ export async function createOrganizationController(c: Context) {
   }
 
   return c.json(createApiSuccessResponse(result.data), HttpStatus.CREATED);
+}
+
+export async function getOrganizationsController(c: Context) {
+  const userId = c.get("userId");
+  if (userId === undefined) {
+    return c.json(
+      createApiErrorResponse(ApiErrorCode.AUTH_UNAUTHORIZED, "認証が必要です"),
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+
+  const result = await getOrganizationsByUserId({ userId });
+  return c.json(createApiSuccessResponse(result.data), HttpStatus.OK);
 }
