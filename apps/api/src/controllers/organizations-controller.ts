@@ -28,12 +28,21 @@ export async function createOrganizationController(c: Context) {
 
   if (!result.success) {
     const isSlugConflict = result.error.type === "slug-already-exists";
+    const isOwnerNotFound = result.error.type === "owner-not-found";
     return c.json(
       createApiErrorResponse(
-        isSlugConflict ? ApiErrorCode.CONFLICT : ApiErrorCode.VALIDATION_ERROR,
+        isSlugConflict
+          ? ApiErrorCode.CONFLICT
+          : isOwnerNotFound
+            ? ApiErrorCode.AUTH_UNAUTHORIZED
+            : ApiErrorCode.VALIDATION_ERROR,
         result.error.message,
       ),
-      isSlugConflict ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST,
+      isSlugConflict
+        ? HttpStatus.CONFLICT
+        : isOwnerNotFound
+          ? HttpStatus.UNAUTHORIZED
+          : HttpStatus.BAD_REQUEST,
     );
   }
 
