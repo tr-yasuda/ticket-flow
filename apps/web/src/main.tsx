@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { isMswEnabled } from "@/mocks/env.js";
 import { routeTree } from "@/routeTree.gen";
 
@@ -36,7 +37,9 @@ function renderApp(): void {
   createRoot(container).render(
     <StrictMode>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <OrganizationMembershipProvider>
+          <RouterProvider router={router} />
+        </OrganizationMembershipProvider>
       </AuthProvider>
     </StrictMode>,
   );

@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/contexts/auth-context";
+import { useOrganizationMembership } from "@/contexts/organization-membership-context";
 import { useLogout } from "@/hooks/use-logout";
 
 export const Route = createFileRoute("/app")({
@@ -12,9 +13,11 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout(): ReactElement {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { isLoading: isOrganizationsLoading, hasOrganization } =
+    useOrganizationMembership();
   const logout = useLogout();
 
-  if (isLoading) {
+  if (isLoading || isOrganizationsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingSpinner message="認証状態を確認しています" />
@@ -24,6 +27,10 @@ function AppLayout(): ReactElement {
 
   if (!isAuthenticated || user === null) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!hasOrganization) {
+    return <Navigate to="/onboarding/organization" replace />;
   }
 
   return (

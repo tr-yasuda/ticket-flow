@@ -11,7 +11,8 @@ describe("organization mock handlers", () => {
       createApiSuccessResponse({
         id: "demo-org-001",
         name: "Demo Organization",
-        ownerId: "demo-user-001",
+        slug: "demo-organization",
+        role: "owner",
       }),
     );
   });
@@ -31,7 +32,21 @@ describe("organization mock handlers", () => {
       createApiSuccessResponse({
         id: "mock-new-org-id",
         name: "New Org",
-        ownerId: "demo-user-001",
+        slug: "new-org",
+      }),
+    );
+  });
+
+  it("slug を指定して組織を作成できる", async () => {
+    const response = await apiClient
+      .post("organizations", { json: { name: "New Org", slug: "custom-slug" } })
+      .json();
+
+    expect(response).toEqual(
+      createApiSuccessResponse({
+        id: "mock-new-org-id",
+        name: "New Org",
+        slug: "custom-slug",
       }),
     );
   });

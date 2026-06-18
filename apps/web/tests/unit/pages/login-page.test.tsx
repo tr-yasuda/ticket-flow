@@ -7,6 +7,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, getAccessToken } from "@/lib/token-storage";
 import { demoUser } from "@/mocks/data/users.js";
 import { routeTree } from "@/routeTree.gen";
@@ -22,7 +23,9 @@ function renderRoute(initialRoute: string) {
 
   render(
     <AuthProvider>
-      <RouterProvider router={router} />
+      <OrganizationMembershipProvider>
+        <RouterProvider router={router} />
+      </OrganizationMembershipProvider>
     </AuthProvider>,
   );
 
