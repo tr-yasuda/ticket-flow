@@ -1,53 +1,12 @@
 import { serve } from "@hono/node-server";
 
-import { hashPassword, verifyPassword } from "./domain/password.js";
-import { hashRefreshToken } from "./domain/refresh-token.js";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken,
-} from "./domain/token.js";
-import { loadDatabaseConfig } from "./infrastructure/database/config.js";
-import { createPrismaClient } from "./infrastructure/database/prisma-client.js";
-import { PrismaOrganizationMemberRepository } from "./infrastructure/database/prisma-organization-member-repository.js";
-import { PrismaOrganizationRepository } from "./infrastructure/database/prisma-organization-repository.js";
-import { PrismaRefreshTokenRepository } from "./infrastructure/database/prisma-refresh-token-repository.js";
-import { PrismaTransactionRunner } from "./infrastructure/database/prisma-transaction-runner.js";
-import { PrismaUserRepository } from "./infrastructure/database/prisma-user-repository.js";
-import { parsePort } from "./infrastructure/server/port.js";
-import { loadTokenConfig } from "./infrastructure/token/config.js";
-import { createApp } from "./presentation/app.js";
+import { env } from "./lib/env.js";
+import { prisma } from "./lib/prisma.js";
+import { createApp } from "./routes/index.js";
 
-const port = parsePort(process.env.PORT);
+const port = env.PORT;
 
-const databaseConfig = loadDatabaseConfig(process.env);
-const prisma = createPrismaClient(databaseConfig);
-const userRepository = new PrismaUserRepository(prisma);
-const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
-const organizationRepository = new PrismaOrganizationRepository(prisma);
-const organizationMemberRepository = new PrismaOrganizationMemberRepository(
-  prisma,
-);
-const transactionRunner = new PrismaTransactionRunner(prisma);
-const tokenConfig = loadTokenConfig(process.env);
-
-const app = createApp({
-  userRepository,
-  refreshTokenRepository,
-  organizationRepository,
-  organizationMemberRepository,
-  transactionRunner,
-  hashPassword,
-  verifyPassword,
-  generateAccessToken: async (userId) =>
-    generateAccessToken({ userId }, tokenConfig),
-  generateRefreshToken: async (userId) =>
-    generateRefreshToken({ userId }, tokenConfig),
-  verifyAccessToken: async (token) => verifyAccessToken(token, tokenConfig),
-  verifyRefreshToken: async (token) => verifyRefreshToken(token, tokenConfig),
-  hashRefreshToken,
-});
+const app = createApp();
 
 const server = serve({
   fetch: app.fetch,

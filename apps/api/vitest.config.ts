@@ -5,7 +5,6 @@ export default defineConfig({
     globals: true,
     environment: "node",
     globalSetup: ["./tests/globalSetup.ts"],
-    setupFiles: ["./tests/setup.ts"],
     server: {
       deps: {
         external: [/^@prisma\//],
