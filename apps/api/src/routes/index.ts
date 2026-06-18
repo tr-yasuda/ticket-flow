@@ -17,19 +17,13 @@ export function createApp(): Hono {
     return c.json({ error: "Internal Server Error" }, 500);
   });
 
-  const authRoutes = new Hono();
-  configureAuthRoutes(authRoutes);
-  app.route("/api/auth", authRoutes);
+  app.route("/api/auth", configureAuthRoutes());
 
   app.use("/api/me/*", authMiddleware);
-  const meRoutes = new Hono();
-  configureMeRoutes(meRoutes);
-  app.route("/api/me", meRoutes);
+  app.route("/api/me", configureMeRoutes());
 
   app.use("/api/organizations/*", authMiddleware);
-  const organizationRoutes = new Hono();
-  configureOrganizationRoutes(organizationRoutes);
-  app.route("/api/organizations", organizationRoutes);
+  app.route("/api/organizations", configureOrganizationRoutes());
 
   return app;
 }

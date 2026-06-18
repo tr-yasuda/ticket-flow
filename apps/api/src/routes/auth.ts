@@ -1,4 +1,4 @@
-import type { Hono } from "hono";
+import { Hono } from "hono";
 
 import {
   loginController,
@@ -7,9 +7,10 @@ import {
   registerController,
 } from "../controllers/auth-controller.js";
 
-export function configureAuthRoutes(routes: Hono): void {
-  routes.post("/register", registerController);
-  routes.post("/login", loginController);
-  routes.post("/logout", logoutController);
-  routes.post("/refresh", refreshController);
+export function configureAuthRoutes(routes: Hono = new Hono()): Hono {
+  return routes
+    .post("/register", registerController)
+    .post("/login", loginController)
+    .post("/logout", logoutController)
+    .post("/refresh", refreshController);
 }

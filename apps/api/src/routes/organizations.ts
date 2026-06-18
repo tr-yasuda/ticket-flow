@@ -1,7 +1,7 @@
-import type { Hono } from "hono";
+import { Hono } from "hono";
 
 import { createOrganizationController } from "../controllers/organizations-controller.js";
 
-export function configureOrganizationRoutes(routes: Hono): void {
-  routes.post("/", createOrganizationController);
+export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
+  return routes.post("/", createOrganizationController);
 }
