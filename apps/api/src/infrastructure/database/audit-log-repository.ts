@@ -15,13 +15,23 @@ export type Pagination = {
 const DEFAULT_TAKE = 100;
 const MAX_TAKE = 1000;
 
+function normalizeInteger(
+  value: number | undefined,
+  defaultValue: number,
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return defaultValue;
+  }
+  return Math.trunc(value);
+}
+
 function resolveTake(inputTake: number | undefined): number {
-  const requested = inputTake ?? DEFAULT_TAKE;
+  const requested = normalizeInteger(inputTake, DEFAULT_TAKE);
   return Math.min(Math.max(requested, 1), MAX_TAKE);
 }
 
 function resolveSkip(inputSkip: number | undefined): number {
-  const requested = inputSkip ?? 0;
+  const requested = normalizeInteger(inputSkip, 0);
   return Math.max(requested, 0);
 }
 
@@ -53,8 +63,14 @@ export async function saveAuditLog(
       entityType: auditLog.entityType,
       entityId: auditLog.entityId,
       action: auditLog.action,
-      oldValues: auditLog.oldValues as Prisma.InputJsonValue,
-      newValues: auditLog.newValues as Prisma.InputJsonValue,
+      oldValues:
+        auditLog.oldValues === null
+          ? Prisma.DbNull
+          : (auditLog.oldValues as Prisma.InputJsonValue),
+      newValues:
+        auditLog.newValues === null
+          ? Prisma.DbNull
+          : (auditLog.newValues as Prisma.InputJsonValue),
       createdAt: auditLog.createdAt,
     },
   });

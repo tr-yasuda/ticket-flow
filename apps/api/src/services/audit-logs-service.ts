@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 import {
   AuditLog,
+  AuditLogValidationError,
   AuditLogValues,
   createAuditLog,
 } from "../domain/audit-log.js";
@@ -93,14 +94,14 @@ export async function saveAuditLog(
     const saved = await saveAuditLogInRepository(auditLog, db);
     return { success: true, data: saved };
   } catch (error) {
-    if (isPrismaClientKnownRequestError(error)) {
-      return { success: false, error: mapPrismaError(error) };
-    }
-    if (error instanceof Error) {
+    if (error instanceof AuditLogValidationError) {
       return {
         success: false,
         error: { type: "invalid-payload", message: error.message },
       };
+    }
+    if (isPrismaClientKnownRequestError(error)) {
+      return { success: false, error: mapPrismaError(error) };
     }
     throw error;
   }

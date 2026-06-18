@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { z } from "zod";
+
 export type AuditLog = Readonly<{
   id: string;
   organizationId: string;
@@ -14,22 +16,26 @@ export type AuditLog = Readonly<{
 
 export type AuditLogValues = Record<string, unknown>;
 
+export class AuditLogValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuditLogValidationError";
+  }
+}
+
 const MAX_ID_LENGTH = 200;
 const MAX_ENTITY_TYPE_LENGTH = 100;
 const MAX_ACTION_LENGTH = 100;
 const MAX_JSON_BYTES = 65536;
 const MAX_JSON_DEPTH = 10;
 
-function isNonEmptyString(value: string): boolean {
-  return value.trim().length > 0;
-}
-
-function isValidStringLength(value: string, maxLength: number): boolean {
-  return value.length <= maxLength;
-}
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function getJsonByteSize(value: unknown): number {
@@ -96,35 +102,88 @@ function hasCircularReference(value: unknown, stack: unknown[] = []): boolean {
   return false;
 }
 
-function assertAuditLogValues(
-  name: string,
-  value: unknown,
-): Record<string, unknown> | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
+function createAuditLogValuesSchema(fieldName: string) {
+  return z
+    .custom<Record<string, unknown> | null>(
+      (value) => value === null || isPlainObject(value),
+      { message: `${fieldName} must be a plain object or null` },
+    )
+    .superRefine((value, ctx) => {
+      if (value === null) {
+        return;
+      }
 
-  if (!isPlainObject(value)) {
-    throw new Error(`${name} must be a plain object or null`);
-  }
+      if (hasCircularReference(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} must not contain circular references`,
+        });
+        return;
+      }
 
-  if (hasCircularReference(value)) {
-    throw new Error(`${name} must not contain circular references`);
-  }
+      if (getMaxDepth(value) > MAX_JSON_DEPTH) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} must not exceed ${MAX_JSON_DEPTH} levels deep`,
+        });
+      }
 
-  if (getMaxDepth(value) > MAX_JSON_DEPTH) {
-    throw new Error(`${name} must not exceed ${MAX_JSON_DEPTH} levels deep`);
-  }
-
-  const byteSize = getJsonByteSize(value);
-  if (byteSize > MAX_JSON_BYTES) {
-    throw new Error(
-      `${name} must not exceed ${MAX_JSON_BYTES} bytes when serialized`,
-    );
-  }
-
-  return value;
+      const byteSize = getJsonByteSize(value);
+      if (byteSize > MAX_JSON_BYTES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} must not exceed ${MAX_JSON_BYTES} bytes when serialized`,
+        });
+      }
+    });
 }
+
+function createIdSchema(fieldName: string) {
+  return z
+    .string({ message: `${fieldName} is required` })
+    .min(1, { message: `${fieldName} is required` })
+    .max(MAX_ID_LENGTH, {
+      message: `${fieldName} must be ${MAX_ID_LENGTH} characters or fewer`,
+    });
+}
+
+const actorIdSchema = z
+  .string({
+    message: `actorId must be a non-empty string of ${MAX_ID_LENGTH} characters or fewer`,
+  })
+  .min(1, {
+    message: `actorId must be a non-empty string of ${MAX_ID_LENGTH} characters or fewer`,
+  })
+  .max(MAX_ID_LENGTH, {
+    message: `actorId must be a non-empty string of ${MAX_ID_LENGTH} characters or fewer`,
+  })
+  .nullable();
+
+const entityTypeSchema = z
+  .string({ message: "entityType is required" })
+  .min(1, { message: "entityType is required" })
+  .max(MAX_ENTITY_TYPE_LENGTH, {
+    message: `entityType must be ${MAX_ENTITY_TYPE_LENGTH} characters or fewer`,
+  });
+
+const actionSchema = z
+  .string({ message: "action is required" })
+  .min(1, { message: "action is required" })
+  .max(MAX_ACTION_LENGTH, {
+    message: `action must be ${MAX_ACTION_LENGTH} characters or fewer`,
+  });
+
+const auditLogSchema = z.object({
+  id: createIdSchema("id"),
+  organizationId: createIdSchema("organizationId"),
+  actorId: actorIdSchema,
+  entityType: entityTypeSchema,
+  entityId: createIdSchema("entityId"),
+  action: actionSchema,
+  oldValues: createAuditLogValuesSchema("oldValues"),
+  newValues: createAuditLogValuesSchema("newValues"),
+  createdAt: z.date(),
+});
 
 export type CreateAuditLogInput = {
   organizationId: string;
@@ -136,94 +195,46 @@ export type CreateAuditLogInput = {
   newValues?: AuditLogValues | null;
 };
 
-type AuditLogFields = Omit<AuditLog, "id" | "createdAt"> & {
-  id: string;
-  createdAt: Date;
-};
+const createAuditLogInputSchema = z.object({
+  organizationId: createIdSchema("organizationId"),
+  actorId: actorIdSchema.optional(),
+  entityType: entityTypeSchema,
+  entityId: createIdSchema("entityId"),
+  action: actionSchema,
+  oldValues: createAuditLogValuesSchema("oldValues").optional(),
+  newValues: createAuditLogValuesSchema("newValues").optional(),
+});
 
-function validateAuditLog(fields: AuditLogFields): AuditLog {
-  if (!isNonEmptyString(fields.id)) {
-    throw new Error("id is required");
+function mapZodError(error: z.ZodError): AuditLogValidationError {
+  const issue = error.issues[0];
+  if (issue === undefined) {
+    return new AuditLogValidationError("Invalid input");
   }
-
-  if (!isValidStringLength(fields.id, MAX_ID_LENGTH)) {
-    throw new Error(`id must be ${MAX_ID_LENGTH} characters or fewer`);
-  }
-
-  if (!isNonEmptyString(fields.organizationId)) {
-    throw new Error("organizationId is required");
-  }
-
-  if (!isValidStringLength(fields.organizationId, MAX_ID_LENGTH)) {
-    throw new Error(
-      `organizationId must be ${MAX_ID_LENGTH} characters or fewer`,
-    );
-  }
-
-  if (
-    fields.actorId !== null &&
-    (!isNonEmptyString(fields.actorId) ||
-      !isValidStringLength(fields.actorId, MAX_ID_LENGTH))
-  ) {
-    throw new Error(
-      `actorId must be a non-empty string of ${MAX_ID_LENGTH} characters or fewer`,
-    );
-  }
-
-  if (!isNonEmptyString(fields.entityType)) {
-    throw new Error("entityType is required");
-  }
-
-  if (!isValidStringLength(fields.entityType, MAX_ENTITY_TYPE_LENGTH)) {
-    throw new Error(
-      `entityType must be ${MAX_ENTITY_TYPE_LENGTH} characters or fewer`,
-    );
-  }
-
-  if (!isNonEmptyString(fields.entityId)) {
-    throw new Error("entityId is required");
-  }
-
-  if (!isValidStringLength(fields.entityId, MAX_ID_LENGTH)) {
-    throw new Error(`entityId must be ${MAX_ID_LENGTH} characters or fewer`);
-  }
-
-  if (!isNonEmptyString(fields.action)) {
-    throw new Error("action is required");
-  }
-
-  if (!isValidStringLength(fields.action, MAX_ACTION_LENGTH)) {
-    throw new Error(`action must be ${MAX_ACTION_LENGTH} characters or fewer`);
-  }
-
-  const oldValues = assertAuditLogValues("oldValues", fields.oldValues);
-  const newValues = assertAuditLogValues("newValues", fields.newValues);
-
-  return {
-    id: fields.id,
-    organizationId: fields.organizationId,
-    actorId: fields.actorId ?? null,
-    entityType: fields.entityType,
-    entityId: fields.entityId,
-    action: fields.action,
-    oldValues,
-    newValues,
-    createdAt: fields.createdAt,
-  };
+  return new AuditLogValidationError(issue.message);
 }
 
 export function createAuditLog(input: CreateAuditLogInput): AuditLog {
-  return validateAuditLog({
-    id: randomUUID(),
-    organizationId: input.organizationId,
-    actorId: input.actorId ?? null,
-    entityType: input.entityType,
-    entityId: input.entityId,
-    action: input.action,
-    oldValues: input.oldValues ?? null,
-    newValues: input.newValues ?? null,
-    createdAt: new Date(),
-  });
+  try {
+    const parsed = createAuditLogInputSchema.parse({
+      ...input,
+      oldValues: input.oldValues ?? null,
+      newValues: input.newValues ?? null,
+    });
+
+    return {
+      ...parsed,
+      id: randomUUID(),
+      actorId: parsed.actorId ?? null,
+      oldValues: parsed.oldValues ?? null,
+      newValues: parsed.newValues ?? null,
+      createdAt: new Date(),
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw mapZodError(error);
+    }
+    throw error;
+  }
 }
 
 export type RehydrateAuditLogInput = {
@@ -239,5 +250,12 @@ export type RehydrateAuditLogInput = {
 };
 
 export function rehydrateAuditLog(input: RehydrateAuditLogInput): AuditLog {
-  return validateAuditLog(input);
+  try {
+    return auditLogSchema.parse(input);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw mapZodError(error);
+    }
+    throw error;
+  }
 }

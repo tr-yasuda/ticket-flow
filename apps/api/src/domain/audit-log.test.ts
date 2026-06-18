@@ -198,6 +198,25 @@ describe("createAuditLog", () => {
     ).toThrow("newValues must be a plain object or null");
   });
 
+  it("Date や Map、クラスインスタンスは plain object として扱わない", () => {
+    class CustomClass {
+      value = 1;
+    }
+
+    for (const invalidValue of [new Date(), new Map(), new CustomClass()]) {
+      expect(() =>
+        createAuditLog({
+          organizationId: "org-1",
+          actorId: "user-1",
+          entityType: "ticket",
+          entityId: "ticket-1",
+          action: "created",
+          oldValues: invalidValue as unknown as Record<string, unknown>,
+        }),
+      ).toThrow("oldValues must be a plain object or null");
+    }
+  });
+
   it("oldValues に循環参照が含まれる場合はエラー", () => {
     const values: Record<string, unknown> = { a: 1 };
     values.self = values;
