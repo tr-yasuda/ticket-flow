@@ -74,6 +74,7 @@ export async function registerUser(
 
   const existingUser = await db.user.findUnique({
     where: { email: normalizedEmail },
+    select: { id: true },
   });
   if (existingUser !== null) {
     return {
@@ -173,6 +174,7 @@ export async function loginUser(
 
   const user = await db.user.findUnique({
     where: { email: normalizedEmail },
+    select: { id: true, email: true, passwordHash: true },
   });
   if (user === null) {
     return {
