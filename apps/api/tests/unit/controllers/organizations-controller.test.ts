@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createOrganizationController,
+  getOrganizationController,
   getOrganizationsController,
 } from "../../../src/controllers/organizations-controller.js";
 import * as organizationsService from "../../../src/services/organizations-service.js";
@@ -10,9 +11,13 @@ import * as organizationsService from "../../../src/services/organizations-servi
 function createTestContext({
   body,
   userId,
+  organizationId,
+  organizationRole,
 }: {
   body?: unknown;
   userId?: string;
+  organizationId?: string;
+  organizationRole?: string;
 } = {}): Context {
   const json = vi.fn();
   const c = {
@@ -25,6 +30,12 @@ function createTestContext({
     get: vi.fn().mockImplementation((key: string) => {
       if (key === "userId") {
         return userId;
+      }
+      if (key === "organizationId") {
+        return organizationId;
+      }
+      if (key === "organizationRole") {
+        return organizationRole;
       }
       return undefined;
     }),
@@ -151,6 +162,23 @@ describe("organizations-controller", () => {
       expect.objectContaining({
         success: true,
         data: { organizations: [] },
+      }),
+      200,
+    );
+  });
+
+  it("組織スコープ情報を返す", async () => {
+    const c = createTestContext({
+      organizationId: "org-id",
+      organizationRole: "owner",
+    });
+
+    await getOrganizationController(c);
+
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: { organizationId: "org-id", organizationRole: "owner" },
       }),
       200,
     );
