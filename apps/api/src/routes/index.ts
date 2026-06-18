@@ -19,9 +19,11 @@ export function createApp(): Hono {
 
   app.route("/api/auth", configureAuthRoutes());
 
+  app.use("/api/me", authMiddleware);
   app.use("/api/me/*", authMiddleware);
   app.route("/api/me", configureMeRoutes());
 
+  app.use("/api/organizations", authMiddleware);
   app.use("/api/organizations/*", authMiddleware);
   app.route("/api/organizations", configureOrganizationRoutes());
 

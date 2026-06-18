@@ -13,6 +13,7 @@ import {
 } from "../domain/token.js";
 import { createUser, validateEmail } from "../domain/user.js";
 import { env } from "../lib/env.js";
+import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
 import { prisma } from "../lib/prisma.js";
 
 const tokenConfig = {
@@ -88,17 +89,43 @@ export async function registerUser(
   const user = createUser(normalizedEmail, passwordHash);
 
   try {
-    await db.user.create({
-      data: {
-        id: user.id,
-        email: user.email,
-        passwordHash: user.passwordHash,
-      },
+    const { accessToken, refreshToken } = await db.$transaction(async (tx) => {
+      await tx.user.create({
+        data: {
+          id: user.id,
+          email: user.email,
+          passwordHash: user.passwordHash,
+        },
+      });
+
+      const [accessToken, refreshToken] = await Promise.all([
+        generateAccessToken({ userId: user.id }, tokenConfig),
+        generateRefreshToken({ userId: user.id }, tokenConfig),
+      ]);
+
+      await tx.refreshToken.create({
+        data: {
+          tokenHash: hashRefreshToken(refreshToken),
+          userId: user.id,
+        },
+      });
+
+      return { accessToken, refreshToken };
     });
+
+    return {
+      success: true,
+      data: {
+        user: { id: user.id, email: user.email },
+        accessToken,
+        refreshToken,
+      },
+    };
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
+      error.code === "P2002" &&
+      isUniqueConstraintTarget(error, "email")
     ) {
       return {
         success: false,
@@ -110,27 +137,6 @@ export async function registerUser(
     }
     throw error;
   }
-
-  const [accessToken, refreshToken] = await Promise.all([
-    generateAccessToken({ userId: user.id }, tokenConfig),
-    generateRefreshToken({ userId: user.id }, tokenConfig),
-  ]);
-
-  await db.refreshToken.create({
-    data: {
-      tokenHash: hashRefreshToken(refreshToken),
-      userId: user.id,
-    },
-  });
-
-  return {
-    success: true,
-    data: {
-      user: { id: user.id, email: user.email },
-      accessToken,
-      refreshToken,
-    },
-  };
 }
 
 export type LoginUserInput = Readonly<{

@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { createOrganizationMember } from "../domain/organization-member.js";
 import { createOrganization as createOrganizationEntity } from "../domain/organization.js";
+import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
 import { prisma } from "../lib/prisma.js";
 
 export type CreateOrganizationInput = Readonly<{
@@ -46,7 +47,8 @@ export async function createOrganization(
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
+      error.code === "P2002" &&
+      isUniqueConstraintTarget(error, "slug")
     ) {
       return {
         success: false,

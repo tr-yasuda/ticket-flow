@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check";
-import { createPrismaClient } from "../../../../src/infrastructure/database/prisma-client";
-import { env } from "../../../../src/lib/env";
+import { checkDatabaseHealth } from "../../../../src/infrastructure/database/health-check.js";
+import { createPrismaClient } from "../../../../src/infrastructure/database/prisma-client.js";
+import { env } from "../../../../src/lib/env.js";
 
 describe("データベース接続", () => {
   it("データベースに接続できる", async () => {
