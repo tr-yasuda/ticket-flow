@@ -95,3 +95,12 @@ export function changeRole(
     role,
   );
 }
+
+export function toOrganizationMemberRole(role: string): OrganizationMemberRole {
+  if (!isValidRole(role)) {
+    throw new Error(
+      `role must be one of ${organizationMemberRoles.join(", ")}`,
+    );
+  }
+  return role;
+}
