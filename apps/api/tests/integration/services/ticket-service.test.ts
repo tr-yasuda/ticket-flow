@@ -147,7 +147,6 @@ describe("ticket-service 統合テスト", () => {
       const result = await createTicket({
         organizationId,
         title: "assigned ticket",
-        description: null,
         priority: "medium",
         assigneeId: memberId,
         createdBy: ownerId,
@@ -164,7 +163,6 @@ describe("ticket-service 統合テスト", () => {
       const result = await createTicket({
         organizationId: first.organizationId,
         title: "bad assignee",
-        description: null,
         priority: "medium",
         assigneeId: second.memberId,
         createdBy: first.ownerId,
@@ -180,7 +178,6 @@ describe("ticket-service 統合テスト", () => {
       const result = await createTicket({
         organizationId: first.organizationId,
         title: "bad creator",
-        description: null,
         priority: "medium",
         assigneeId: null,
         createdBy: second.ownerId,
@@ -195,7 +192,6 @@ describe("ticket-service 統合テスト", () => {
       const result = await createTicket({
         organizationId,
         title: "default priority",
-        description: null,
         assigneeId: null,
         createdBy: ownerId,
       });
@@ -212,7 +208,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "find me",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: ownerId,
@@ -234,7 +229,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId: first.organizationId,
           title: "secret",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: first.ownerId,
@@ -329,7 +323,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "assign me",
-          description: null,
           priority: "medium",
           assigneeId: null,
           createdBy: ownerId,
@@ -352,7 +345,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "unassign me",
-          description: null,
           priority: "medium",
           assigneeId: memberId,
           createdBy: ownerId,
@@ -376,7 +368,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId: first.organizationId,
           title: "bad assignee",
-          description: null,
           priority: "medium",
           assigneeId: null,
           createdBy: first.ownerId,
@@ -411,7 +402,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId: first.organizationId,
           title: "cross org",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: first.ownerId,
@@ -433,7 +423,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "valid",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: ownerId,
@@ -455,7 +444,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "valid",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: ownerId,
@@ -480,7 +468,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId,
           title: "status change",
-          description: null,
           priority: "medium",
           assigneeId: null,
           createdBy: ownerId,
@@ -516,7 +503,6 @@ describe("ticket-service 統合テスト", () => {
         await createTicket({
           organizationId: first.organizationId,
           title: "cross org status",
-          description: null,
           priority: "low",
           assigneeId: null,
           createdBy: first.ownerId,
@@ -541,7 +527,6 @@ describe("ticket-service 統合テスト", () => {
       await createTicket({
         organizationId: first.organizationId,
         title: "first org",
-        description: null,
         priority: "medium",
         assigneeId: null,
         createdBy: first.ownerId,
@@ -549,7 +534,6 @@ describe("ticket-service 統合テスト", () => {
       await createTicket({
         organizationId: second.organizationId,
         title: "second org",
-        description: null,
         priority: "medium",
         assigneeId: null,
         createdBy: second.ownerId,

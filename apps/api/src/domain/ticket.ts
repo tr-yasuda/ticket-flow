@@ -107,7 +107,7 @@ export function normalizeDescription(
 export type CreateTicketInput = Readonly<{
   organizationId: string;
   title: string;
-  description?: string | null;
+  description?: string;
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
@@ -150,7 +150,7 @@ export function rehydrateTicket(input: RehydrateTicketInput): Ticket {
 
 export type UpdateTicketPatch = Readonly<{
   title?: string;
-  description?: string | null;
+  description?: string;
   priority?: TicketPriority;
   assigneeId?: string | null;
 }>;

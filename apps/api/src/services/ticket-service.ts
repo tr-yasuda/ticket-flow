@@ -47,7 +47,7 @@ export type TicketServiceError = Readonly<
 export type CreateTicketServiceInput = Readonly<{
   organizationId: string;
   title: string;
-  description?: string | null;
+  description?: string;
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
@@ -153,7 +153,7 @@ export type UpdateTicketInput = Readonly<{
   organizationId: string;
   ticketId: string;
   title?: string;
-  description?: string | null;
+  description?: string;
   priority?: TicketPriority;
   assigneeId?: string | null;
 }>;
