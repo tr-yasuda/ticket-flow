@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createOrganizationController,
   getOrganizationController,
+  getOrganizationMembersController,
   getOrganizationsController,
 } from "../../../src/controllers/organizations-controller.js";
 import type { OrganizationMemberRole } from "../../../src/domain/organization-member.js";
@@ -11,11 +12,13 @@ import * as organizationsService from "../../../src/services/organizations-servi
 
 function createTestContext({
   body,
+  query,
   userId,
   organizationId,
   organizationRole,
 }: {
   body?: unknown;
+  query?: unknown;
   userId?: string;
   organizationId?: string;
   organizationRole?: OrganizationMemberRole;
@@ -23,7 +26,15 @@ function createTestContext({
   const json = vi.fn();
   const c = {
     req: {
-      valid: vi.fn().mockReturnValue(body),
+      valid: vi.fn().mockImplementation((target: string) => {
+        if (target === "json") {
+          return body;
+        }
+        if (target === "query") {
+          return query;
+        }
+        return undefined;
+      }),
       header: vi.fn().mockReturnValue(undefined),
     },
     json,
@@ -180,6 +191,63 @@ describe("organizations-controller", () => {
       expect.objectContaining({
         success: true,
         data: { organizationId: "org-id", organizationRole: "owner" },
+      }),
+      200,
+    );
+  });
+
+  it("メンバー一覧をページネーション付きで返す", async () => {
+    const getOrganizationMembersSpy = vi
+      .spyOn(organizationsService, "getOrganizationMembers")
+      .mockResolvedValue({
+        success: true,
+        data: {
+          members: [
+            {
+              id: "member-1",
+              userId: "user-1",
+              name: null,
+              email: "user1@example.com",
+              role: "owner",
+              joinedAt: "2026-06-18T00:00:00.000Z",
+            },
+          ],
+          total: 1,
+        },
+      });
+    const c = createTestContext({
+      organizationId: "org-id",
+      query: { page: 2, perPage: 10 },
+    });
+
+    await getOrganizationMembersController(c);
+
+    expect(getOrganizationMembersSpy).toHaveBeenCalledWith({
+      organizationId: "org-id",
+      page: 2,
+      perPage: 10,
+    });
+    expect(c.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: {
+          members: [
+            {
+              id: "member-1",
+              userId: "user-1",
+              name: null,
+              email: "user1@example.com",
+              role: "owner",
+              joinedAt: "2026-06-18T00:00:00.000Z",
+            },
+          ],
+        },
+        meta: {
+          page: 2,
+          perPage: 10,
+          total: 1,
+          totalPages: 1,
+        },
       }),
       200,
     );

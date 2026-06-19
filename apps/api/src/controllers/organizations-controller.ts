@@ -1,6 +1,7 @@
 import {
   ApiErrorCode,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
   type CreateOrganizationInput,
 } from "@ticket-flow/shared";
@@ -11,6 +12,7 @@ import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createOrganization,
+  getOrganizationMembers,
   getOrganizationsByUserId,
 } from "../services/organizations-service.js";
 
@@ -77,6 +79,35 @@ export async function getOrganizationController(c: Context) {
 
   return c.json(
     createApiSuccessResponse({ organizationId, organizationRole }),
+    HttpStatus.OK,
+  );
+}
+
+export async function getOrganizationMembersController(c: Context) {
+  const organizationId = c.get("organizationId") as string;
+  const { page, perPage } = c.req.valid("query" as never) as {
+    page: number;
+    perPage: number;
+  };
+
+  const result = await getOrganizationMembers({
+    organizationId,
+    page,
+    perPage,
+  });
+
+  const totalPages = Math.ceil(result.data.total / perPage);
+
+  return c.json(
+    createApiPaginatedSuccessResponse(
+      { members: result.data.members },
+      {
+        page,
+        perPage,
+        total: result.data.total,
+        totalPages,
+      },
+    ),
     HttpStatus.OK,
   );
 }
