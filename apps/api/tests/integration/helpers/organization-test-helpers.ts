@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+import { resetInvitationMailQueue } from "../../../src/lib/invitation-mail-queue.js";
 import { prisma } from "../../../src/lib/prisma.js";
+import { resetRateLimit } from "../../../src/lib/rate-limiter.js";
 import { createApp } from "../../../src/routes/index.js";
 
 export function uniqueEmail(prefix: string): string {
@@ -8,8 +10,11 @@ export function uniqueEmail(prefix: string): string {
 }
 
 export async function cleanAll(): Promise<void> {
+  resetRateLimit();
+  resetInvitationMailQueue();
   await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.refreshToken.deleteMany();

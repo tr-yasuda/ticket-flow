@@ -56,14 +56,15 @@ model Ticket {
 }
 
 model Organization {
-  id        String             @id @default(uuid()) @map("id")
-  name      String             @map("name")
-  slug      String             @unique @map("slug")
-  createdAt DateTime           @default(now()) @map("created_at")
-  updatedAt DateTime           @updatedAt @map("updated_at")
-  members   OrganizationMember[]
-  auditLogs AuditLog[]
-  tickets   Ticket[]
+  id          String                   @id @default(uuid()) @map("id")
+  name        String                   @map("name")
+  slug        String                   @unique @map("slug")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+  members     OrganizationMember[]
+  invitations OrganizationInvitation[]
+  auditLogs   AuditLog[]
+  tickets     Ticket[]
 
   @@map("organizations")
 }
@@ -88,6 +89,21 @@ model OrganizationMember {
   @@unique([organizationId, userId])
   @@index([userId])
   @@map("organization_members")
+}
+
+model OrganizationInvitation {
+  id             String                 @id @default(uuid()) @map("id")
+  organizationId String                 @map("organization_id")
+  email          String                 @map("email")
+  role           OrganizationMemberRole @map("role")
+  tokenHash      String                 @unique @map("token_hash")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  expiresAt      DateTime               @map("expires_at")
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@index([expiresAt])
+  @@map("organization_invitations")
 }
 
 model AuditLog {
