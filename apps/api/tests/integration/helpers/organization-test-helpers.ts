@@ -12,6 +12,7 @@ export function uniqueEmail(prefix: string): string {
 export async function cleanAll(): Promise<void> {
   resetRateLimit();
   resetInvitationMailQueue();
+  await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.organizationInvitation.deleteMany();
   await prisma.organizationMember.deleteMany();

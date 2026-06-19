@@ -4,7 +4,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { PrismaClient } from "@prisma/client";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createTestDatabaseUrl } from "../../../test-database-url.js";
 
@@ -27,6 +28,16 @@ async function runPrismaMigrateDeploy(): Promise<void> {
   );
 }
 
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url: migrateTestDatabaseUrl,
+      },
+    },
+  });
+}
+
 async function cleanMigrateTestDatabase(): Promise<void> {
   const sidecarSuffixes = ["", "-wal", "-shm", "-journal"];
   await Promise.all(
@@ -40,7 +51,73 @@ describe("マイグレーションコマンド", () => {
   beforeEach(cleanMigrateTestDatabase);
   afterEach(cleanMigrateTestDatabase);
 
-  it("prisma migrate deploy が成功する", async () => {
+  it("prisma migrate deploy が成功し、必要なカラムと制約が作成される", async () => {
     await runPrismaMigrateDeploy();
+
+    const prisma = createPrismaClient();
+    try {
+      const user = await prisma.user.create({
+        data: {
+          id: "migrate-test-user",
+          email: "migrate-test@example.com",
+          passwordHash: "hash",
+        },
+      });
+      const organization = await prisma.organization.create({
+        data: {
+          id: "migrate-test-organization",
+          name: "Migrate Test Org",
+          slug: "migrate-test-organization",
+        },
+      });
+      await prisma.organizationMember.create({
+        data: {
+          id: "migrate-test-member",
+          organizationId: organization.id,
+          userId: user.id,
+          role: "owner",
+        },
+      });
+
+      const ticket = await prisma.ticket.create({
+        data: {
+          id: "migrate-test-ticket",
+          organizationId: organization.id,
+          title: "マイグレーション確認用チケット",
+          description: "説明",
+          status: "in-progress",
+          priority: "high",
+          assigneeId: user.id,
+          createdBy: user.id,
+        },
+      });
+
+      expect(ticket.organizationId).toBe(organization.id);
+      expect(ticket.createdBy).toBe(user.id);
+      expect(ticket.status).toBe("in-progress");
+      expect(ticket.priority).toBe("high");
+
+      const columns = (await prisma.$queryRaw`
+        PRAGMA table_info('tickets')
+      `) as Array<{ name: string }>;
+      const columnNames = columns.map((column) => column.name);
+      expect(columnNames).toContain("organization_id");
+      expect(columnNames).toContain("description");
+      expect(columnNames).toContain("status");
+      expect(columnNames).toContain("priority");
+      expect(columnNames).toContain("assignee_id");
+      expect(columnNames).toContain("created_by");
+
+      const indexes = (await prisma.$queryRaw`
+        PRAGMA index_list('tickets')
+      `) as Array<{ name: string }>;
+      const indexNames = indexes.map((index) => index.name);
+      expect(indexNames).toContain("tickets_organization_id_status_idx");
+      expect(indexNames).toContain("tickets_organization_id_created_at_idx");
+      expect(indexNames).toContain("tickets_organization_id_assignee_id_idx");
+      expect(indexNames).toContain("tickets_organization_id_created_by_idx");
+    } finally {
+      await prisma.$disconnect();
+    }
   }, 30_000);
 });

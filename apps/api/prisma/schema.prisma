@@ -16,6 +16,8 @@ model User {
   refreshTokens       RefreshToken[]
   organizationMembers OrganizationMember[]
   auditLogs           AuditLog[]
+  assignedTickets     Ticket[]
+  createdTickets      Ticket[]           @relation("CreatedTickets")
 
   @@map("users")
 }
@@ -30,15 +32,27 @@ model RefreshToken {
 }
 
 model Ticket {
-  id        String   @id @map("id")
-  title     String   @map("title")
-  status    String   @default("open") @map("status")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String       @id @default(uuid()) @map("id")
+  organizationId String       @map("organization_id")
+  title          String       @map("title")
+  description    String?      @map("description")
+  status         String       @default("open") @map("status")
+  priority       String       @default("medium") @map("priority")
+  assigneeId     String?      @map("assignee_id")
+  createdBy      String       @map("created_by")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  // 組織削除時にチケット履歴が失われないよう、明示的な削除・アーカイブを促す
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignee       User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  // 作成者はチケット履歴の信頼性を保つため、削除できない
+  creator        User         @relation("CreatedTickets", fields: [createdBy], references: [id], onDelete: Restrict)
 
   @@map("tickets")
-  @@index([status])
-  @@index([createdAt])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, assigneeId])
+  @@index([organizationId, createdBy])
 }
 
 model Organization {
@@ -50,6 +64,7 @@ model Organization {
   members     OrganizationMember[]
   invitations OrganizationInvitation[]
   auditLogs   AuditLog[]
+  tickets     Ticket[]
 
   @@map("organizations")
 }

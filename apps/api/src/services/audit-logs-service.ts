@@ -12,8 +12,8 @@ import {
   saveAuditLog as saveAuditLogInRepository,
   type FindByEntityInput as RepositoryFindByEntityInput,
   type FindByOrganizationInput as RepositoryFindByOrganizationInput,
-  type Pagination,
 } from "../infrastructure/database/audit-log-repository.js";
+import { type Pagination } from "../infrastructure/database/pagination.js";
 import { prisma } from "../lib/prisma.js";
 
 export type AuditLogServiceError =
