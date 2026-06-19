@@ -45,6 +45,7 @@ export function OrganizationMembershipProvider({
 
   const fetchOrganizations = useCallback(async () => {
     if (!isAuthenticated) {
+      requestIdRef.current += 1;
       setState({ type: "ready", organizations: [] });
       return;
     }
