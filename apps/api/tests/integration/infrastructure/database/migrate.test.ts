@@ -97,9 +97,9 @@ describe("マイグレーションコマンド", () => {
       expect(ticket.status).toBe("in-progress");
       expect(ticket.priority).toBe("high");
 
-      const columns = (await prisma.$queryRawUnsafe(
-        `PRAGMA table_info('tickets')`,
-      )) as Array<{ name: string }>;
+      const columns = (await prisma.$queryRaw`
+        PRAGMA table_info('tickets')
+      `) as Array<{ name: string }>;
       const columnNames = columns.map((column) => column.name);
       expect(columnNames).toContain("organization_id");
       expect(columnNames).toContain("description");
@@ -108,9 +108,9 @@ describe("マイグレーションコマンド", () => {
       expect(columnNames).toContain("assignee_id");
       expect(columnNames).toContain("created_by");
 
-      const indexes = (await prisma.$queryRawUnsafe(
-        `PRAGMA index_list('tickets')`,
-      )) as Array<{ name: string }>;
+      const indexes = (await prisma.$queryRaw`
+        PRAGMA index_list('tickets')
+      `) as Array<{ name: string }>;
       const indexNames = indexes.map((index) => index.name);
       expect(indexNames).toContain("tickets_organization_id_status_idx");
       expect(indexNames).toContain("tickets_organization_id_created_at_idx");
