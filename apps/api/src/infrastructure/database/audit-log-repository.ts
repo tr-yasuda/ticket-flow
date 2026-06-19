@@ -6,34 +6,7 @@ import {
   rehydrateAuditLog,
 } from "../../domain/audit-log.js";
 import { prisma } from "../../lib/prisma.js";
-
-export type Pagination = {
-  take?: number;
-  skip?: number;
-};
-
-const DEFAULT_TAKE = 100;
-const MAX_TAKE = 1000;
-
-function normalizeInteger(
-  value: number | undefined,
-  defaultValue: number,
-): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return defaultValue;
-  }
-  return Math.trunc(value);
-}
-
-function resolveTake(inputTake: number | undefined): number {
-  const requested = normalizeInteger(inputTake, DEFAULT_TAKE);
-  return Math.min(Math.max(requested, 1), MAX_TAKE);
-}
-
-function resolveSkip(inputSkip: number | undefined): number {
-  const requested = normalizeInteger(inputSkip, 0);
-  return Math.max(requested, 0);
-}
+import { resolveSkip, resolveTake, type Pagination } from "./pagination.js";
 
 function toAuditLog(
   row: Prisma.AuditLogGetPayload<Record<string, never>>,
