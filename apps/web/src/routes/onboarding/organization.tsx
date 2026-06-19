@@ -20,16 +20,24 @@ function OrganizationOnboardingRoute(): ReactElement {
     refetch,
   } = useOrganizationMembership();
 
-  if (isAuthLoading || isOrganizationsLoading) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <LoadingSpinner message="組織情報を確認しています" />
+        <LoadingSpinner message="認証状態を確認しています" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (isOrganizationsLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner message="組織情報を確認しています" />
+      </div>
+    );
   }
 
   if (error !== null) {
