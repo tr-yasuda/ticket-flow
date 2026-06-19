@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -40,6 +41,7 @@ export function OrganizationMembershipProvider({
   const [state, setState] = useState<OrganizationMembershipState>({
     type: "loading",
   });
+  const requestIdRef = useRef(0);
 
   const fetchOrganizations = useCallback(async () => {
     if (!isAuthenticated) {
@@ -47,11 +49,18 @@ export function OrganizationMembershipProvider({
       return;
     }
 
+    const requestId = ++requestIdRef.current;
     setState({ type: "loading" });
     try {
       const data = await getOrganizations();
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setState({ type: "ready", organizations: data.organizations });
     } catch (caughtError) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setState({
         type: "error",
         error:
