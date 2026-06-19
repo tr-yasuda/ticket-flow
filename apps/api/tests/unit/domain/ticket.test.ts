@@ -6,6 +6,8 @@ import {
   TicketValidationError,
   createTicket,
   rehydrateTicket,
+  updateTicket,
+  updateTicketStatus,
 } from "../../../src/domain/ticket.js";
 
 describe("チケット作成", () => {
@@ -310,5 +312,104 @@ describe("チケット復元", () => {
         updatedAt: new Date(),
       }),
     ).toThrow(TicketValidationError);
+  });
+});
+
+describe("チケット更新", () => {
+  function baseTicket() {
+    return createTicket({
+      organizationId: "org-1",
+      title: "バグを修正する",
+      createdBy: "user-1",
+    });
+  }
+
+  it("タイトルを更新できる", () => {
+    const ticket = baseTicket();
+    const updated = updateTicket(ticket, { title: "新しいタイトル" });
+
+    expect(updated.title).toBe("新しいタイトル");
+    expect(updated.description).toBe(ticket.description);
+    expect(updated.priority).toBe(ticket.priority);
+    expect(updated.assigneeId).toBe(ticket.assigneeId);
+    expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      ticket.updatedAt.getTime(),
+    );
+  });
+
+  it("description を省略すると既存値が保持される", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグ",
+      description: "説明",
+      createdBy: "user-1",
+    });
+    const updated = updateTicket(ticket, { title: "新しいタイトル" });
+
+    expect(updated.description).toBe("説明");
+  });
+
+  it("説明を空文字にすると null になる", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグ",
+      description: "説明",
+      createdBy: "user-1",
+    });
+    const updated = updateTicket(ticket, { description: "   " });
+
+    expect(updated.description).toBeNull();
+  });
+
+  it("空タイトルは拒否される", () => {
+    const ticket = baseTicket();
+    expect(() => updateTicket(ticket, { title: "   " })).toThrow(
+      TicketValidationError,
+    );
+  });
+
+  it("201 文字以上のタイトルは拒否される", () => {
+    const ticket = baseTicket();
+    expect(() => updateTicket(ticket, { title: "a".repeat(201) })).toThrow(
+      TicketValidationError,
+    );
+  });
+
+  it("無効な priority は拒否される", () => {
+    const ticket = baseTicket();
+    expect(() =>
+      updateTicket(ticket, { priority: "invalid" as TicketPriority }),
+    ).toThrow(TicketValidationError);
+  });
+
+  it("担当者IDの前後の空白は削除される", () => {
+    const ticket = baseTicket();
+    const updated = updateTicket(ticket, { assigneeId: "  user-2  " });
+
+    expect(updated.assigneeId).toBe("user-2");
+  });
+
+  it("空文字の担当者IDは拒否される", () => {
+    const ticket = baseTicket();
+    expect(() => updateTicket(ticket, { assigneeId: "   " })).toThrow(
+      TicketValidationError,
+    );
+  });
+
+  it("ステータスを更新できる", () => {
+    const ticket = baseTicket();
+    const updated = updateTicketStatus(ticket, TicketStatus.Closed);
+
+    expect(updated.status).toBe(TicketStatus.Closed);
+    expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      ticket.updatedAt.getTime(),
+    );
+  });
+
+  it("無効なステータスは拒否される", () => {
+    const ticket = baseTicket();
+    expect(() => updateTicketStatus(ticket, "invalid" as TicketStatus)).toThrow(
+      TicketValidationError,
+    );
   });
 });

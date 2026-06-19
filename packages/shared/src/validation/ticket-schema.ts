@@ -74,7 +74,15 @@ export const updateTicketStatusInputSchema = z.object({
   status: ticketStatusSchema,
 });
 
+export const updateTicketInputSchema = z.object({
+  title: ticketTitleSchema.optional(),
+  description: ticketDescriptionSchema,
+  priority: ticketPrioritySchema.optional(),
+  assigneeId: ticketAssigneeIdSchema,
+});
+
 export type CreateTicketInput = z.infer<typeof createTicketInputSchema>;
+export type UpdateTicketInput = z.infer<typeof updateTicketInputSchema>;
 export type UpdateTicketStatusInput = z.infer<
   typeof updateTicketStatusInputSchema
 >;
