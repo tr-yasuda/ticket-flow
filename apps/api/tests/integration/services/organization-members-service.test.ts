@@ -237,11 +237,21 @@ describe("organization-members-service 統合テスト (members.list)", () => {
       return;
     }
 
+    await prisma.organizationMember.updateMany({
+      where: {
+        organizationId: organization.data.id,
+        role: "owner",
+      },
+      data: {
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    });
     await prisma.organizationMember.create({
       data: {
         organizationId: organization.data.id,
         userId: memberResult.data.user.id,
         role: "member",
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
       },
     });
 
