@@ -38,17 +38,23 @@ function renderRoute(initialRoute: string) {
         name?: unknown;
         slug?: unknown;
       };
+      if (typeof body.slug !== "string" || body.slug === "") {
+        return new HttpResponse(null, { status: 400 });
+      }
       const name = typeof body.name === "string" ? body.name : "New Org";
-      const slug = typeof body.slug === "string" ? body.slug : "new-org";
       const organization: MockOrganization = {
         id: "mock-new-org-id",
         name,
-        slug,
+        slug: body.slug,
         role: "owner",
       };
       organizations.push(organization);
       return HttpResponse.json(
-        createApiSuccessResponse({ id: organization.id, name, slug }),
+        createApiSuccessResponse({
+          id: organization.id,
+          name,
+          slug: body.slug,
+        }),
         { status: 201 },
       );
     }),

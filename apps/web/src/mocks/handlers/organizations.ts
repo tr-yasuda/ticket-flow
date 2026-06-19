@@ -6,7 +6,6 @@ import {
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
-import { generateSlug } from "../../lib/slugs.js";
 import { demoOrganization } from "../data/organizations.js";
 
 export const organizationHandlers = [
@@ -22,14 +21,21 @@ export const organizationHandlers = [
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
-        createApiErrorResponse(ApiErrorCode.NOT_FOUND, "組織が見つかりません"),
-        { status: 404 },
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_FORBIDDEN,
+          "組織へのアクセス権限がありません",
+        ),
+        { status: 403 },
       );
     }
 
-    return HttpResponse.json(createApiSuccessResponse(demoOrganization), {
-      status: 200,
-    });
+    return HttpResponse.json(
+      createApiSuccessResponse({
+        organizationId: demoOrganization.id,
+        organizationRole: demoOrganization.role,
+      }),
+      { status: 200 },
+    );
   }),
 
   http.post("/api/organizations", async ({ request }) => {
@@ -38,24 +44,19 @@ export const organizationHandlers = [
       slug?: unknown;
     };
 
-    if (typeof body.name !== "string" || body.name === "") {
+    if (typeof body.slug !== "string" || body.slug === "") {
       return HttpResponse.json(
         createApiErrorResponse(
           ApiErrorCode.VALIDATION_ERROR,
-          "組織名は必須です",
+          "slug は必須です",
         ),
         { status: 400 },
       );
     }
 
-    const slug =
-      typeof body.slug === "string" && body.slug !== ""
-        ? body.slug
-        : generateSlug(body.name);
-
     const parseResult = createOrganizationInputSchema.safeParse({
       name: body.name,
-      slug,
+      slug: body.slug,
     });
     if (!parseResult.success) {
       return HttpResponse.json(
@@ -67,7 +68,7 @@ export const organizationHandlers = [
       );
     }
 
-    if (slug === demoOrganization.slug) {
+    if (body.slug === demoOrganization.slug) {
       return HttpResponse.json(
         createApiErrorResponse(ApiErrorCode.CONFLICT, "Slug already exists"),
         { status: 409 },
@@ -78,7 +79,7 @@ export const organizationHandlers = [
       createApiSuccessResponse({
         id: "mock-new-org-id",
         name: body.name,
-        slug,
+        slug: body.slug,
       }),
       { status: 201 },
     );
