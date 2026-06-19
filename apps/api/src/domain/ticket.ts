@@ -1,5 +1,18 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  createTicketInputSchema,
+  ticketAssigneeIdSchema,
+  ticketCreatedBySchema,
+  ticketDescriptionSchema,
+  ticketOrganizationIdSchema,
+  ticketPrioritySchema,
+  ticketStatusSchema,
+  ticketTitleSchema,
+  updateTicketInputSchema,
+} from "@ticket-flow/shared";
+import { z } from "zod";
+
 export type TicketId = string;
 
 export const TicketStatus = {
@@ -38,43 +51,50 @@ export class TicketValidationError extends Error {
   }
 }
 
-const MAX_TICKET_TITLE_LENGTH = 200;
-const MAX_TICKET_DESCRIPTION_LENGTH = 10000;
-
-const ticketStatuses: readonly TicketStatus[] = [
-  TicketStatus.Open,
-  TicketStatus.InProgress,
-  TicketStatus.Closed,
-];
-
-const ticketPriorities: readonly TicketPriority[] = [
-  TicketPriority.Low,
-  TicketPriority.Medium,
-  TicketPriority.High,
-  TicketPriority.Urgent,
-];
-
-function isNonEmptyString(value: string): boolean {
-  return value.trim().length > 0;
+export class TicketNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TicketNotFoundError";
+  }
 }
 
-function isValidTitleLength(title: string): boolean {
-  return title.length <= MAX_TICKET_TITLE_LENGTH;
+export class UserNotOrganizationMemberError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserNotOrganizationMemberError";
+  }
 }
 
-function isValidStatus(status: string): status is TicketStatus {
-  return (ticketStatuses as readonly string[]).includes(status);
+const ticketSchema = z.object({
+  id: z
+    .string({ message: "チケットIDは必須です" })
+    .min(1, "チケットIDは必須です"),
+  organizationId: ticketOrganizationIdSchema,
+  title: ticketTitleSchema,
+  description: ticketDescriptionSchema.transform((value) => value ?? null),
+  status: ticketStatusSchema,
+  priority: ticketPrioritySchema,
+  assigneeId: ticketAssigneeIdSchema.transform((value) => value ?? null),
+  createdBy: ticketCreatedBySchema,
+  createdAt: z.date({ message: "作成日時は必須です" }),
+  updatedAt: z.date({ message: "更新日時は必須です" }),
+});
+
+function parseWith<T>(schema: z.ZodType<T>, input: unknown): T {
+  try {
+    return schema.parse(input);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const firstIssue = error.issues[0];
+      throw new TicketValidationError(
+        firstIssue?.message ?? "入力内容を確認してください",
+      );
+    }
+    throw error;
+  }
 }
 
-function isValidPriority(priority: string): priority is TicketPriority {
-  return (ticketPriorities as readonly string[]).includes(priority);
-}
-
-function isValidOptionalId(value: string | null): value is string | null {
-  return value === null || isNonEmptyString(value);
-}
-
-function normalizeDescription(
+export function normalizeDescription(
   description: string | null | undefined,
 ): string | null {
   if (description === undefined || description === null) {
@@ -82,83 +102,6 @@ function normalizeDescription(
   }
   const trimmed = description.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-type TicketValidationPayload = Readonly<{
-  id: TicketId;
-  organizationId: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  assigneeId: string | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-
-function validateTicket(payload: TicketValidationPayload): Ticket {
-  if (!isNonEmptyString(payload.id)) {
-    throw new TicketValidationError("チケットIDは必須です");
-  }
-
-  if (!isNonEmptyString(payload.organizationId)) {
-    throw new TicketValidationError("組織IDは必須です");
-  }
-
-  if (!isNonEmptyString(payload.title)) {
-    throw new TicketValidationError("タイトルは必須です");
-  }
-
-  if (!isValidTitleLength(payload.title)) {
-    throw new TicketValidationError(
-      `タイトルは${MAX_TICKET_TITLE_LENGTH}文字以内で入力してください`,
-    );
-  }
-
-  if (!isValidStatus(payload.status)) {
-    throw new TicketValidationError(
-      `ステータスの値が正しくありません: ${payload.status}`,
-    );
-  }
-
-  if (!isValidPriority(payload.priority)) {
-    throw new TicketValidationError(
-      `優先度の値が正しくありません: ${payload.priority}`,
-    );
-  }
-
-  if (!isValidOptionalId(payload.assigneeId)) {
-    throw new TicketValidationError(
-      "担当者IDは空文字でない文字列またはnullである必要があります",
-    );
-  }
-
-  if (
-    payload.description !== null &&
-    payload.description.length > MAX_TICKET_DESCRIPTION_LENGTH
-  ) {
-    throw new TicketValidationError(
-      `説明は${MAX_TICKET_DESCRIPTION_LENGTH}文字以内で入力してください`,
-    );
-  }
-
-  if (!isNonEmptyString(payload.createdBy)) {
-    throw new TicketValidationError("作成者IDは必須です");
-  }
-
-  return {
-    id: payload.id,
-    organizationId: payload.organizationId,
-    title: payload.title,
-    description: payload.description,
-    status: payload.status,
-    priority: payload.priority,
-    assigneeId: payload.assigneeId,
-    createdBy: payload.createdBy,
-    createdAt: payload.createdAt,
-    updatedAt: payload.updatedAt,
-  };
 }
 
 export type CreateTicketInput = Readonly<{
@@ -171,16 +114,18 @@ export type CreateTicketInput = Readonly<{
 }>;
 
 export function createTicket(input: CreateTicketInput): Ticket {
+  const parsed = parseWith(createTicketInputSchema, input);
   const now = new Date();
-  return validateTicket({
+
+  return parseWith(ticketSchema, {
     id: randomUUID(),
-    organizationId: input.organizationId.trim(),
-    title: input.title.trim(),
-    description: normalizeDescription(input.description),
+    organizationId: parsed.organizationId,
+    title: parsed.title,
+    description: parsed.description ?? null,
     status: TicketStatus.Open,
-    priority: input.priority ?? TicketPriority.Medium,
-    assigneeId: input.assigneeId?.trim() ?? null,
-    createdBy: input.createdBy.trim(),
+    priority: parsed.priority ?? TicketPriority.Medium,
+    assigneeId: parsed.assigneeId ?? null,
+    createdBy: parsed.createdBy,
     createdAt: now,
     updatedAt: now,
   });
@@ -200,16 +145,42 @@ export type RehydrateTicketInput = Readonly<{
 }>;
 
 export function rehydrateTicket(input: RehydrateTicketInput): Ticket {
-  return validateTicket({
-    id: input.id,
-    organizationId: input.organizationId.trim(),
-    title: input.title.trim(),
-    description: normalizeDescription(input.description),
-    status: input.status,
-    priority: input.priority,
-    assigneeId: input.assigneeId?.trim() ?? null,
-    createdBy: input.createdBy.trim(),
-    createdAt: input.createdAt,
-    updatedAt: input.updatedAt,
+  return parseWith(ticketSchema, input);
+}
+
+export type UpdateTicketPatch = Readonly<{
+  title?: string;
+  description?: string | null;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+}>;
+
+export function updateTicket(ticket: Ticket, patch: UpdateTicketPatch): Ticket {
+  const parsed = parseWith(updateTicketInputSchema, patch);
+
+  return parseWith(ticketSchema, {
+    ...ticket,
+    title: parsed.title ?? ticket.title,
+    description:
+      parsed.description !== undefined
+        ? parsed.description
+        : ticket.description,
+    priority: parsed.priority ?? ticket.priority,
+    assigneeId:
+      parsed.assigneeId !== undefined ? parsed.assigneeId : ticket.assigneeId,
+    updatedAt: new Date(),
+  });
+}
+
+export function updateTicketStatus(
+  ticket: Ticket,
+  status: TicketStatus,
+): Ticket {
+  const parsed = parseWith(ticketStatusSchema, status);
+
+  return parseWith(ticketSchema, {
+    ...ticket,
+    status: parsed,
+    updatedAt: new Date(),
   });
 }

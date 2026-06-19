@@ -1,6 +1,11 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 
-import { type Ticket, rehydrateTicket } from "../../domain/ticket.js";
+import {
+  type Ticket,
+  type TicketPriority,
+  type TicketStatus,
+  rehydrateTicket,
+} from "../../domain/ticket.js";
 import { prisma } from "../../lib/prisma.js";
 import { resolveSkip, resolveTake, type Pagination } from "./pagination.js";
 
@@ -58,4 +63,95 @@ export async function findTicketsByOrganizationId(
   });
 
   return rows.map(toTicket);
+}
+
+export type FindTicketByIdInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+}>;
+
+export async function findTicketById(
+  input: FindTicketByIdInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const row = await db.ticket.findUnique({
+    where: {
+      id: input.ticketId,
+      organizationId: input.organizationId,
+    },
+  });
+
+  if (row === null) {
+    return null;
+  }
+
+  return toTicket(row);
+}
+
+export type UpdateTicketRepositoryInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  title?: string;
+  description?: string | null;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+}>;
+
+export async function updateTicket(
+  input: UpdateTicketRepositoryInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const rows = await db.ticket.updateMany({
+    where: {
+      id: input.ticketId,
+      organizationId: input.organizationId,
+    },
+    data: {
+      ...(input.title !== undefined && { title: input.title }),
+      ...(input.description !== undefined && {
+        description: input.description,
+      }),
+      ...(input.priority !== undefined && { priority: input.priority }),
+      ...(input.assigneeId !== undefined && { assigneeId: input.assigneeId }),
+    },
+  });
+
+  if (rows.count === 0) {
+    return null;
+  }
+
+  const row = await db.ticket.findUnique({
+    where: { id: input.ticketId },
+  });
+
+  return row === null ? null : toTicket(row);
+}
+
+export type UpdateTicketStatusRepositoryInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  status: TicketStatus;
+}>;
+
+export async function updateTicketStatus(
+  input: UpdateTicketStatusRepositoryInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const rows = await db.ticket.updateMany({
+    where: {
+      id: input.ticketId,
+      organizationId: input.organizationId,
+    },
+    data: { status: input.status },
+  });
+
+  if (rows.count === 0) {
+    return null;
+  }
+
+  const row = await db.ticket.findUnique({
+    where: { id: input.ticketId },
+  });
+
+  return row === null ? null : toTicket(row);
 }

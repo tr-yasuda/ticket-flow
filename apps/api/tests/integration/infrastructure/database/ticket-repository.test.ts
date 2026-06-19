@@ -9,6 +9,7 @@ import {
   rehydrateTicket,
 } from "../../../../src/domain/ticket.js";
 import {
+  findTicketById,
   findTicketsByOrganizationId,
   saveTicket,
 } from "../../../../src/infrastructure/database/ticket-repository.js";
@@ -371,5 +372,58 @@ describe("ticket-repository 統合テスト", () => {
     await expect(
       prisma.user.delete({ where: { id: ownerId } }),
     ).rejects.toThrow(Prisma.PrismaClientKnownRequestError);
+  });
+
+  it("organizationId と ticketId でチケットを取得できる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    const ticket = rehydrateTicket({
+      id: "ticket-1",
+      organizationId,
+      title: "scoped ticket",
+      description: null,
+      status: TicketStatus.Open,
+      priority: TicketPriority.Medium,
+      assigneeId: null,
+      createdBy: ownerId,
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveTicket(ticket);
+
+    const found = await findTicketById({
+      organizationId,
+      ticketId: ticket.id,
+    });
+
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(ticket.id);
+    expect(found?.organizationId).toBe(organizationId);
+  });
+
+  it("他組織のチケットは organizationId + ticketId で取得できない", async () => {
+    const first = await seedOrganization();
+    const second = await seedOrganization();
+
+    const ticket = rehydrateTicket({
+      id: "ticket-first",
+      organizationId: first.organizationId,
+      title: "first org ticket",
+      description: null,
+      status: TicketStatus.Open,
+      priority: TicketPriority.Medium,
+      assigneeId: null,
+      createdBy: first.ownerId,
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveTicket(ticket);
+
+    const found = await findTicketById({
+      organizationId: second.organizationId,
+      ticketId: ticket.id,
+    });
+
+    expect(found).toBeNull();
   });
 });
