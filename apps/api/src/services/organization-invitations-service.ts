@@ -49,6 +49,17 @@ function canInviteRole(
   return true;
 }
 
+async function resolveUniqueTokenHash(): Promise<{
+  token: string;
+  tokenHash: string;
+}> {
+  const token = generateInvitationToken();
+  return {
+    token,
+    tokenHash: hashInvitationToken(token),
+  };
+}
+
 export async function createOrganizationInvitation(
   input: CreateOrganizationInvitationInput,
   db: PrismaClient = prisma,
@@ -83,7 +94,9 @@ export async function createOrganizationInvitation(
     throw error;
   }
 
-  const { invitation, token } = invitationResult;
+  const { invitation } = invitationResult;
+  let token = invitationResult.token;
+  let tokenHash = invitation.tokenHash;
 
   const transactionResult = await db.$transaction(async (tx) => {
     const existingMember = await tx.organizationMember.findFirst({
@@ -97,20 +110,22 @@ export async function createOrganizationInvitation(
       return { type: "already-member" } as const;
     }
 
-    const now = new Date();
-    const existingActiveInvitation = await tx.organizationInvitation.findFirst({
+    const existingInvitation = await tx.organizationInvitation.findUnique({
       where: {
-        organizationId: invitation.organizationId,
-        email: invitation.email,
-        expiresAt: { gt: now },
+        organizationId_email: {
+          organizationId: invitation.organizationId,
+          email: invitation.email,
+        },
       },
-      select: { id: true },
     });
-    if (existingActiveInvitation !== null) {
+
+    if (
+      existingInvitation !== null &&
+      existingInvitation.expiresAt > new Date()
+    ) {
       return { type: "already-invited" } as const;
     }
 
-    let tokenHash = invitation.tokenHash;
     for (let attempt = 1; attempt <= MAX_TOKEN_HASH_ATTEMPTS; attempt++) {
       const existingByToken = await tx.organizationInvitation.findUnique({
         where: { tokenHash },
@@ -119,11 +134,30 @@ export async function createOrganizationInvitation(
       if (existingByToken === null) {
         break;
       }
-      tokenHash = hashInvitationToken(generateInvitationToken());
+      const regenerated = await resolveUniqueTokenHash();
+      token = regenerated.token;
+      tokenHash = regenerated.tokenHash;
       if (attempt === MAX_TOKEN_HASH_ATTEMPTS) {
-        // 最後の attempt でも重複していれば、DB の unique 制約で検知させる
         break;
       }
+    }
+
+    if (existingInvitation !== null) {
+      await tx.organizationInvitation.update({
+        where: {
+          organizationId_email: {
+            organizationId: invitation.organizationId,
+            email: invitation.email,
+          },
+        },
+        data: {
+          role: invitation.role,
+          tokenHash,
+          createdAt: new Date(),
+          expiresAt: invitation.expiresAt,
+        },
+      });
+      return { type: "updated", id: existingInvitation.id } as const;
     }
 
     await tx.organizationInvitation.create({
@@ -137,7 +171,7 @@ export async function createOrganizationInvitation(
       },
     });
 
-    return { type: "created" } as const;
+    return { type: "created", id: invitation.id } as const;
   });
 
   if (transactionResult.type === "already-member") {
@@ -163,7 +197,7 @@ export async function createOrganizationInvitation(
   return {
     success: true,
     data: {
-      id: invitation.id,
+      id: transactionResult.id,
       organizationId: invitation.organizationId,
       email: invitation.email,
       role: invitation.role,

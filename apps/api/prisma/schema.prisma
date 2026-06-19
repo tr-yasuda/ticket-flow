@@ -86,7 +86,7 @@ model OrganizationInvitation {
   expiresAt      DateTime               @map("expires_at")
   organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([email])
+  @@unique([organizationId, email])
   @@index([expiresAt])
   @@map("organization_invitations")
 }

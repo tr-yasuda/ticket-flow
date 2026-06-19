@@ -69,8 +69,8 @@ describe("createOrganizationInvitationInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("前後の空白を含むメールアドレスを許可し schema 側では trim しない", () => {
-    // emailSchema は trim しないため、API 境界では入力検証後に domain 層で正規化する
+  it("前後の空白を含むメールアドレスを拒否する", () => {
+    // emailSchema は trim しないため、前後空白付きのメールアドレスは無効とみなす
     const result = createOrganizationInvitationInputSchema.safeParse({
       email: "  user@example.com  ",
       role: "member",

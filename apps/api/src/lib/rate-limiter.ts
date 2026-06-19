@@ -16,6 +16,15 @@ type RateLimitState = {
 };
 
 const store = new Map<string, RateLimitState>();
+const SWEEP_THRESHOLD = 1000;
+
+export function sweepExpiredRateLimitEntries(now = Date.now()): void {
+  for (const [key, state] of store) {
+    if (state.resetAt <= now) {
+      store.delete(key);
+    }
+  }
+}
 
 export function createRateLimitMiddleware(options: RateLimitOptions) {
   return async function rateLimitMiddleware(
@@ -24,6 +33,11 @@ export function createRateLimitMiddleware(options: RateLimitOptions) {
   ): Promise<Response | undefined> {
     const key = options.keyGenerator(c);
     const now = Date.now();
+
+    if (store.size > SWEEP_THRESHOLD) {
+      sweepExpiredRateLimitEntries(now);
+    }
+
     const state = store.get(key);
 
     if (state !== undefined && state.resetAt > now) {
