@@ -1,4 +1,4 @@
-import { type PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 import {
   createOrganizationInvitation as createOrganizationInvitationEntity,
@@ -8,6 +8,7 @@ import {
   normalizeInvitationEmail,
 } from "../domain/organization-invitation.js";
 import type { OrganizationMemberRole } from "../domain/organization-member.js";
+import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
 import { prisma } from "../lib/prisma.js";
 
 export type CreateOrganizationInvitationInput = Readonly<{
@@ -60,6 +61,15 @@ async function resolveUniqueTokenHash(): Promise<{
   };
 }
 
+function isOrganizationEmailConflict(
+  error: Prisma.PrismaClientKnownRequestError,
+): boolean {
+  return (
+    isUniqueConstraintTarget(error, "organization_id") ||
+    isUniqueConstraintTarget(error, "email")
+  );
+}
+
 export async function createOrganizationInvitation(
   input: CreateOrganizationInvitationInput,
   db: PrismaClient = prisma,
@@ -98,86 +108,105 @@ export async function createOrganizationInvitation(
   let token = invitationResult.token;
   let tokenHash = invitation.tokenHash;
 
-  const transactionResult = await db.$transaction(async (tx) => {
-    const existingMember = await tx.organizationMember.findFirst({
-      where: {
-        organizationId: invitation.organizationId,
-        user: { email: invitation.email },
-      },
-      select: { id: true },
-    });
-    if (existingMember !== null) {
-      return { type: "already-member" } as const;
-    }
-
-    const existingInvitation = await tx.organizationInvitation.findUnique({
-      where: {
-        organizationId_email: {
+  let transactionResult;
+  try {
+    transactionResult = await db.$transaction(async (tx) => {
+      const existingMember = await tx.organizationMember.findFirst({
+        where: {
           organizationId: invitation.organizationId,
-          email: invitation.email,
+          user: { email: invitation.email },
         },
-      },
-    });
-
-    if (
-      existingInvitation !== null &&
-      existingInvitation.expiresAt > new Date()
-    ) {
-      return { type: "already-invited" } as const;
-    }
-
-    for (let attempt = 1; attempt <= MAX_TOKEN_HASH_ATTEMPTS; attempt++) {
-      const existingByToken = await tx.organizationInvitation.findUnique({
-        where: { tokenHash },
         select: { id: true },
       });
-      if (existingByToken === null) {
-        break;
+      if (existingMember !== null) {
+        return { type: "already-member" } as const;
       }
-      const regenerated = await resolveUniqueTokenHash();
-      token = regenerated.token;
-      tokenHash = regenerated.tokenHash;
-    }
 
-    const finalExistingByToken = await tx.organizationInvitation.findUnique({
-      where: { tokenHash },
-      select: { id: true },
-    });
-    if (finalExistingByToken !== null) {
-      throw new Error("招待トークンの一意なハッシュを生成できませんでした");
-    }
-
-    if (existingInvitation !== null) {
-      await tx.organizationInvitation.update({
+      const existingInvitation = await tx.organizationInvitation.findUnique({
         where: {
           organizationId_email: {
             organizationId: invitation.organizationId,
             email: invitation.email,
           },
         },
+      });
+
+      if (
+        existingInvitation !== null &&
+        existingInvitation.expiresAt > new Date()
+      ) {
+        return { type: "already-invited" } as const;
+      }
+
+      for (let attempt = 1; attempt <= MAX_TOKEN_HASH_ATTEMPTS; attempt++) {
+        const existingByToken = await tx.organizationInvitation.findUnique({
+          where: { tokenHash },
+          select: { id: true },
+        });
+        if (existingByToken === null) {
+          break;
+        }
+        const regenerated = await resolveUniqueTokenHash();
+        token = regenerated.token;
+        tokenHash = regenerated.tokenHash;
+      }
+
+      const finalExistingByToken = await tx.organizationInvitation.findUnique({
+        where: { tokenHash },
+        select: { id: true },
+      });
+      if (finalExistingByToken !== null) {
+        throw new Error("招待トークンの一意なハッシュを生成できませんでした");
+      }
+
+      if (existingInvitation !== null) {
+        await tx.organizationInvitation.update({
+          where: {
+            organizationId_email: {
+              organizationId: invitation.organizationId,
+              email: invitation.email,
+            },
+          },
+          data: {
+            role: invitation.role,
+            tokenHash,
+            createdAt: new Date(),
+            expiresAt: invitation.expiresAt,
+          },
+        });
+        return { type: "updated", id: existingInvitation.id } as const;
+      }
+
+      await tx.organizationInvitation.create({
         data: {
+          id: invitation.id,
+          organizationId: invitation.organizationId,
+          email: invitation.email,
           role: invitation.role,
           tokenHash,
-          createdAt: new Date(),
           expiresAt: invitation.expiresAt,
         },
       });
-      return { type: "updated", id: existingInvitation.id } as const;
-    }
 
-    await tx.organizationInvitation.create({
-      data: {
-        id: invitation.id,
-        organizationId: invitation.organizationId,
-        email: invitation.email,
-        role: invitation.role,
-        tokenHash,
-        expiresAt: invitation.expiresAt,
-      },
+      return { type: "created", id: invitation.id } as const;
     });
-
-    return { type: "created", id: invitation.id } as const;
-  });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      isOrganizationEmailConflict(error)
+    ) {
+      return {
+        success: false,
+        error: {
+          type: "already-invited",
+          message:
+            "指定されたメールアドレスには既に有効な招待が送信されています",
+        },
+      };
+    }
+    throw error;
+  }
 
   if (transactionResult.type === "already-member") {
     return {
