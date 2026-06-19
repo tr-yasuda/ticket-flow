@@ -4,10 +4,14 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
+import { createApiSuccessResponse } from "@ticket-flow/shared";
+import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
+import { server } from "@/mocks/server.js";
 import { routeTree } from "@/routeTree.gen";
 
 function renderRoute(initialRoute: string, authenticated = false) {
@@ -25,7 +29,9 @@ function renderRoute(initialRoute: string, authenticated = false) {
 
   render(
     <AuthProvider>
-      <RouterProvider router={router} />
+      <OrganizationMembershipProvider>
+        <RouterProvider router={router} />
+      </OrganizationMembershipProvider>
     </AuthProvider>,
   );
 
@@ -93,6 +99,22 @@ describe("routing", () => {
       expect(
         screen.getByRole("heading", { name: "ログイン" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("redirects /app to /onboarding/organization when authenticated but has no organization", async () => {
+    server.use(
+      http.get("/api/organizations", () => {
+        return HttpResponse.json(
+          createApiSuccessResponse({ organizations: [] }),
+          { status: 200 },
+        );
+      }),
+    );
+    const router = renderRoute("/app", true);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/onboarding/organization");
     });
   });
 

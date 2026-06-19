@@ -1,28 +1,26 @@
-import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
-import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/contexts/auth-context";
 import { useOrganizationMembership } from "@/contexts/organization-membership-context";
-import { useLogout } from "@/hooks/use-logout";
+import { OrganizationOnboardingPage } from "@/pages/organization-onboarding-page";
 
-export const Route = createFileRoute("/app")({
-  component: AppLayout,
+export const Route = createFileRoute("/onboarding/organization")({
+  component: OrganizationOnboardingRoute,
 });
 
-function AppLayout(): ReactElement {
-  const { user, isLoading, isAuthenticated } = useAuth();
+function OrganizationOnboardingRoute(): ReactElement {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const {
     isLoading: isOrganizationsLoading,
     error,
     hasOrganization,
     refetch,
   } = useOrganizationMembership();
-  const logout = useLogout();
 
-  if (isLoading) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingSpinner message="認証状態を確認しています" />
@@ -30,7 +28,7 @@ function AppLayout(): ReactElement {
     );
   }
 
-  if (!isAuthenticated || user === null) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -54,13 +52,9 @@ function AppLayout(): ReactElement {
     );
   }
 
-  if (!hasOrganization) {
-    return <Navigate to="/onboarding/organization" replace />;
+  if (hasOrganization) {
+    return <Navigate to="/app" replace />;
   }
 
-  return (
-    <AppShell user={{ email: user.email }} onLogout={logout}>
-      <Outlet />
-    </AppShell>
-  );
+  return <OrganizationOnboardingPage />;
 }

@@ -9,36 +9,57 @@ describe("organization mock handlers", () => {
 
     expect(response).toEqual(
       createApiSuccessResponse({
-        id: "demo-org-001",
-        name: "Demo Organization",
-        ownerId: "demo-user-001",
+        organizationId: "demo-org-001",
+        organizationRole: "owner",
       }),
     );
   });
 
-  it("存在しない組織は 404", async () => {
+  it("所属していない組織は 403", async () => {
     await expect(
       apiClient.get("organizations/not-found").json(),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({ status: 403 });
   });
 
   it("組織を作成できる", async () => {
     const response = await apiClient
-      .post("organizations", { json: { name: "New Org" } })
+      .post("organizations", { json: { name: "New Org", slug: "new-org" } })
       .json();
 
     expect(response).toEqual(
       createApiSuccessResponse({
         id: "mock-new-org-id",
         name: "New Org",
-        ownerId: "demo-user-001",
+        slug: "new-org",
       }),
     );
   });
 
+  it("slug を指定して組織を作成できる", async () => {
+    const response = await apiClient
+      .post("organizations", { json: { name: "New Org", slug: "custom-slug" } })
+      .json();
+
+    expect(response).toEqual(
+      createApiSuccessResponse({
+        id: "mock-new-org-id",
+        name: "New Org",
+        slug: "custom-slug",
+      }),
+    );
+  });
+
+  it("slug が未指定では 400", async () => {
+    await expect(
+      apiClient.post("organizations", { json: { name: "New Org" } }).json(),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
   it("組織名が空では 400", async () => {
     await expect(
-      apiClient.post("organizations", { json: { name: "" } }).json(),
+      apiClient
+        .post("organizations", { json: { name: "", slug: "new-org" } })
+        .json(),
     ).rejects.toMatchObject({ status: 400 });
   });
 });

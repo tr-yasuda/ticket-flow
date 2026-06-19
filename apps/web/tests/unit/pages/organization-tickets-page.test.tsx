@@ -7,6 +7,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
 import { OrganizationTicketsPageView } from "@/pages/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
@@ -47,7 +48,9 @@ function renderRoute(initialRoute: string, authenticated = false) {
 
   render(
     <AuthProvider>
-      <RouterProvider router={router} />
+      <OrganizationMembershipProvider>
+        <RouterProvider router={router} />
+      </OrganizationMembershipProvider>
     </AuthProvider>,
   );
 
