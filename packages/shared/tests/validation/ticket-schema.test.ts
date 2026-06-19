@@ -1,5 +1,6 @@
 import {
   createTicketInputSchema,
+  ticketDescriptionSchema,
   ticketPrioritySchema,
   ticketStatusSchema,
   ticketTitleSchema,
@@ -41,6 +42,48 @@ describe("ticketTitleSchema", () => {
   it("200文字ちょうどのタイトルを受け入れる", () => {
     const result = ticketTitleSchema.safeParse("a".repeat(200));
     expect(result.success).toBe(true);
+  });
+});
+
+describe("ticketDescriptionSchema", () => {
+  it("有効な説明文を受け入れる", () => {
+    const result = ticketDescriptionSchema.safeParse("説明文");
+    expect(result.success).toBe(true);
+  });
+
+  it("空白のみの説明文を null として受け入れる", () => {
+    const result = ticketDescriptionSchema.safeParse("   ");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBeNull();
+    }
+  });
+
+  it("10000文字を超える説明文を拒否する", () => {
+    const result = ticketDescriptionSchema.safeParse("a".repeat(10001));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "説明は10000文字以内で入力してください",
+      );
+    }
+  });
+
+  it("10000文字ちょうどの説明文を受け入れる", () => {
+    const result = ticketDescriptionSchema.safeParse("a".repeat(10000));
+    expect(result.success).toBe(true);
+  });
+
+  it("trim 後の長さで上限を判定する", () => {
+    const result = ticketDescriptionSchema.safeParse(
+      " ".repeat(5000) + "a".repeat(10001) + " ".repeat(5000),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "説明は10000文字以内で入力してください",
+      );
+    }
   });
 });
 

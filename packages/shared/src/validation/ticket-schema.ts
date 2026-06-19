@@ -19,11 +19,11 @@ export const ticketTitleSchema = z
 
 export const ticketDescriptionSchema = z
   .string()
-  .max(
-    MAX_TICKET_DESCRIPTION_LENGTH,
+  .transform(trim)
+  .refine(
+    (value) => value.length <= MAX_TICKET_DESCRIPTION_LENGTH,
     `説明は${MAX_TICKET_DESCRIPTION_LENGTH}文字以内で入力してください`,
   )
-  .transform(trim)
   .transform((value) => (value.length > 0 ? value : null))
   .nullable()
   .optional();
