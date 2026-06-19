@@ -68,7 +68,9 @@ export const organizationHandlers = [
       );
     }
 
-    if (body.slug === demoOrganization.slug) {
+    const { name, slug } = parseResult.data;
+
+    if (slug === demoOrganization.slug) {
       return HttpResponse.json(
         createApiErrorResponse(ApiErrorCode.CONFLICT, "Slug already exists"),
         { status: 409 },
@@ -78,8 +80,8 @@ export const organizationHandlers = [
     return HttpResponse.json(
       createApiSuccessResponse({
         id: "mock-new-org-id",
-        name: body.name,
-        slug: body.slug,
+        name,
+        slug,
       }),
       { status: 201 },
     );

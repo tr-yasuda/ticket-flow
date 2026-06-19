@@ -3,6 +3,7 @@ export function generateSlug(name: string): string {
   const base = normalized
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 200);
+    .slice(0, 200)
+    .replace(/^-|-$/g, "");
   return base || `org-${crypto.randomUUID().split("-")[0]}`;
 }

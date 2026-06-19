@@ -38,4 +38,12 @@ describe("generateSlug", () => {
     const slug = generateSlug("");
     expect(slug.startsWith("org-")).toBe(true);
   });
+
+  it("200 文字境界で末尾のハイフンを除去する", () => {
+    const name = "a".repeat(199) + " ";
+    const slug = generateSlug(name);
+
+    expect(slug).toBe("a".repeat(199));
+    expect(slug.endsWith("-")).toBe(false);
+  });
 });
