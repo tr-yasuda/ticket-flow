@@ -20,6 +20,7 @@ export function createTicket(
   title: string,
   createdBy: string,
 ): Ticket {
+  const now = new Date();
   return {
     id,
     organizationId,
@@ -29,8 +30,8 @@ export function createTicket(
     priority: "medium",
     assigneeId: null,
     createdBy,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
   };
 }
 

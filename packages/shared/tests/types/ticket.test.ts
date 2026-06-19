@@ -19,6 +19,12 @@ describe("createTicket", () => {
       updatedAt: expect.any(Date),
     });
   });
+
+  it("createdAt と updatedAt に同一のタイムスタンプを設定する", () => {
+    const ticket = createTicket("T-002", "org-1", "初期対応", "user-1");
+
+    expect(ticket.createdAt.getTime()).toBe(ticket.updatedAt.getTime());
+  });
 });
 
 describe("formatTicket", () => {
