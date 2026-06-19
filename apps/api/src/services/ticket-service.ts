@@ -178,19 +178,6 @@ export async function updateTicket(
         );
       }
 
-      const newAssigneeId = input.assigneeId;
-      if (
-        newAssigneeId !== undefined &&
-        newAssigneeId !== null &&
-        newAssigneeId !== existing.assigneeId
-      ) {
-        await assertUserIsOrganizationMember(
-          tx,
-          input.organizationId,
-          newAssigneeId,
-        );
-      }
-
       const patch: UpdateTicketPatch = {
         title: input.title,
         description: input.description,
@@ -198,6 +185,17 @@ export async function updateTicket(
         assigneeId: input.assigneeId,
       };
       const updated = updateTicketEntity(existing, patch);
+
+      if (
+        updated.assigneeId !== null &&
+        updated.assigneeId !== existing.assigneeId
+      ) {
+        await assertUserIsOrganizationMember(
+          tx,
+          input.organizationId,
+          updated.assigneeId,
+        );
+      }
 
       const saved = await updateTicketRepository(
         {

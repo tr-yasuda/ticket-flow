@@ -94,16 +94,6 @@ function parseWith<T>(schema: z.ZodType<T>, input: unknown): T {
   }
 }
 
-export function normalizeDescription(
-  description: string | null | undefined,
-): string | null {
-  if (description === undefined || description === null) {
-    return null;
-  }
-  const trimmed = description.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 export type CreateTicketInput = Readonly<{
   organizationId: string;
   title: string;
