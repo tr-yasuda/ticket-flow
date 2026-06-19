@@ -137,9 +137,14 @@ export async function createOrganizationInvitation(
       const regenerated = await resolveUniqueTokenHash();
       token = regenerated.token;
       tokenHash = regenerated.tokenHash;
-      if (attempt === MAX_TOKEN_HASH_ATTEMPTS) {
-        break;
-      }
+    }
+
+    const finalExistingByToken = await tx.organizationInvitation.findUnique({
+      where: { tokenHash },
+      select: { id: true },
+    });
+    if (finalExistingByToken !== null) {
+      throw new Error("招待トークンの一意なハッシュを生成できませんでした");
     }
 
     if (existingInvitation !== null) {
