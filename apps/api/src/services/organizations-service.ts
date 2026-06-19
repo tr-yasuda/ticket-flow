@@ -156,3 +156,78 @@ export async function getOrganizationsByUserId(
     },
   };
 }
+
+export type OrganizationMemberListItem = Readonly<{
+  id: string;
+  userId: string;
+  name: string | null;
+  email: string;
+  role: OrganizationMemberRole;
+  joinedAt: string;
+}>;
+
+export type GetOrganizationMembersInput = Readonly<{
+  organizationId: string;
+  page: number;
+  perPage: number;
+}>;
+
+export type GetOrganizationMembersSuccess = Readonly<{
+  members: readonly OrganizationMemberListItem[];
+  total: number;
+}>;
+
+export type GetOrganizationMembersResult = Readonly<{
+  success: true;
+  data: GetOrganizationMembersSuccess;
+}>;
+
+export async function getOrganizationMembers(
+  input: GetOrganizationMembersInput,
+  db: PrismaClient = prisma,
+): Promise<GetOrganizationMembersResult> {
+  const skip = (input.page - 1) * input.perPage;
+
+  const [memberships, total] = await Promise.all([
+    db.organizationMember.findMany({
+      where: {
+        organizationId: input.organizationId,
+      },
+      select: {
+        id: true,
+        role: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      skip,
+      take: input.perPage,
+    }),
+    db.organizationMember.count({
+      where: {
+        organizationId: input.organizationId,
+      },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      members: memberships.map((membership) => ({
+        id: membership.id,
+        userId: membership.user.id,
+        // User モデルに name カラムがないため、現時点では null を返す
+        name: null,
+        email: membership.user.email,
+        role: membership.role,
+        joinedAt: membership.createdAt.toISOString(),
+      })),
+      total,
+    },
+  };
+}
