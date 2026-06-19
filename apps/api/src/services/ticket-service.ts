@@ -325,11 +325,12 @@ function mapServiceError(error: unknown): {
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    console.error("Prisma error:", error);
     return {
       success: false,
       error: {
         type: "unknown-error",
-        message: `データベースエラーが発生しました: ${error.message}`,
+        message: "データベースエラーが発生しました",
       },
     };
   }

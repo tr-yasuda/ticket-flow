@@ -121,7 +121,10 @@ export async function updateTicket(
   }
 
   const row = await db.ticket.findUnique({
-    where: { id: input.ticketId },
+    where: {
+      id: input.ticketId,
+      organizationId: input.organizationId,
+    },
   });
 
   return row === null ? null : toTicket(row);
@@ -150,7 +153,10 @@ export async function updateTicketStatus(
   }
 
   const row = await db.ticket.findUnique({
-    where: { id: input.ticketId },
+    where: {
+      id: input.ticketId,
+      organizationId: input.organizationId,
+    },
   });
 
   return row === null ? null : toTicket(row);
