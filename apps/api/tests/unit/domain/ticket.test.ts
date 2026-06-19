@@ -78,6 +78,37 @@ describe("チケット作成", () => {
     expect(ticket.description).toBeNull();
   });
 
+  it("組織IDの前後の空白は削除される", () => {
+    const ticket = createTicket({
+      organizationId: "  org-1  ",
+      title: "バグを修正する",
+      createdBy: "user-1",
+    });
+
+    expect(ticket.organizationId).toBe("org-1");
+  });
+
+  it("作成者IDの前後の空白は削除される", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグを修正する",
+      createdBy: "  user-1  ",
+    });
+
+    expect(ticket.createdBy).toBe("user-1");
+  });
+
+  it("担当者IDの前後の空白は削除される", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグを修正する",
+      assigneeId: "  user-2  ",
+      createdBy: "user-1",
+    });
+
+    expect(ticket.assigneeId).toBe("user-2");
+  });
+
   it.each([
     ["空文字", ""],
     ["空白のみ", "   "],
@@ -216,6 +247,27 @@ describe("チケット復元", () => {
     const ticket = rehydrateTicket(input);
 
     expect(ticket).toEqual(input);
+  });
+
+  it("復元時に ID 系フィールドの前後の空白を削除する", () => {
+    const ticket = rehydrateTicket({
+      id: "ticket-1",
+      organizationId: "  org-1  ",
+      title: "  バグを修正する  ",
+      description: "  再現手順  ",
+      status: TicketStatus.Open,
+      priority: TicketPriority.Medium,
+      assigneeId: "  user-2  ",
+      createdBy: "  user-1  ",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T01:00:00.000Z"),
+    });
+
+    expect(ticket.organizationId).toBe("org-1");
+    expect(ticket.createdBy).toBe("user-1");
+    expect(ticket.assigneeId).toBe("user-2");
+    expect(ticket.title).toBe("バグを修正する");
+    expect(ticket.description).toBe("再現手順");
   });
 
   it.each([

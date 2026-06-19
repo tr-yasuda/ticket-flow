@@ -174,13 +174,13 @@ export function createTicket(input: CreateTicketInput): Ticket {
   const now = new Date();
   return validateTicket({
     id: randomUUID(),
-    organizationId: input.organizationId,
+    organizationId: input.organizationId.trim(),
     title: input.title.trim(),
     description: normalizeDescription(input.description),
     status: TicketStatus.Open,
     priority: input.priority ?? TicketPriority.Medium,
-    assigneeId: input.assigneeId ?? null,
-    createdBy: input.createdBy,
+    assigneeId: input.assigneeId?.trim() ?? null,
+    createdBy: input.createdBy.trim(),
     createdAt: now,
     updatedAt: now,
   });
@@ -202,13 +202,13 @@ export type RehydrateTicketInput = Readonly<{
 export function rehydrateTicket(input: RehydrateTicketInput): Ticket {
   return validateTicket({
     id: input.id,
-    organizationId: input.organizationId,
+    organizationId: input.organizationId.trim(),
     title: input.title.trim(),
     description: normalizeDescription(input.description),
     status: input.status,
     priority: input.priority,
-    assigneeId: input.assigneeId,
-    createdBy: input.createdBy,
+    assigneeId: input.assigneeId?.trim() ?? null,
+    createdBy: input.createdBy.trim(),
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
   });
