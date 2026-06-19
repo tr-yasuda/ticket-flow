@@ -8,6 +8,7 @@ export function uniqueEmail(prefix: string): string {
 }
 
 export async function cleanAll(): Promise<void> {
+  await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();

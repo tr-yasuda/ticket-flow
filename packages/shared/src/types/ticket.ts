@@ -1,14 +1,36 @@
+export type TicketStatus = "open" | "in-progress" | "closed";
+export type TicketPriority = "low" | "medium" | "high" | "urgent";
+
 export type Ticket = {
   readonly id: string;
+  readonly organizationId: string;
   readonly title: string;
-  readonly status: "open" | "in-progress" | "closed";
+  readonly description: string | null;
+  readonly status: TicketStatus;
+  readonly priority: TicketPriority;
+  readonly assigneeId: string | null;
+  readonly createdBy: string;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
 };
 
-export function createTicket(id: string, title: string): Ticket {
+export function createTicket(
+  id: string,
+  organizationId: string,
+  title: string,
+  createdBy: string,
+): Ticket {
   return {
     id,
+    organizationId,
     title,
+    description: null,
     status: "open",
+    priority: "medium",
+    assigneeId: null,
+    createdBy,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 }
 

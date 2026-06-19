@@ -70,6 +70,21 @@ describe("デモ seed 統合テスト", () => {
         where: { email: "demo@example.com" },
       });
       expect(user).not.toBeNull();
+      expect(user?.id).toBe("demo-user-001");
+
+      const organization = await prisma.organization.findUnique({
+        where: { id: "demo-organization-001" },
+      });
+      expect(organization).not.toBeNull();
+      expect(organization?.slug).toBe("demo-organization");
+
+      const membership = await prisma.organizationMember.findUnique({
+        where: { id: "demo-member-001" },
+      });
+      expect(membership).not.toBeNull();
+      expect(membership?.userId).toBe("demo-user-001");
+      expect(membership?.organizationId).toBe("demo-organization-001");
+      expect(membership?.role).toBe("owner");
 
       const tickets = await prisma.ticket.findMany({
         orderBy: { id: "asc" },
@@ -81,6 +96,10 @@ describe("デモ seed 統合テスト", () => {
         "closed",
         "open",
       ]);
+      for (const ticket of tickets) {
+        expect(ticket.organizationId).toBe("demo-organization-001");
+        expect(ticket.createdBy).toBe("demo-user-001");
+      }
     } finally {
       await prisma.$disconnect();
     }
@@ -93,8 +112,12 @@ describe("デモ seed 統合テスト", () => {
     const prisma = createPrismaClient();
     try {
       const userCount = await prisma.user.count();
+      const organizationCount = await prisma.organization.count();
+      const memberCount = await prisma.organizationMember.count();
       const ticketCount = await prisma.ticket.count();
       expect(userCount).toBe(1);
+      expect(organizationCount).toBe(1);
+      expect(memberCount).toBe(1);
       expect(ticketCount).toBe(4);
     } finally {
       await prisma.$disconnect();
