@@ -136,4 +136,23 @@ describe("デモ seed 統合テスト", () => {
       }),
     ).rejects.toThrow("Seed scripts must not run in production environment");
   });
+
+  it("demo-organization の slug が他の組織で使われている場合は明確なエラーを出す", async () => {
+    const prisma = createPrismaClient();
+    try {
+      await prisma.organization.create({
+        data: {
+          id: "other-organization-001",
+          name: "Other Organization",
+          slug: "demo-organization",
+        },
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
+
+    await expect(runSeed()).rejects.toThrow(
+      'Seed failed: slug "demo-organization" is already used by organization "other-organization-001".',
+    );
+  });
 });

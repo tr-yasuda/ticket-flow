@@ -66,6 +66,15 @@ async function seedDemoOrganization(
   prisma: PrismaClient,
   ownerUserId: string,
 ): Promise<string> {
+  const existingBySlug = await prisma.organization.findUnique({
+    where: { slug: DEMO_ORGANIZATION_SLUG },
+  });
+  if (existingBySlug !== null && existingBySlug.id !== DEMO_ORGANIZATION_ID) {
+    throw new Error(
+      `Seed failed: slug "${DEMO_ORGANIZATION_SLUG}" is already used by organization "${existingBySlug.id}".`,
+    );
+  }
+
   await prisma.organization.upsert({
     where: { id: DEMO_ORGANIZATION_ID },
     create: {
