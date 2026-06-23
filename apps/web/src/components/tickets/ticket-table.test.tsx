@@ -19,6 +19,13 @@ const sampleTickets: TicketListItem[] = [
     priority: "high",
     assignee: null,
   },
+  {
+    id: "ticket-3",
+    title: "ページネーション対応",
+    status: "closed",
+    priority: "low",
+    assignee: { id: "user-3", name: null },
+  },
 ];
 
 describe("TicketTable", () => {
@@ -52,10 +59,13 @@ describe("TicketTable", () => {
     render(<TicketTable tickets={sampleTickets} />);
     expect(screen.getByText("未対応")).toBeInTheDocument();
     expect(screen.getByText("対応中")).toBeInTheDocument();
+    expect(screen.getByText("完了")).toBeInTheDocument();
     expect(screen.getByText("中")).toBeInTheDocument();
     expect(screen.getByText("高")).toBeInTheDocument();
+    expect(screen.getByText("低")).toBeInTheDocument();
     expect(screen.getByText("山田太郎")).toBeInTheDocument();
     expect(screen.getByText("未割当")).toBeInTheDocument();
+    expect(screen.getByText("（ID: user-3）")).toBeInTheDocument();
   });
 
   it("行クリックで onRowClick を呼ぶ", () => {
@@ -80,8 +90,9 @@ describe("TicketTable", () => {
   it("各行に ticket id の data 属性を持つ", () => {
     render(<TicketTable tickets={sampleTickets} />);
     const dataRows = document.querySelectorAll("[data-row-id]");
-    expect(dataRows).toHaveLength(2);
+    expect(dataRows).toHaveLength(3);
     expect(dataRows[0]).toHaveAttribute("data-row-id", "ticket-1");
     expect(dataRows[1]).toHaveAttribute("data-row-id", "ticket-2");
+    expect(dataRows[2]).toHaveAttribute("data-row-id", "ticket-3");
   });
 });
