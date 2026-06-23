@@ -1,6 +1,7 @@
 import {
   ApiErrorCode,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
   type ApiValidationErrorDetail,
 } from "@ticket-flow/shared";
@@ -12,9 +13,13 @@ import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createTicket,
+  listTickets,
   type TicketServiceError,
 } from "../services/ticket-service.js";
-import { type CreateTicketBody } from "./schemas/ticket-schema.js";
+import {
+  type CreateTicketBody,
+  type ListTicketsQuery,
+} from "./schemas/ticket-schema.js";
 
 type ErrorMapping = Readonly<{
   code: ApiErrorCode;
@@ -48,6 +53,24 @@ function mapCreateTicketError(error: TicketServiceError): ErrorMapping {
         ],
       };
     case "ticket-not-found":
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+function mapListTicketsError(error: TicketServiceError): ErrorMapping {
+  switch (error.type) {
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+      };
     case "unknown-error":
     default:
       return {
@@ -132,4 +155,39 @@ export async function createTicketController(c: Context) {
   await recordTicketCreationAuditLog(organizationId, createdBy, ticket);
 
   return c.json(createApiSuccessResponse(ticket), HttpStatus.CREATED);
+}
+
+export async function listTicketsController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const { page, perPage } = c.req.valid("query" as never) as ListTicketsQuery;
+
+  const skip = (page - 1) * perPage;
+
+  const result = await listTickets({
+    organizationId,
+    skip,
+    take: perPage,
+  });
+
+  if (!result.success) {
+    const { code, status, message, details } = mapListTicketsError(
+      result.error,
+    );
+    return c.json(createApiErrorResponse(code, message, details), status);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(result.data.total / perPage));
+
+  return c.json(
+    createApiPaginatedSuccessResponse(
+      { tickets: result.data.tickets },
+      {
+        page,
+        perPage,
+        total: result.data.total,
+        totalPages,
+      },
+    ),
+    HttpStatus.OK,
+  );
 }

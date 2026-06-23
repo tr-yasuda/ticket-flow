@@ -6,7 +6,7 @@ import { TicketStatusBadge } from "@/components/ticket-status-badge";
 
 export type TicketAssignee = Readonly<{
   id: string;
-  name: string;
+  name: string | null;
 }>;
 
 export type TicketListItem = Readonly<{

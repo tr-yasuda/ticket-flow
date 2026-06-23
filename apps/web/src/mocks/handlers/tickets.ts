@@ -2,6 +2,7 @@ import {
   ApiErrorCode,
   type ApiValidationErrorDetail,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
   createTicketInputSchema,
 } from "@ticket-flow/shared";
@@ -39,12 +40,27 @@ export const ticketHandlers = [
     const id = normalizePathParam(params.id);
 
     if (id !== demoOrganization.id) {
-      return HttpResponse.json(createApiSuccessResponse([]), { status: 200 });
+      return HttpResponse.json(
+        createApiPaginatedSuccessResponse(
+          { tickets: [] },
+          { page: 1, perPage: 20, total: 0, totalPages: 1 },
+        ),
+        { status: 200 },
+      );
     }
 
-    return HttpResponse.json(createApiSuccessResponse(demoTickets), {
-      status: 200,
-    });
+    return HttpResponse.json(
+      createApiPaginatedSuccessResponse(
+        { tickets: demoTickets },
+        {
+          page: 1,
+          perPage: 20,
+          total: demoTickets.length,
+          totalPages: 1,
+        },
+      ),
+      { status: 200 },
+    );
   }),
 
   http.get("/api/organizations/:id/tickets/:ticketId", ({ params }) => {

@@ -134,7 +134,7 @@ describe("ticket-repository 統合テスト", () => {
     expect(result[0]?.organizationId).toBe(first.organizationId);
   });
 
-  it("チケット一覧が作成日時降順・id降順で返される", async () => {
+  it("チケット一覧が更新日時降順・id降順で返される", async () => {
     const { organizationId, ownerId } = await seedOrganization();
 
     const older = rehydrateTicket({
@@ -146,7 +146,7 @@ describe("ticket-repository 統合テスト", () => {
       priority: TicketPriority.Medium,
       assigneeId: null,
       createdBy: ownerId,
-      createdAt: new Date("2026-06-18T00:00:00.000Z"),
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
       updatedAt: new Date("2026-06-18T00:00:00.000Z"),
     });
     const newer = rehydrateTicket({
@@ -158,17 +158,31 @@ describe("ticket-repository 統合テスト", () => {
       priority: TicketPriority.Medium,
       assigneeId: null,
       createdBy: ownerId,
-      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      createdAt: new Date("2026-06-18T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    const sameUpdatedAtLaterId = rehydrateTicket({
+      id: "ticket-later-id",
+      organizationId,
+      title: "same updated at later id",
+      description: null,
+      status: TicketStatus.Open,
+      priority: TicketPriority.Medium,
+      assigneeId: null,
+      createdBy: ownerId,
+      createdAt: new Date("2026-06-17T00:00:00.000Z"),
       updatedAt: new Date("2026-06-19T00:00:00.000Z"),
     });
 
     await saveTicket(older);
     await saveTicket(newer);
+    await saveTicket(sameUpdatedAtLaterId);
 
     const result = await findTicketsByOrganizationId({ organizationId });
 
     expect(result.map((ticket) => ticket.id)).toEqual([
       "ticket-newer",
+      "ticket-later-id",
       "ticket-older",
     ]);
   });

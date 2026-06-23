@@ -15,8 +15,14 @@ import {
   getOrganizationMembersController,
   getOrganizationsController,
 } from "../controllers/organizations-controller.js";
-import { createTicketBodySchema } from "../controllers/schemas/ticket-schema.js";
-import { createTicketController } from "../controllers/tickets-controller.js";
+import {
+  createTicketBodySchema,
+  listTicketsQuerySchema,
+} from "../controllers/schemas/ticket-schema.js";
+import {
+  createTicketController,
+  listTicketsController,
+} from "../controllers/tickets-controller.js";
 import { createRateLimitMiddleware } from "../lib/rate-limiter.js";
 import { validationHook } from "../lib/validation-hook.js";
 
@@ -56,6 +62,20 @@ const ticketRateLimitByUser = createRateLimitMiddleware({
   message: "チケット作成は時間あたりの上限に達しました",
 });
 
+const listTicketsRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 3000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:tickets:list`,
+  message: "この組織でのチケット一覧取得は時間あたりの上限に達しました",
+});
+
+const listTicketsRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 300,
+  keyGenerator: (c) => `user:${c.get("userId")}:tickets:list`,
+  message: "チケット一覧取得は時間あたりの上限に達しました",
+});
+
 export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
   return routes
     .get("/", getOrganizationsController)
@@ -82,6 +102,14 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
       organizationScopeMiddleware,
       sValidator("query", listOrganizationMembersQuerySchema, validationHook),
       getOrganizationMembersController,
+    )
+    .get(
+      "/:organizationId/tickets",
+      organizationScopeMiddleware,
+      listTicketsRateLimitByOrganization,
+      listTicketsRateLimitByUser,
+      sValidator("query", listTicketsQuerySchema, validationHook),
+      listTicketsController,
     )
     .post(
       "/:organizationId/tickets",

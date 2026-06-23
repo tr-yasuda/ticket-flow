@@ -4,7 +4,7 @@ import { demoOrganization } from "./organizations.js";
 
 export type MockTicketAssignee = Readonly<{
   id: string;
-  name: string;
+  name: string | null;
 }>;
 
 export type MockTicket = Readonly<{
