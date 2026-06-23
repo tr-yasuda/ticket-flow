@@ -85,11 +85,11 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
     )
     .post(
       "/:organizationId/tickets",
-      sValidator("json", createTicketBodySchema, validationHook),
       organizationScopeMiddleware,
       requireMemberMiddleware,
       ticketRateLimitByOrganization,
       ticketRateLimitByUser,
+      sValidator("json", createTicketBodySchema, validationHook),
       createTicketController,
     )
     .get(
