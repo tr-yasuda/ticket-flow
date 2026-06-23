@@ -1,29 +1,58 @@
 import { render, screen } from "@testing-library/react";
+import {
+  ticketPrioritySchema,
+  ticketStatusSchema,
+  type TicketPriority,
+  type TicketStatus,
+} from "@ticket-flow/shared";
 import { describe, expect, it } from "vitest";
 
 import { RoleBadge } from "@/components/role-badge";
 import { TicketPriorityBadge } from "@/components/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/ticket-status-badge";
 
+const expectedStatusConfig: Record<
+  TicketStatus,
+  { label: string; variant: string }
+> = {
+  open: { label: "未対応", variant: "default" },
+  "in-progress": { label: "対応中", variant: "secondary" },
+  closed: { label: "完了", variant: "ghost" },
+};
+
+const expectedPriorityConfig: Record<
+  TicketPriority,
+  { label: string; variant: string }
+> = {
+  low: { label: "低", variant: "outline" },
+  medium: { label: "中", variant: "secondary" },
+  high: { label: "高", variant: "default" },
+  urgent: { label: "緊急", variant: "destructive" },
+};
+
 describe("TicketStatusBadge", () => {
-  it.each([
-    ["open", "未対応", "default"],
-    ["in-progress", "対応中", "secondary"],
-    ["resolved", "解決済み", "outline"],
-    ["closed", "完了", "ghost"],
-  ] as const)(
+  it.each(ticketStatusSchema.options)(
     "%s を日本語ラベルと対応する variant で表示する",
-    (status, expectedLabel, expectedVariant) => {
+    (status) => {
+      const expected = expectedStatusConfig[status];
       render(<TicketStatusBadge status={status} />);
 
-      const badge = screen.getByText(expectedLabel);
+      const badge = screen.getByText(expected.label);
       expect(badge).toBeInTheDocument();
-      expect(badge).toHaveAttribute("data-variant", expectedVariant);
+      expect(badge).toHaveAttribute("data-variant", expected.variant);
     },
   );
 
   it("未知の値を安全に表示する", () => {
     render(<TicketStatusBadge status="unknown" />);
+
+    const badge = screen.getByText("不明");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute("data-variant", "outline");
+  });
+
+  it("shared schema にない resolved を fallback 表示する", () => {
+    render(<TicketStatusBadge status="resolved" />);
 
     const badge = screen.getByText("不明");
     expect(badge).toBeInTheDocument();
@@ -40,19 +69,15 @@ describe("TicketStatusBadge", () => {
 });
 
 describe("TicketPriorityBadge", () => {
-  it.each([
-    ["low", "低", "outline"],
-    ["medium", "中", "secondary"],
-    ["high", "高", "default"],
-    ["urgent", "緊急", "destructive"],
-  ] as const)(
+  it.each(ticketPrioritySchema.options)(
     "%s を日本語ラベルと対応する variant で表示する",
-    (priority, expectedLabel, expectedVariant) => {
+    (priority) => {
+      const expected = expectedPriorityConfig[priority];
       render(<TicketPriorityBadge priority={priority} />);
 
-      const badge = screen.getByText(expectedLabel);
+      const badge = screen.getByText(expected.label);
       expect(badge).toBeInTheDocument();
-      expect(badge).toHaveAttribute("data-variant", expectedVariant);
+      expect(badge).toHaveAttribute("data-variant", expected.variant);
     },
   );
 

@@ -8,6 +8,18 @@ import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
 
+function normalizePathParam(
+  value: string | readonly string[] | undefined,
+): string {
+  if (value === undefined) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return value[0] ?? "";
+}
+
 export const organizationHandlers = [
   http.get("/api/organizations", () => {
     return HttpResponse.json(
@@ -17,7 +29,7 @@ export const organizationHandlers = [
   }),
 
   http.get("/api/organizations/:id", ({ params }) => {
-    const id = params.id as string;
+    const id = normalizePathParam(params.id);
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
@@ -39,10 +51,11 @@ export const organizationHandlers = [
   }),
 
   http.post("/api/organizations", async ({ request }) => {
-    const body = (await request.json()) as {
-      name?: unknown;
-      slug?: unknown;
-    };
+    const rawBody: unknown = await request.json();
+    const body =
+      typeof rawBody === "object" && rawBody !== null
+        ? (rawBody as { name?: unknown; slug?: unknown })
+        : {};
 
     if (typeof body.slug !== "string" || body.slug === "") {
       return HttpResponse.json(

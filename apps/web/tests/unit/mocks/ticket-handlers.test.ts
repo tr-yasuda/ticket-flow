@@ -29,18 +29,18 @@ describe("ticket mock handlers", () => {
   it("特定のチケットを取得できる", async () => {
     const response = await apiClient
       .get("organizations/demo-org-001/tickets/demo-ticket-001")
-      .json();
+      .json<ApiSuccessResponse<MockTicket>>();
 
-    expect(response).toEqual(
-      createApiSuccessResponse({
-        id: "demo-ticket-001",
-        organizationId: "demo-org-001",
-        title: "ログイン画面の UI 改善",
-        status: "open",
-        priority: "medium",
-        assignee: { id: "demo-user-001", name: "山田太郎" },
-      }),
-    );
+    expect(response.success).toBe(true);
+    expect(response.data.id).toBe("demo-ticket-001");
+    expect(response.data.organizationId).toBe("demo-org-001");
+    expect(response.data.title).toBe("ログイン画面の UI 改善");
+    expect(response.data.status).toBe("open");
+    expect(response.data.priority).toBe("medium");
+    expect(response.data.assignee).toEqual({
+      id: "demo-user-001",
+      name: "山田太郎",
+    });
   });
 
   it("存在しないチケットは 404", async () => {
@@ -59,6 +59,9 @@ describe("ticket mock handlers", () => {
     expect(response.success).toBe(true);
     expect(response.data.title).toBe("New Ticket");
     expect(response.data.organizationId).toBe("demo-org-001");
+    expect(response.data.status).toBe("open");
+    expect(response.data.priority).toBe("medium");
+    expect(response.data.createdBy).toBe("mock-user-id");
   });
 
   it("タイトルが空では 400", async () => {
@@ -66,6 +69,59 @@ describe("ticket mock handlers", () => {
       apiClient
         .post("organizations/demo-org-001/tickets", { json: { title: "" } })
         .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "title" }),
+      ]),
+    });
+  });
+
+  it("shared schema で無効な priority は 400", async () => {
+    await expect(
+      apiClient
+        .post("organizations/demo-org-001/tickets", {
+          json: { title: "New Ticket", priority: "invalid" },
+        })
+        .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "priority" }),
+      ]),
+    });
+  });
+
+  it("作成時に status を送信すると 400", async () => {
+    await expect(
+      apiClient
+        .post("organizations/demo-org-001/tickets", {
+          json: { title: "New Ticket", status: "closed" },
+        })
+        .json(),
     ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("説明と担当者を反映して作成できる", async () => {
+    const response = await apiClient
+      .post("organizations/demo-org-001/tickets", {
+        json: {
+          title: "New Ticket",
+          description: "詳細説明",
+          priority: "high",
+          assigneeId: "demo-user-002",
+        },
+      })
+      .json<ApiSuccessResponse<MockTicket>>();
+
+    expect(response.success).toBe(true);
+    expect(response.data.description).toBe("詳細説明");
+    expect(response.data.priority).toBe("high");
+    expect(response.data.assignee).toEqual({
+      id: "demo-user-002",
+      name: "佐藤花子",
+    });
   });
 });
