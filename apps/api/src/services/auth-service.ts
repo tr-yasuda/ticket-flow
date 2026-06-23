@@ -12,15 +12,30 @@ import {
   verifyRefreshToken,
 } from "../domain/token.js";
 import { createUser, validateEmail } from "../domain/user.js";
-import { env } from "../lib/env.js";
 import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
 import { prisma } from "../lib/prisma.js";
+import { tokenConfig } from "../lib/token-config.js";
 
-const tokenConfig = {
-  secret: env.JWT_SECRET,
-  accessExpiresIn: env.JWT_ACCESS_EXPIRES_IN,
-  refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN,
-};
+export class InvalidEmailError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidEmailError";
+  }
+}
+
+export class InvalidPasswordError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidPasswordError";
+  }
+}
+
+export class DuplicateEmailError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DuplicateEmailError";
+  }
+}
 
 export type RegisterUserInput = Readonly<{
   email: string;
@@ -43,33 +58,22 @@ export type RegisterUserResult =
         | { type: "email-already-exists"; message: string };
     };
 
-export async function registerUser(
+export async function createRegisteredUserWithTokens(
   input: RegisterUserInput,
-  db: PrismaClient = prisma,
-): Promise<RegisterUserResult> {
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<AuthSuccess> {
   let normalizedEmail: string;
   try {
     normalizedEmail = validateEmail(input.email);
   } catch (error) {
-    return {
-      success: false,
-      error: {
-        type: "invalid-email",
-        message:
-          error instanceof Error ? error.message : "Invalid email address",
-      },
-    };
+    throw new InvalidEmailError(
+      error instanceof Error ? error.message : "Invalid email address",
+    );
   }
 
   const passwordValidation = validatePassword(input.password);
   if (!passwordValidation.valid) {
-    return {
-      success: false,
-      error: {
-        type: "invalid-password",
-        message: passwordValidation.reason,
-      },
-    };
+    throw new InvalidPasswordError(passwordValidation.reason);
   }
 
   const existingUser = await db.user.findUnique({
@@ -77,52 +81,89 @@ export async function registerUser(
     select: { id: true },
   });
   if (existingUser !== null) {
-    return {
-      success: false,
-      error: {
-        type: "email-already-exists",
-        message: "Email already exists",
-      },
-    };
+    throw new DuplicateEmailError("Email already exists");
   }
 
   const passwordHash = await hashPassword(input.password);
   const user = createUser(normalizedEmail, passwordHash);
 
+  await db.user.create({
+    data: {
+      id: user.id,
+      email: user.email,
+      passwordHash: user.passwordHash,
+    },
+  });
+
+  const [accessToken, refreshToken] = await Promise.all([
+    generateAccessToken({ userId: user.id }, tokenConfig),
+    generateRefreshToken({ userId: user.id }, tokenConfig),
+  ]);
+
   try {
-    const { accessToken, refreshToken } = await db.$transaction(async (tx) => {
-      await tx.user.create({
-        data: {
-          id: user.id,
-          email: user.email,
-          passwordHash: user.passwordHash,
-        },
-      });
-
-      const [accessToken, refreshToken] = await Promise.all([
-        generateAccessToken({ userId: user.id }, tokenConfig),
-        generateRefreshToken({ userId: user.id }, tokenConfig),
-      ]);
-
-      await tx.refreshToken.create({
-        data: {
-          tokenHash: hashRefreshToken(refreshToken),
-          userId: user.id,
-        },
-      });
-
-      return { accessToken, refreshToken };
+    await db.refreshToken.create({
+      data: {
+        tokenHash: hashRefreshToken(refreshToken),
+        userId: user.id,
+      },
     });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      isUniqueConstraintTarget(error, "token_hash")
+    ) {
+      // 極めて稀なトークンハッシュ衝突。再生成して再試行する。
+      return createRegisteredUserWithTokens(input, db);
+    }
+    throw error;
+  }
+
+  return {
+    user: { id: user.id, email: user.email },
+    accessToken,
+    refreshToken,
+  };
+}
+
+export async function registerUser(
+  input: RegisterUserInput,
+  db: PrismaClient = prisma,
+): Promise<RegisterUserResult> {
+  try {
+    const { user, accessToken, refreshToken } = await db.$transaction(
+      async (tx) => {
+        return createRegisteredUserWithTokens(input, tx);
+      },
+    );
 
     return {
       success: true,
       data: {
-        user: { id: user.id, email: user.email },
+        user,
         accessToken,
         refreshToken,
       },
     };
   } catch (error) {
+    if (error instanceof InvalidEmailError) {
+      return {
+        success: false,
+        error: { type: "invalid-email", message: error.message },
+      };
+    }
+    if (error instanceof InvalidPasswordError) {
+      return {
+        success: false,
+        error: { type: "invalid-password", message: error.message },
+      };
+    }
+    if (error instanceof DuplicateEmailError) {
+      return {
+        success: false,
+        error: { type: "email-already-exists", message: error.message },
+      };
+    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002" &&
