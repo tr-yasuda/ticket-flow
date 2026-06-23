@@ -51,6 +51,12 @@ export type CreateTicketServiceInput = Readonly<{
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
+  /**
+   * 作成者の組織メンバーシップチェックをスキップする。
+   * 呼び出し元で既にメンバーシップを確認している場合（例: organizationScopeMiddleware 経由）に true を指定する。
+   * assigneeId の組織メンバーシップチェックは常に実行される。
+   */
+  skipCreatorMembershipCheck?: boolean;
 }>;
 
 export type CreateTicketResult =
@@ -75,11 +81,13 @@ export async function createTicket(
 
     const saved = await runInTransaction(db, async (tx) => {
       await Promise.all([
-        assertUserIsOrganizationMember(
-          tx,
-          ticket.organizationId,
-          ticket.createdBy,
-        ),
+        input.skipCreatorMembershipCheck === true
+          ? Promise.resolve()
+          : assertUserIsOrganizationMember(
+              tx,
+              ticket.organizationId,
+              ticket.createdBy,
+            ),
         ticket.assigneeId !== null
           ? assertUserIsOrganizationMember(
               tx,
