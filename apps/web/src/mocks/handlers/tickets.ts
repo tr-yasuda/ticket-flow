@@ -1,28 +1,42 @@
 import {
   ApiErrorCode,
+  type ApiValidationErrorDetail,
   createApiErrorResponse,
   createApiSuccessResponse,
+  createTicketInputSchema,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
-import {
-  demoTickets,
-  type MockTicket,
-  type MockTicketPriority,
-} from "../data/tickets.js";
+import { demoTickets } from "../data/tickets.js";
+import { normalizePathParam } from "./utils.js";
 
-function isValidStatus(status: string): status is MockTicket["status"] {
-  return ["open", "in-progress", "closed"].includes(status);
+function mapZodIssuesToDetails(
+  issues: Array<{ path: PropertyKey[]; message: string }>,
+): ApiValidationErrorDetail[] {
+  const details: ApiValidationErrorDetail[] = [];
+  for (const issue of issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string") {
+      continue;
+    }
+    details.push({ field, message: issue.message });
+  }
+  return details;
 }
 
-function isValidPriority(priority: string): priority is MockTicketPriority {
-  return ["low", "medium", "high", "urgent"].includes(priority);
+function findDemoAssignee(assigneeId: string) {
+  return (
+    demoTickets
+      .map((ticket) => ticket.assignee)
+      .find((assignee) => assignee !== null && assignee.id === assigneeId) ??
+    null
+  );
 }
 
 export const ticketHandlers = [
   http.get("/api/organizations/:id/tickets", ({ params }) => {
-    const id = params.id as string;
+    const id = normalizePathParam(params.id);
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(createApiSuccessResponse([]), { status: 200 });
@@ -34,7 +48,8 @@ export const ticketHandlers = [
   }),
 
   http.get("/api/organizations/:id/tickets/:ticketId", ({ params }) => {
-    const { id, ticketId } = params as { id: string; ticketId: string };
+    const id = normalizePathParam(params.id);
+    const ticketId = normalizePathParam(params.ticketId);
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
@@ -63,12 +78,8 @@ export const ticketHandlers = [
   }),
 
   http.post("/api/organizations/:id/tickets", async ({ request, params }) => {
-    const id = params.id as string;
-    const body = (await request.json()) as {
-      title?: unknown;
-      status?: unknown;
-      priority?: unknown;
-    };
+    const id = normalizePathParam(params.id);
+    const rawBody: unknown = await request.json();
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
@@ -77,33 +88,49 @@ export const ticketHandlers = [
       );
     }
 
-    if (typeof body.title !== "string" || body.title === "") {
+    if (typeof rawBody !== "object" || rawBody === null) {
       return HttpResponse.json(
         createApiErrorResponse(
           ApiErrorCode.VALIDATION_ERROR,
-          "タイトルは必須です",
+          "入力内容を確認してください",
+          [],
         ),
         { status: 400 },
       );
     }
 
-    const status =
-      typeof body.status === "string" && isValidStatus(body.status)
-        ? body.status
-        : "open";
-    const priority =
-      typeof body.priority === "string" && isValidPriority(body.priority)
-        ? body.priority
-        : "medium";
+    const parseResult = createTicketInputSchema.strict().safeParse({
+      ...rawBody,
+      organizationId: id,
+      createdBy: "mock-user-id",
+    });
+
+    if (!parseResult.success) {
+      return HttpResponse.json(
+        createApiErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          "入力内容を確認してください",
+          mapZodIssuesToDetails(parseResult.error.issues),
+        ),
+        { status: 400 },
+      );
+    }
+
+    const { title, description, priority, assigneeId } = parseResult.data;
+    const now = new Date().toISOString();
 
     return HttpResponse.json(
       createApiSuccessResponse({
         id: "mock-new-ticket-id",
         organizationId: id,
-        title: body.title,
-        status,
-        priority,
-        assignee: null,
+        title,
+        description: description ?? null,
+        status: "open",
+        priority: priority ?? "medium",
+        assignee: assigneeId != null ? findDemoAssignee(assigneeId) : null,
+        createdBy: "mock-user-id",
+        createdAt: now,
+        updatedAt: now,
       }),
       { status: 201 },
     );

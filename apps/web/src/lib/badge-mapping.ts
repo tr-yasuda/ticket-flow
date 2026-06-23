@@ -1,11 +1,13 @@
+import type {
+  TicketPriority as SharedTicketPriority,
+  TicketStatus as SharedTicketStatus,
+} from "@ticket-flow/shared";
 import type { VariantProps } from "class-variance-authority";
 
 type BadgeVariant = NonNullable<
   VariantProps<typeof import("@/components/ui/badge").badgeVariants>["variant"]
 >;
 
-export type TicketStatus = "open" | "in-progress" | "resolved" | "closed";
-export type TicketPriority = "low" | "medium" | "high" | "urgent";
 export type Role = "owner" | "admin" | "member" | "viewer";
 
 type BadgeConfig = {
@@ -13,14 +15,13 @@ type BadgeConfig = {
   variant: BadgeVariant;
 };
 
-const ticketStatusConfig: Record<TicketStatus, BadgeConfig> = {
+const ticketStatusConfig: Record<SharedTicketStatus, BadgeConfig> = {
   open: { label: "未対応", variant: "default" },
   "in-progress": { label: "対応中", variant: "secondary" },
-  resolved: { label: "解決済み", variant: "outline" },
   closed: { label: "完了", variant: "ghost" },
 };
 
-const ticketPriorityConfig: Record<TicketPriority, BadgeConfig> = {
+const ticketPriorityConfig: Record<SharedTicketPriority, BadgeConfig> = {
   low: { label: "低", variant: "outline" },
   medium: { label: "中", variant: "secondary" },
   high: { label: "高", variant: "default" },

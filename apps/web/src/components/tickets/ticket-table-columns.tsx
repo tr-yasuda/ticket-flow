@@ -1,8 +1,8 @@
+import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
 import type { ReactNode } from "react";
 
 import { TicketPriorityBadge } from "@/components/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/ticket-status-badge";
-import type { TicketPriority, TicketStatus } from "@/lib/badge-mapping";
 
 export type TicketAssignee = Readonly<{
   id: string;
