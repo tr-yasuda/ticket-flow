@@ -8,13 +8,13 @@ import {
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
-import {
-  type TicketListItem,
-  type TicketAssignee,
-} from "@/components/tickets/ticket-table-columns.js";
-
 import { demoOrganization } from "../data/organizations.js";
-import { demoTickets, type MockTicket } from "../data/tickets.js";
+import {
+  demoTickets,
+  type MockTicket,
+  type MockTicketAssignee,
+  type MockTicketListItem,
+} from "../data/tickets.js";
 import { normalizePathParam } from "./utils.js";
 
 function mapZodIssuesToDetails(
@@ -42,20 +42,25 @@ function findDemoAssignee(assigneeId: string) {
 
 function toTicketListAssignee(
   assignee: MockTicket["assignee"],
-): TicketAssignee | null {
+): MockTicketAssignee | null {
   if (assignee === null) {
     return null;
   }
-  return { id: assignee.id, name: assignee.name };
+  // 実 API と同様に User に name カラムがないため、一覧では常に null を返す
+  return { id: assignee.id, name: null };
 }
 
-function toTicketListItem(ticket: MockTicket): TicketListItem {
+function toTicketListItem(ticket: MockTicket): MockTicketListItem {
   return {
     id: ticket.id,
+    organizationId: ticket.organizationId,
     title: ticket.title,
     status: ticket.status,
     priority: ticket.priority,
     assignee: toTicketListAssignee(ticket.assignee),
+    createdBy: ticket.createdBy,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
   };
 }
 

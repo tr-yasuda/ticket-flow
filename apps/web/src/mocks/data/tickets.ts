@@ -20,6 +20,18 @@ export type MockTicket = Readonly<{
   updatedAt: string;
 }>;
 
+export type MockTicketListItem = Readonly<{
+  id: string;
+  organizationId: string;
+  title: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assignee: MockTicketAssignee | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
 const now = new Date().toISOString();
 
 export const demoTickets: MockTicket[] = [
