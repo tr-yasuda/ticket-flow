@@ -7,18 +7,7 @@ import {
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
-
-function normalizePathParam(
-  value: string | readonly string[] | undefined,
-): string {
-  if (value === undefined) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  return value[0] ?? "";
-}
+import { normalizePathParam } from "./utils.js";
 
 export const organizationHandlers = [
   http.get("/api/organizations", () => {

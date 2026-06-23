@@ -9,18 +9,7 @@ import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
 import { demoTickets } from "../data/tickets.js";
-
-function normalizePathParam(
-  value: string | readonly string[] | undefined,
-): string {
-  if (value === undefined) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  return value[0] ?? "";
-}
+import { normalizePathParam } from "./utils.js";
 
 function mapZodIssuesToDetails(
   issues: Array<{ path: PropertyKey[]; message: string }>,
@@ -104,6 +93,7 @@ export const ticketHandlers = [
         createApiErrorResponse(
           ApiErrorCode.VALIDATION_ERROR,
           "入力内容を確認してください",
+          [],
         ),
         { status: 400 },
       );
