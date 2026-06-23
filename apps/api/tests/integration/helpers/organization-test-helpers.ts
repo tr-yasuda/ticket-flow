@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import { hashInvitationToken } from "../../../src/domain/organization-invitation.js";
 import { resetInvitationMailQueue } from "../../../src/lib/invitation-mail-queue.js";
 import { prisma } from "../../../src/lib/prisma.js";
 import { resetRateLimit } from "../../../src/lib/rate-limiter.js";
 import { createApp } from "../../../src/routes/index.js";
+import { createOrganizationInvitation } from "../../../src/services/organization-invitations-service.js";
 
 export function uniqueEmail(prefix: string): string {
   return `${prefix}-${randomUUID()}@example.com`;
@@ -61,3 +63,23 @@ export async function createOrganization(
   }
   return body.data.id;
 }
+
+export async function createInvitation(
+  organizationId: string,
+  email: string,
+  role: "admin" | "member" | "viewer" = "member",
+  inviterRole: "owner" | "admin" = "owner",
+): Promise<{ id: string; token: string }> {
+  const result = await createOrganizationInvitation({
+    organizationId,
+    email,
+    role,
+    inviterRole,
+  });
+  if (!result.success) {
+    throw new Error(`招待作成に失敗しました: ${result.error.message}`);
+  }
+  return { id: result.data.id, token: result.data.token };
+}
+
+export { hashInvitationToken };
