@@ -119,21 +119,13 @@ export async function listTickets(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<ListTicketsResult> {
   try {
-    const runQuery = async (
-      tx: Prisma.TransactionClient,
-    ): Promise<{ tickets: readonly TicketListItem[]; total: number }> => {
+    const result = await runInTransaction(db, async (tx) => {
       const [tickets, total] = await Promise.all([
         findTicketsByOrganizationId(input, tx),
         tx.ticket.count({ where: { organizationId: input.organizationId } }),
       ]);
       return { tickets, total };
-    };
-
-    const result =
-      "$transaction" in db &&
-      typeof (db as PrismaClient).$transaction === "function"
-        ? await (db as PrismaClient).$transaction(runQuery)
-        : await runQuery(db as Prisma.TransactionClient);
+    });
 
     return { success: true, data: result };
   } catch (error) {
