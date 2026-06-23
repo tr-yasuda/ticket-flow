@@ -8,8 +8,13 @@ import {
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
+import {
+  type TicketListItem,
+  type TicketAssignee,
+} from "@/components/tickets/ticket-table-columns.js";
+
 import { demoOrganization } from "../data/organizations.js";
-import { demoTickets } from "../data/tickets.js";
+import { demoTickets, type MockTicket } from "../data/tickets.js";
 import { normalizePathParam } from "./utils.js";
 
 function mapZodIssuesToDetails(
@@ -35,6 +40,27 @@ function findDemoAssignee(assigneeId: string) {
   );
 }
 
+function toTicketListAssignee(
+  assignee: MockTicket["assignee"],
+): TicketAssignee | null {
+  if (assignee === null) {
+    return null;
+  }
+  return { id: assignee.id, name: assignee.name };
+}
+
+function toTicketListItem(ticket: MockTicket): TicketListItem {
+  return {
+    id: ticket.id,
+    title: ticket.title,
+    status: ticket.status,
+    priority: ticket.priority,
+    assignee: toTicketListAssignee(ticket.assignee),
+  };
+}
+
+const demoTicketListItems = demoTickets.map(toTicketListItem);
+
 export const ticketHandlers = [
   http.get("/api/organizations/:id/tickets", ({ params }) => {
     const id = normalizePathParam(params.id);
@@ -51,11 +77,11 @@ export const ticketHandlers = [
 
     return HttpResponse.json(
       createApiPaginatedSuccessResponse(
-        { tickets: demoTickets },
+        { tickets: demoTicketListItems },
         {
           page: 1,
           perPage: 20,
-          total: demoTickets.length,
+          total: demoTicketListItems.length,
           totalPages: 1,
         },
       ),
