@@ -6,7 +6,7 @@ import { TicketStatusBadge } from "@/components/ticket-status-badge";
 
 export type TicketAssignee = Readonly<{
   id: string;
-  name: string;
+  name: string | null;
 }>;
 
 export type TicketListItem = Readonly<{
@@ -27,7 +27,11 @@ function AssigneeCell({ assignee }: { assignee: TicketAssignee | null }) {
   if (assignee === null) {
     return <span className="text-muted-foreground">未割当</span>;
   }
-  return <span>{assignee.name}</span>;
+  return (
+    <span title={`ユーザー ID: ${assignee.id}`}>
+      {assignee.name ?? `（ID: ${assignee.id}）`}
+    </span>
+  );
 }
 
 export const ticketTableColumns: TicketTableColumn[] = [

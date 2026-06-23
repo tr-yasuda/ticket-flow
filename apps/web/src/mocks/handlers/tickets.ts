@@ -2,13 +2,19 @@ import {
   ApiErrorCode,
   type ApiValidationErrorDetail,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
   createTicketInputSchema,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
-import { demoTickets } from "../data/tickets.js";
+import {
+  demoTickets,
+  type MockTicket,
+  type MockTicketAssignee,
+  type MockTicketListItem,
+} from "../data/tickets.js";
 import { normalizePathParam } from "./utils.js";
 
 function mapZodIssuesToDetails(
@@ -34,17 +40,58 @@ function findDemoAssignee(assigneeId: string) {
   );
 }
 
+function toTicketListAssignee(
+  assignee: MockTicket["assignee"],
+): MockTicketAssignee | null {
+  if (assignee === null) {
+    return null;
+  }
+  // 実 API と同様に User に name カラムがないため、一覧では常に null を返す
+  return { id: assignee.id, name: null };
+}
+
+function toTicketListItem(ticket: MockTicket): MockTicketListItem {
+  return {
+    id: ticket.id,
+    organizationId: ticket.organizationId,
+    title: ticket.title,
+    status: ticket.status,
+    priority: ticket.priority,
+    assignee: toTicketListAssignee(ticket.assignee),
+    createdBy: ticket.createdBy,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+  };
+}
+
+const demoTicketListItems = demoTickets.map(toTicketListItem);
+
 export const ticketHandlers = [
   http.get("/api/organizations/:id/tickets", ({ params }) => {
     const id = normalizePathParam(params.id);
 
     if (id !== demoOrganization.id) {
-      return HttpResponse.json(createApiSuccessResponse([]), { status: 200 });
+      return HttpResponse.json(
+        createApiPaginatedSuccessResponse(
+          { tickets: [] },
+          { page: 1, perPage: 20, total: 0, totalPages: 1 },
+        ),
+        { status: 200 },
+      );
     }
 
-    return HttpResponse.json(createApiSuccessResponse(demoTickets), {
-      status: 200,
-    });
+    return HttpResponse.json(
+      createApiPaginatedSuccessResponse(
+        { tickets: demoTicketListItems },
+        {
+          page: 1,
+          perPage: 20,
+          total: demoTicketListItems.length,
+          totalPages: 1,
+        },
+      ),
+      { status: 200 },
+    );
   }),
 
   http.get("/api/organizations/:id/tickets/:ticketId", ({ params }) => {

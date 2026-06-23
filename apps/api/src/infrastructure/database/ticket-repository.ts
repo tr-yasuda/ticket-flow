@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 import {
   type Ticket,
+  type TicketListItem,
   type TicketPriority,
   type TicketStatus,
   rehydrateTicket,
@@ -51,18 +52,54 @@ export type FindTicketsInput = Readonly<{
 }> &
   Pagination;
 
+function toTicketListItem(row: {
+  id: string;
+  organizationId: string;
+  title: string;
+  status: string;
+  priority: string;
+  assigneeId: string | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): TicketListItem {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    title: row.title,
+    status: row.status as TicketStatus,
+    priority: row.priority as TicketPriority,
+    assignee:
+      row.assigneeId !== null ? { id: row.assigneeId, name: null } : null,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export async function findTicketsByOrganizationId(
   input: FindTicketsInput,
   db: PrismaClient | Prisma.TransactionClient = prisma,
-): Promise<Ticket[]> {
+): Promise<TicketListItem[]> {
   const rows = await db.ticket.findMany({
     where: { organizationId: input.organizationId },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: resolveTake(input.take),
     skip: resolveSkip(input.skip),
+    select: {
+      id: true,
+      organizationId: true,
+      title: true,
+      status: true,
+      priority: true,
+      assigneeId: true,
+      createdBy: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 
-  return rows.map(toTicket);
+  return rows.map(toTicketListItem);
 }
 
 export type FindTicketByIdInput = Readonly<{

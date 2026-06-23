@@ -1,21 +1,40 @@
 import {
-  createApiSuccessResponse,
+  createApiPaginatedSuccessResponse,
+  type ApiPaginatedSuccessResponse,
   type ApiSuccessResponse,
 } from "@ticket-flow/shared";
 import { describe, expect, it } from "vitest";
 
 import { apiClient } from "@/lib/api-client";
-import type { MockTicket } from "@/mocks/data/tickets.js";
+import type { MockTicket, MockTicketListItem } from "@/mocks/data/tickets.js";
 
 describe("ticket mock handlers", () => {
   it("デモ組織のチケット一覧を取得できる", async () => {
     const response = await apiClient
       .get("organizations/demo-org-001/tickets")
-      .json<ApiSuccessResponse<MockTicket[]>>();
+      .json<ApiPaginatedSuccessResponse<{ tickets: MockTicketListItem[] }>>();
 
     expect(response.success).toBe(true);
-    expect(Array.isArray(response.data)).toBe(true);
-    expect(response.data).toHaveLength(4);
+    expect(Array.isArray(response.data.tickets)).toBe(true);
+    expect(response.data.tickets).toHaveLength(4);
+
+    const firstTicket = response.data.tickets[0];
+    if (firstTicket === undefined) {
+      throw new Error("Expected at least one ticket");
+    }
+    expect(firstTicket.organizationId).toBe("demo-org-001");
+    expect(firstTicket.updatedAt).toBeDefined();
+    expect(firstTicket.assignee).toEqual({
+      id: "demo-user-001",
+      name: null,
+    });
+
+    expect(response.meta).toEqual({
+      page: 1,
+      perPage: 20,
+      total: 4,
+      totalPages: 1,
+    });
   });
 
   it("存在しない組織のチケット一覧は空配列", async () => {
@@ -23,7 +42,12 @@ describe("ticket mock handlers", () => {
       .get("organizations/other-org/tickets")
       .json();
 
-    expect(response).toEqual(createApiSuccessResponse([]));
+    expect(response).toEqual(
+      createApiPaginatedSuccessResponse(
+        { tickets: [] },
+        { page: 1, perPage: 20, total: 0, totalPages: 1 },
+      ),
+    );
   });
 
   it("特定のチケットを取得できる", async () => {

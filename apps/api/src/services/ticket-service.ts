@@ -4,6 +4,7 @@ import {
   createTicket as createTicketEntity,
   type CreateTicketInput as DomainCreateTicketInput,
   type Ticket,
+  type TicketListItem,
   TicketNotFoundError,
   TicketPriority,
   TicketStatus,
@@ -107,7 +108,10 @@ export async function createTicket(
 }
 
 export type ListTicketsResult =
-  | { success: true; data: { tickets: readonly Ticket[]; total: number } }
+  | {
+      success: true;
+      data: { tickets: readonly TicketListItem[]; total: number };
+    }
   | { success: false; error: TicketServiceError };
 
 export async function listTickets(
@@ -115,12 +119,15 @@ export async function listTickets(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<ListTicketsResult> {
   try {
-    const [tickets, total] = await Promise.all([
-      findTicketsByOrganizationId(input, db),
-      db.ticket.count({ where: { organizationId: input.organizationId } }),
-    ]);
+    const result = await runInTransaction(db, async (tx) => {
+      const [tickets, total] = await Promise.all([
+        findTicketsByOrganizationId(input, tx),
+        tx.ticket.count({ where: { organizationId: input.organizationId } }),
+      ]);
+      return { tickets, total };
+    });
 
-    return { success: true, data: { tickets, total } };
+    return { success: true, data: result };
   } catch (error) {
     return mapServiceError(error);
   }

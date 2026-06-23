@@ -688,3 +688,486 @@ describe("POST /api/organizations/:organizationId/tickets (ticket.create)", () =
     });
   });
 });
+
+describe("GET /api/organizations/:organizationId/tickets (tickets.list)", () => {
+  let app: ReturnType<typeof createApp>;
+
+  beforeEach(async () => {
+    await cleanAll();
+    app = createApp();
+  });
+  afterAll(async () => {
+    await cleanAll();
+  });
+
+  async function listTicketsRequest(
+    accessToken: string,
+    organizationId: string,
+    query = "",
+  ): Promise<Response> {
+    const url = `/api/organizations/${organizationId}/tickets${query}`;
+    return app.request(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  }
+
+  it("組織のチケット一覧を取得できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "first ticket",
+    });
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "second ticket",
+    });
+
+    const response = await listTicketsRequest(ownerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(2);
+    expect(body.meta).toEqual({
+      page: 1,
+      perPage: 20,
+      total: 2,
+      totalPages: 1,
+    });
+  });
+
+  it("member ロールでもチケット一覧を閲覧できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const { userId: memberUserId, accessToken: memberToken } =
+      await registerUser(app, uniqueEmail("member"), "password123");
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await addMember(organizationId, memberUserId, "member");
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "member view ticket",
+    });
+
+    const response = await listTicketsRequest(memberToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(1);
+  });
+
+  it("admin ロールでもチケット一覧を閲覧できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const { userId: adminUserId, accessToken: adminToken } = await registerUser(
+      app,
+      uniqueEmail("admin"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await addMember(organizationId, adminUserId, "admin");
+
+    const response = await listTicketsRequest(adminToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("viewer ロールでもチケット一覧を閲覧できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const { userId: viewerUserId, accessToken: viewerToken } =
+      await registerUser(app, uniqueEmail("viewer"), "password123");
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await addMember(organizationId, viewerUserId, "viewer");
+
+    const response = await listTicketsRequest(viewerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("他組織のチケットは含まれない", async () => {
+    const { accessToken: ownerAToken } = await registerUser(
+      app,
+      uniqueEmail("owner-a"),
+      "password123",
+    );
+    const { accessToken: ownerBToken } = await registerUser(
+      app,
+      uniqueEmail("owner-b"),
+      "password123",
+    );
+    const organizationAId = await createOrganization(
+      app,
+      ownerAToken,
+      "Org A",
+      "org-a",
+    );
+    const organizationBId = await createOrganization(
+      app,
+      ownerBToken,
+      "Org B",
+      "org-b",
+    );
+    await createTicketRequest(app, ownerAToken, organizationAId, {
+      title: "org a ticket",
+    });
+    await createTicketRequest(app, ownerBToken, organizationBId, {
+      title: "org b ticket",
+    });
+
+    const response = await listTicketsRequest(ownerAToken, organizationAId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(1);
+    expect(body.data.tickets[0]?.title).toBe("org a ticket");
+  });
+
+  it("ページネーションパラメータで取得範囲を制限できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "ticket 1",
+    });
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "ticket 2",
+    });
+
+    const response = await listTicketsRequest(
+      ownerToken,
+      organizationId,
+      "?page=1&perPage=1",
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(1);
+    expect(body.meta).toEqual({
+      page: 1,
+      perPage: 1,
+      total: 2,
+      totalPages: 2,
+    });
+  });
+
+  it("page=2 で2件目のチケットを取得できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    const ticket1Response = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "ticket 1",
+      },
+    );
+    const ticket1Body = await ticket1Response.json();
+    const ticket2Response = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "ticket 2",
+      },
+    );
+    const ticket2Body = await ticket2Response.json();
+    await prisma.ticket.update({
+      where: { id: ticket2Body.data.id },
+      data: {
+        updatedAt: new Date("2099-01-01T00:00:00.000Z"),
+      },
+    });
+
+    const response = await listTicketsRequest(
+      ownerToken,
+      organizationId,
+      "?page=2&perPage=1",
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(1);
+    expect(body.data.tickets[0]?.title).toBe("ticket 1");
+    expect(body.data.tickets[0]?.id).toBe(ticket1Body.data.id);
+    expect(body.meta).toMatchObject({
+      page: 2,
+      perPage: 1,
+      total: 2,
+      totalPages: 2,
+    });
+  });
+
+  it("チケットが0件の場合は空配列と totalPages:1 を返す", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+
+    const response = await listTicketsRequest(ownerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toEqual([]);
+    expect(body.meta).toEqual({
+      page: 1,
+      perPage: 20,
+      total: 0,
+      totalPages: 1,
+    });
+  });
+
+  it("更新日時の降順でソートされる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "older",
+    });
+    const newerResponse = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "newer",
+      },
+    );
+    const newerBody = await newerResponse.json();
+    await prisma.ticket.update({
+      where: { id: newerBody.data.id },
+      data: {
+        updatedAt: new Date("2099-01-01T00:00:00.000Z"),
+      },
+    });
+
+    const response = await listTicketsRequest(ownerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets[0]?.title).toBe("newer");
+    expect(body.data.tickets[1]?.title).toBe("older");
+  });
+
+  it("一覧レスポンスに status、priority、assignee、updatedAt を含める", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "fields ticket",
+      priority: "high",
+    });
+
+    const response = await listTicketsRequest(ownerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    const ticket = body.data.tickets[0];
+    expect(ticket).toMatchObject({
+      status: "open",
+      priority: "high",
+      assignee: null,
+    });
+    expect(ticket.updatedAt).toEqual(expect.any(String));
+    expect(ticket.description).toBeUndefined();
+  });
+
+  it("担当者を設定すると assignee オブジェクトを返す", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const { userId: memberUserId, accessToken: memberToken } =
+      await registerUser(app, uniqueEmail("member"), "password123");
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await addMember(organizationId, memberUserId, "member");
+    await createTicketRequest(app, memberToken, organizationId, {
+      title: "assigned ticket",
+      assigneeId: memberUserId,
+    });
+
+    const response = await listTicketsRequest(ownerToken, organizationId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    const ticket = body.data.tickets[0];
+    expect(ticket.assignee).toEqual({
+      id: memberUserId,
+      name: null,
+    });
+  });
+
+  it("組織に所属していないユーザーは 403 Forbidden", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const { accessToken: otherToken } = await registerUser(
+      app,
+      uniqueEmail("other"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+
+    const response = await listTicketsRequest(otherToken, organizationId);
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("未認証の場合は 401 Unauthorized", async () => {
+    const response = await app.request(
+      "/api/organizations/550e8400-e29b-41d4-a716-446655440000/tickets",
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  it("無効な organizationId の場合は 400 Bad Request", async () => {
+    const { accessToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+
+    const response = await listTicketsRequest(accessToken, "invalid-id");
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it.each([
+    { query: "?page=0", description: "page=0" },
+    { query: "?perPage=0", description: "perPage=0" },
+    { query: "?perPage=101", description: "perPage=101" },
+    { query: "?page=abc", description: "page=abc" },
+    { query: "?perPage=abc", description: "perPage=abc" },
+    { query: "?page=10001&perPage=1", description: "page over MAX_SKIP" },
+  ])(
+    "無効なページネーションパラメータ ($description) の場合は 400 Bad Request",
+    async ({ query }) => {
+      const { accessToken } = await registerUser(
+        app,
+        uniqueEmail("owner"),
+        "password123",
+      );
+      const organizationId = await createOrganization(
+        app,
+        accessToken,
+        "Acme Inc.",
+        "acme-inc",
+      );
+
+      const response = await listTicketsRequest(
+        accessToken,
+        organizationId,
+        query,
+      );
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe("VALIDATION_ERROR");
+    },
+  );
+});
