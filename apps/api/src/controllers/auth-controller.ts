@@ -7,6 +7,7 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import { extractBearerToken } from "../lib/extract-bearer-token.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
@@ -15,14 +16,6 @@ import {
   refreshAccessToken,
   registerUser,
 } from "../services/auth-service.js";
-
-export function extractBearerToken(authorization?: string): string | null {
-  if (authorization === undefined) {
-    return null;
-  }
-  const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
-  return match?.[1] ?? null;
-}
 
 export async function registerController(c: Context) {
   const data = getValidatedJson<RegisterInput>(c);

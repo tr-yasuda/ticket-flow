@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { authMiddleware } from "../controllers/auth-middleware.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { configureAuthRoutes } from "./auth.js";
+import { configureInvitationRoutes } from "./invitations.js";
 import { configureMeRoutes } from "./me.js";
 import { configureOrganizationRoutes } from "./organizations.js";
 
@@ -26,6 +27,7 @@ export function createApp(): Hono {
   });
 
   app.route("/api/auth", configureAuthRoutes());
+  app.route("/api/invitations", configureInvitationRoutes());
 
   app.use("/api/me/*", authMiddleware);
   app.route("/api/me", configureMeRoutes());

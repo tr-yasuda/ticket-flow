@@ -2,20 +2,14 @@ import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
 import type { Context, Next } from "hono";
 
 import { verifyAccessToken } from "../domain/token.js";
-import { env } from "../lib/env.js";
 import { HttpStatus } from "../lib/http-status.js";
+import { tokenConfig } from "../lib/token-config.js";
 
 declare module "hono" {
   interface ContextVariableMap {
     userId?: string;
   }
 }
-
-const tokenConfig = {
-  secret: env.JWT_SECRET,
-  accessExpiresIn: env.JWT_ACCESS_EXPIRES_IN,
-  refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN,
-};
 
 export async function authMiddleware(c: Context, next: Next) {
   const authorization = c.req.header("Authorization");
