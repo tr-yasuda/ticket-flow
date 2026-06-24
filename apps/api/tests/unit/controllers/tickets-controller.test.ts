@@ -136,36 +136,6 @@ describe("tickets-controller", () => {
       );
     });
 
-    it("担当者が組織メンバーでない場合は 400 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
-        success: false,
-        error: {
-          type: "user-not-organization-member",
-          message: "not a member",
-        },
-      });
-      const c = createTestContext({
-        body: { title: "updated" },
-        userId: "user-id",
-        organizationId: "550e8400-e29b-41d4-a716-446655440001",
-      });
-
-      await updateTicketController(c);
-
-      expect(c.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          error: expect.objectContaining({
-            code: "VALIDATION_ERROR",
-            details: expect.arrayContaining([
-              expect.objectContaining({ field: "assigneeId" }),
-            ]),
-          }),
-        }),
-        400,
-      );
-    });
-
     it("不明なエラーの場合は 500 を返す", async () => {
       vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
         success: false,

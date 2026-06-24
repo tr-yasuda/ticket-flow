@@ -268,18 +268,6 @@ function mapUpdateTicketError(error: TicketServiceError): ErrorMapping {
         status: HttpStatus.NOT_FOUND,
         message: "チケットが見つかりません",
       };
-    case "user-not-organization-member":
-      return {
-        code: ApiErrorCode.VALIDATION_ERROR,
-        status: HttpStatus.BAD_REQUEST,
-        message: "担当者が組織のメンバーではありません",
-        details: [
-          {
-            field: "assigneeId",
-            message: "担当者は同じ組織のメンバーを指定してください",
-          },
-        ],
-      };
     case "validation-error":
       return {
         code: ApiErrorCode.VALIDATION_ERROR,

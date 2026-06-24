@@ -49,13 +49,25 @@ export const getTicketParamSchema = z.object({
 
 export type GetTicketParamSchema = z.infer<typeof getTicketParamSchema>;
 
+const allowedUpdateTicketKeys = new Set(["title", "description"]);
+
 export const updateTicketBodySchema = z
   .object({
     title: ticketTitleSchema.optional(),
-    description: ticketDescriptionSchema.optional(),
+    description: ticketDescriptionSchema,
   })
-  .strict()
+  .passthrough()
   .superRefine((data, ctx) => {
+    for (const key of Object.keys(data)) {
+      if (!allowedUpdateTicketKeys.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "許可されていないフィールドです",
+          path: [key],
+        });
+      }
+    }
+
     if (data.title === undefined && data.description === undefined) {
       for (const field of ["title", "description"] as const) {
         ctx.addIssue({
@@ -67,4 +79,7 @@ export const updateTicketBodySchema = z
     }
   });
 
-export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>;
+export type UpdateTicketBody = {
+  title?: string;
+  description?: string | null;
+};

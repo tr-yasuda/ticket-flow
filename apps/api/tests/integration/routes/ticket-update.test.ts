@@ -722,6 +722,9 @@ describe("PATCH /api/organizations/:organizationId/tickets/:ticketId (ticket.upd
     const body = await response.json();
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "priority" })]),
+    );
   });
 
   it("更新成功レスポンスに commentCount が含まれる", async () => {
