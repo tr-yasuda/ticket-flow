@@ -4,7 +4,10 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
-import { updateOrganizationMemberRole } from "../../../src/services/organization-members-service.js";
+import {
+  deleteOrganizationMember,
+  updateOrganizationMemberRole,
+} from "../../../src/services/organization-members-service.js";
 import {
   createOrganization,
   getOrganizationMembers,
@@ -16,8 +19,8 @@ function uniqueEmail(prefix: string): string {
 
 async function cleanAll(): Promise<void> {
   await prisma.auditLog.deleteMany();
-  await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
+  await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }
@@ -676,5 +679,478 @@ describe("updateOrganizationMemberRole", () => {
       },
     });
     expect(unchanged?.role).toBe("owner");
+  });
+});
+
+describe("deleteOrganizationMember", () => {
+  beforeEach(cleanAll);
+
+  it("Owner が member を削除できる", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.member.role).toBe("member");
+    expect(result.data.member.userId).toBe(memberResult.data.user.id);
+
+    const deleted = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: memberResult.data.user.id,
+        },
+      },
+    });
+    expect(deleted).toBeNull();
+  });
+
+  it("Admin が viewer を削除できる", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const adminResult = await registerUser({
+      email: uniqueEmail("admin"),
+      password: "password123",
+    });
+    const viewerResult = await registerUser({
+      email: uniqueEmail("viewer"),
+      password: "password123",
+    });
+
+    expect(
+      ownerResult.success && adminResult.success && viewerResult.success,
+    ).toBe(true);
+    if (!ownerResult.success || !adminResult.success || !viewerResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: adminResult.data.user.id,
+        role: "admin",
+      },
+    });
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: viewerResult.data.user.id,
+        role: "viewer",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: viewerResult.data.user.id,
+      actorUserId: adminResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("Admin は owner を削除できない", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const adminResult = await registerUser({
+      email: uniqueEmail("admin"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && adminResult.success).toBe(true);
+    if (!ownerResult.success || !adminResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: adminResult.data.user.id,
+        role: "admin",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: ownerResult.data.user.id,
+      actorUserId: adminResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("insufficient-role");
+  });
+
+  it("Service 単体でも member は viewer を削除できない", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+    const viewerResult = await registerUser({
+      email: uniqueEmail("viewer"),
+      password: "password123",
+    });
+
+    expect(
+      ownerResult.success && memberResult.success && viewerResult.success,
+    ).toBe(true);
+    if (
+      !ownerResult.success ||
+      !memberResult.success ||
+      !viewerResult.success
+    ) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: viewerResult.data.user.id,
+        role: "viewer",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: viewerResult.data.user.id,
+      actorUserId: memberResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("insufficient-role");
+  });
+
+  it("存在しないメンバーの削除は失敗する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const otherResult = await registerUser({
+      email: uniqueEmail("other"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && otherResult.success).toBe(true);
+    if (!ownerResult.success || !otherResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: otherResult.data.user.id,
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("target-not-found");
+  });
+
+  it("最後の Owner の削除は失敗する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success).toBe(true);
+    if (!ownerResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: ownerResult.data.user.id,
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("last-owner");
+
+    const unchanged = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: ownerResult.data.user.id,
+        },
+      },
+    });
+    expect(unchanged?.role).toBe("owner");
+  });
+
+  it("自分自身を削除できない", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const otherOwnerResult = await registerUser({
+      email: uniqueEmail("other-owner"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && otherOwnerResult.success).toBe(true);
+    if (!ownerResult.success || !otherOwnerResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: otherOwnerResult.data.user.id,
+        role: "owner",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: ownerResult.data.user.id,
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("insufficient-role");
+    expect(result.error.message).toBe("自分自身を削除することはできません");
+  });
+
+  it("削除時に監査ログが記録される", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await deleteOrganizationMember({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        organizationId: organization.data.id,
+        entityType: "organization_member",
+        action: "member_deleted",
+      },
+    });
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]).toMatchObject({
+      actorId: ownerResult.data.user.id,
+      entityId: result.data.member.id,
+      oldValues: { role: "member", userId: memberResult.data.user.id },
+      newValues: null,
+    });
+  });
+
+  it("他メンバーが残る状態で最後の Owner 削除を DB トリガーが拒否する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    await expect(
+      prisma.$executeRaw`
+        DELETE FROM organization_members
+        WHERE organization_id = ${organization.data.id} AND role = 'owner'
+      `,
+    ).rejects.toThrow();
+
+    const unchanged = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: ownerResult.data.user.id,
+        },
+      },
+    });
+    expect(unchanged?.role).toBe("owner");
+  });
+
+  it("最後の Owner 削除を強制する DB トリガーが存在する", async () => {
+    const triggers = await prisma.$queryRaw<
+      Array<{ name: string }>
+    >`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'ensure_at_least_one_owner_before_delete'`;
+
+    expect(triggers).toHaveLength(1);
   });
 });
