@@ -112,8 +112,8 @@ export async function countTicketsByOrganizationId(
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND (
-        title LIKE ${pattern} ESCAPE '!'
-        OR description LIKE ${pattern} ESCAPE '!'
+        LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
+        OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
       )
   `;
 
@@ -158,6 +158,7 @@ export async function findTicketsByOrganizationId(
   const pattern = buildSearchPattern(search);
 
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
+  // LOWER() で大文字小文字を区別せず、PRAGMA 等の設定差分に依存しません。
   // 先頭ワイルドカードのためテーブルスキャンになり、チケット数が増えると
   // 応答が劣化します。スケール時は SQLite FTS 等の全文検索インデックス導入を
   // 検討してください。
@@ -187,8 +188,8 @@ export async function findTicketsByOrganizationId(
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND (
-        title LIKE ${pattern} ESCAPE '!'
-        OR description LIKE ${pattern} ESCAPE '!'
+        LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
+        OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
       )
     ORDER BY updated_at DESC, id DESC
     LIMIT ${take} OFFSET ${skip}

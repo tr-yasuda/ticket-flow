@@ -17,7 +17,8 @@ async function searchTicketsRequest(
   search: string,
   query: Record<string, string> = {},
 ): Promise<Response> {
-  const params = new URLSearchParams({ search, ...query });
+  const params = new URLSearchParams(query);
+  params.set("search", search);
   const url = `/api/organizations/${organizationId}/tickets?${params.toString()}`;
   return app.request(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
