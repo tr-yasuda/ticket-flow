@@ -13,8 +13,8 @@ import { createOrganization } from "../../../src/services/organizations-service.
 
 async function cleanAll(): Promise<void> {
   await prisma.auditLog.deleteMany();
-  await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
+  await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }

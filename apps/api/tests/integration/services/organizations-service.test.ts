@@ -14,8 +14,8 @@ function uniqueEmail(prefix: string): string {
 }
 
 async function cleanAll(): Promise<void> {
-  await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
+  await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }
