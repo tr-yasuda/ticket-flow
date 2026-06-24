@@ -629,4 +629,52 @@ describe("updateOrganizationMemberRole", () => {
       newValues: { role: "admin" },
     });
   });
+
+  it("最後の Owner 制約を強制する DB トリガーが存在する", async () => {
+    const triggers = await prisma.$queryRaw<
+      Array<{ name: string }>
+    >`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'ensure_at_least_one_owner_before_update'`;
+
+    expect(triggers).toHaveLength(1);
+  });
+
+  it("DB トリガーが最後の Owner 降格を拒否する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success).toBe(true);
+    if (!ownerResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await expect(
+      prisma.$executeRaw`
+        UPDATE organization_members
+        SET role = 'admin'
+        WHERE organization_id = ${organization.data.id} AND role = 'owner'
+      `,
+    ).rejects.toThrow();
+
+    const unchanged = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: ownerResult.data.user.id,
+        },
+      },
+    });
+    expect(unchanged?.role).toBe("owner");
+  });
 });

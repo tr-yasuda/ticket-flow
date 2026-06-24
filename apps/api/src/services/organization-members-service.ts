@@ -1,4 +1,4 @@
-import { type PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { createAuditLog } from "../domain/audit-log.js";
 import {
@@ -128,6 +128,20 @@ export async function updateOrganizationMemberRole(
         error: { type: "last-owner", message: error.message },
       };
     }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.message.includes("最後の Owner のロールは変更できません")
+    ) {
+      return {
+        success: false,
+        error: {
+          type: "last-owner",
+          message: "最後の Owner のロールは変更できません",
+        },
+      };
+    }
+
     throw error;
   }
 }
