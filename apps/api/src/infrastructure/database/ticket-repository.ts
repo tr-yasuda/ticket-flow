@@ -49,8 +49,25 @@ export async function saveTicket(
 
 export type FindTicketsInput = Readonly<{
   organizationId: string;
+  search?: string;
 }> &
   Pagination;
+
+function normalizeSearch(search: string | undefined): string | undefined {
+  const trimmed = search?.trim();
+  if (trimmed === undefined || trimmed.length === 0) {
+    return undefined;
+  }
+  return trimmed;
+}
+
+export function escapeLikePattern(value: string): string {
+  return value.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_");
+}
+
+function buildSearchPattern(search: string): string {
+  return `%${escapeLikePattern(search)}%`;
+}
 
 function toTicketListItem(row: {
   id: string;
@@ -77,27 +94,105 @@ function toTicketListItem(row: {
   };
 }
 
+export async function countTicketsByOrganizationId(
+  input: FindTicketsInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<number> {
+  const search = normalizeSearch(input.search);
+
+  if (search === undefined) {
+    return db.ticket.count({
+      where: { organizationId: input.organizationId },
+    });
+  }
+
+  const pattern = buildSearchPattern(search);
+  const rows = await db.$queryRaw<Array<{ count: number }>>`
+    SELECT COUNT(*) AS count
+    FROM tickets
+    WHERE organization_id = ${input.organizationId}
+      AND (
+        title LIKE ${pattern} ESCAPE '!'
+        OR description LIKE ${pattern} ESCAPE '!'
+      )
+  `;
+
+  const row = rows[0];
+  if (row === undefined) {
+    return 0;
+  }
+
+  return Number(row.count);
+}
+
 export async function findTicketsByOrganizationId(
   input: FindTicketsInput,
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<TicketListItem[]> {
-  const rows = await db.ticket.findMany({
-    where: { organizationId: input.organizationId },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    take: resolveTake(input.take),
-    skip: resolveSkip(input.skip),
-    select: {
-      id: true,
-      organizationId: true,
-      title: true,
-      status: true,
-      priority: true,
-      assigneeId: true,
-      createdBy: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  const search = normalizeSearch(input.search);
+  const take = resolveTake(input.take);
+  const skip = resolveSkip(input.skip);
+
+  if (search === undefined) {
+    const rows = await db.ticket.findMany({
+      where: { organizationId: input.organizationId },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take,
+      skip,
+      select: {
+        id: true,
+        organizationId: true,
+        title: true,
+        status: true,
+        priority: true,
+        assigneeId: true,
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return rows.map(toTicketListItem);
+  }
+
+  const pattern = buildSearchPattern(search);
+
+  // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
+  // 先頭ワイルドカードのためテーブルスキャンになり、チケット数が増えると
+  // 応答が劣化します。スケール時は SQLite FTS 等の全文検索インデックス導入を
+  // 検討してください。
+  const rows = await db.$queryRaw<
+    Array<{
+      id: string;
+      organizationId: string;
+      title: string;
+      status: string;
+      priority: string;
+      assigneeId: string | null;
+      createdBy: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  >`
+    SELECT
+      id,
+      organization_id AS organizationId,
+      title,
+      status,
+      priority,
+      assignee_id AS assigneeId,
+      created_by AS createdBy,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM tickets
+    WHERE organization_id = ${input.organizationId}
+      AND (
+        title LIKE ${pattern} ESCAPE '!'
+        OR description LIKE ${pattern} ESCAPE '!'
+      )
+    ORDER BY updated_at DESC, id DESC
+    LIMIT ${take} OFFSET ${skip}
+  `;
 
   return rows.map(toTicketListItem);
 }
