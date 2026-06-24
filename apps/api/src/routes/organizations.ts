@@ -148,8 +148,6 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         "/:organizationId/members/:userId/role",
         organizationScopeMiddleware,
         requireOwnerMiddleware,
-        updateMemberRoleRateLimitByOrganization,
-        updateMemberRoleRateLimitByUser,
         sValidator(
           "param",
           updateOrganizationMemberRoleParamsSchema,
@@ -160,6 +158,8 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
           updateOrganizationMemberRoleInputSchema,
           validationHook,
         ),
+        updateMemberRoleRateLimitByOrganization,
+        updateMemberRoleRateLimitByUser,
         updateOrganizationMemberRoleController,
       )
       // Owner/Admin がメンバーを削除できる。
