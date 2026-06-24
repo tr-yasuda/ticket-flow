@@ -2,12 +2,14 @@ import { sValidator } from "@hono/standard-validator";
 import {
   createOrganizationInputSchema,
   createOrganizationInvitationInputSchema,
+  updateOrganizationMemberRoleInputSchema,
 } from "@ticket-flow/shared";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import { createRequireRoleMiddleware } from "../controllers/authorization-middleware.js";
 import { createOrganizationInvitationController } from "../controllers/organization-invitations-controller.js";
+import { updateOrganizationMemberRoleController } from "../controllers/organization-members-controller.js";
 import { organizationScopeMiddleware } from "../controllers/organization-scope-middleware.js";
 import {
   createOrganizationController,
@@ -15,6 +17,7 @@ import {
   getOrganizationMembersController,
   getOrganizationsController,
 } from "../controllers/organizations-controller.js";
+import { updateOrganizationMemberRoleParamsSchema } from "../controllers/schemas/organization-member-schema.js";
 import {
   createTicketBodySchema,
   getTicketParamSchema,
@@ -35,6 +38,7 @@ const listOrganizationMembersQuerySchema = z.object({
 
 const requireAdminMiddleware = createRequireRoleMiddleware("admin");
 const requireMemberMiddleware = createRequireRoleMiddleware("member");
+const requireOwnerMiddleware = createRequireRoleMiddleware("owner");
 
 const invitationRateLimitByOrganization = createRateLimitMiddleware({
   windowMs: 60 * 60 * 1000,
@@ -78,6 +82,20 @@ const listTicketsRateLimitByUser = createRateLimitMiddleware({
   message: "チケット一覧取得は時間あたりの上限に達しました",
 });
 
+const updateMemberRoleRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:members:role:update`,
+  message: "この組織でのロール変更は時間あたりの上限に達しました",
+});
+
+const updateMemberRoleRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 50,
+  keyGenerator: (c) => `user:${c.get("userId")}:members:role:update`,
+  message: "ロール変更は時間あたりの上限に達しました",
+});
+
 export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
   return routes
     .get("/", getOrganizationsController)
@@ -104,6 +122,24 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
       organizationScopeMiddleware,
       sValidator("query", listOrganizationMembersQuerySchema, validationHook),
       getOrganizationMembersController,
+    )
+    .patch(
+      "/:organizationId/members/:userId/role",
+      organizationScopeMiddleware,
+      requireOwnerMiddleware,
+      updateMemberRoleRateLimitByOrganization,
+      updateMemberRoleRateLimitByUser,
+      sValidator(
+        "param",
+        updateOrganizationMemberRoleParamsSchema,
+        validationHook,
+      ),
+      sValidator(
+        "json",
+        updateOrganizationMemberRoleInputSchema,
+        validationHook,
+      ),
+      updateOrganizationMemberRoleController,
     )
     .get(
       "/:organizationId/tickets",

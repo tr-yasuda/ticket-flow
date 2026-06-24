@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
+import { updateOrganizationMemberRole } from "../../../src/services/organization-members-service.js";
 import {
   createOrganization,
   getOrganizationMembers,
@@ -21,12 +22,13 @@ async function cleanAll(): Promise<void> {
   await prisma.user.deleteMany();
 }
 
+afterAll(async () => {
+  await cleanAll();
+  await prisma.$disconnect();
+});
+
 describe("organization-members-service 統合テスト (members.list)", () => {
   beforeEach(cleanAll);
-  afterAll(async () => {
-    await cleanAll();
-    await prisma.$disconnect();
-  });
 
   it("組織のメンバー一覧を取得できる", async () => {
     const ownerResult = await registerUser({
@@ -270,5 +272,361 @@ describe("organization-members-service 統合テスト (members.list)", () => {
       ownerResult.data.user.id,
       memberResult.data.user.id,
     ]);
+  });
+});
+
+describe("updateOrganizationMemberRole", () => {
+  beforeEach(cleanAll);
+
+  it("member のロールを admin に変更できる", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      newRole: "admin",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.member.role).toBe("admin");
+    expect(result.data.oldRole).toBe("member");
+
+    const updated = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: memberResult.data.user.id,
+        },
+      },
+    });
+    expect(updated?.role).toBe("admin");
+  });
+
+  it("最後の Owner のロール変更は失敗する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success).toBe(true);
+    if (!ownerResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: ownerResult.data.user.id,
+      newRole: "admin",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("last-owner");
+
+    const unchanged = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: organization.data.id,
+          userId: ownerResult.data.user.id,
+        },
+      },
+    });
+    expect(unchanged?.role).toBe("owner");
+  });
+
+  it("存在しないメンバーのロール変更は失敗する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const otherResult = await registerUser({
+      email: uniqueEmail("other"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && otherResult.success).toBe(true);
+    if (!ownerResult.success || !otherResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: otherResult.data.user.id,
+      newRole: "admin",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("target-not-found");
+  });
+
+  it("同じロールへの変更は失敗する", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      newRole: "member",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.error.type).toBe("same-role");
+  });
+
+  it("複数 Owner がいる場合、一方を admin に降格できる", async () => {
+    const ownerAResult = await registerUser({
+      email: uniqueEmail("owner-a"),
+      password: "password123",
+    });
+    const ownerBResult = await registerUser({
+      email: uniqueEmail("owner-b"),
+      password: "password123",
+    });
+
+    expect(ownerAResult.success && ownerBResult.success).toBe(true);
+    if (!ownerAResult.success || !ownerBResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerAResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: ownerBResult.data.user.id,
+        role: "owner",
+      },
+    });
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: ownerBResult.data.user.id,
+      newRole: "admin",
+      actorUserId: ownerAResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.member.role).toBe("admin");
+
+    const ownerCount = await prisma.organizationMember.count({
+      where: {
+        organizationId: organization.data.id,
+        role: "owner",
+      },
+    });
+    expect(ownerCount).toBe(1);
+  });
+
+  it("member を owner に昇格できる", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      newRole: "owner",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.member.role).toBe("owner");
+  });
+
+  it("ロール変更時に監査ログが記録される", async () => {
+    const ownerResult = await registerUser({
+      email: uniqueEmail("owner"),
+      password: "password123",
+    });
+    const memberResult = await registerUser({
+      email: uniqueEmail("member"),
+      password: "password123",
+    });
+
+    expect(ownerResult.success && memberResult.success).toBe(true);
+    if (!ownerResult.success || !memberResult.success) {
+      return;
+    }
+
+    const organization = await createOrganization({
+      name: "Acme Inc.",
+      slug: "acme-inc",
+      ownerUserId: ownerResult.data.user.id,
+    });
+    expect(organization.success).toBe(true);
+    if (!organization.success) {
+      return;
+    }
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: organization.data.id,
+        userId: memberResult.data.user.id,
+        role: "member",
+      },
+    });
+
+    const result = await updateOrganizationMemberRole({
+      organizationId: organization.data.id,
+      targetUserId: memberResult.data.user.id,
+      newRole: "admin",
+      actorUserId: ownerResult.data.user.id,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        organizationId: organization.data.id,
+        entityType: "organization_member",
+        action: "role_changed",
+      },
+    });
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]).toMatchObject({
+      actorId: ownerResult.data.user.id,
+      entityId: result.data.member.id,
+      oldValues: { role: "member" },
+      newValues: { role: "admin" },
+    });
   });
 });
