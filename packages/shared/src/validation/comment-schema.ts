@@ -10,12 +10,12 @@ function trim(value: string): string {
 function createNonEmptyIdSchema(fieldName: string, message: string) {
   return z
     .string({ message })
-    .min(1, message)
-    .max(MAX_ID_LENGTH, {
-      message: `${fieldName}は${MAX_ID_LENGTH}文字以内で入力してください`,
-    })
     .transform(trim)
-    .refine((value) => value.length > 0, message);
+    .refine((value) => value.length > 0, message)
+    .refine(
+      (value) => value.length <= MAX_ID_LENGTH,
+      `${fieldName}は${MAX_ID_LENGTH}文字以内で入力してください`,
+    );
 }
 
 /**

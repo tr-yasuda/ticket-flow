@@ -4,7 +4,7 @@ import {
   COMMENT_AUDIT_ACTION_CREATE,
   COMMENT_AUDIT_ENTITY_TYPE,
   CommentValidationError,
-  createComment,
+  createComment as createCommentEntity,
   type Comment,
 } from "../domain/comment.js";
 import { TicketNotFoundError } from "../domain/ticket.js";
@@ -44,12 +44,12 @@ export type CreateCommentResult =
   | { success: true; data: { comment: Comment } }
   | { success: false; error: CommentServiceError };
 
-export async function createCommentInService(
+export async function createComment(
   input: CreateCommentServiceInput,
   db: PrismaClient = prisma,
 ): Promise<CreateCommentResult> {
   try {
-    const comment = createComment(input);
+    const comment = createCommentEntity(input);
 
     const saved = await db.$transaction(async (tx) => {
       const ticket = await findTicketById(

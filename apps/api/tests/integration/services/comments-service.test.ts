@@ -9,7 +9,7 @@ import {
 import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
 import {
-  createCommentInService,
+  createComment,
   listCommentsByTicketId,
   type CreateCommentServiceInput,
 } from "../../../src/services/comments-service.js";
@@ -76,7 +76,7 @@ describe("comments-service 統合テスト", () => {
       content: "対応しました",
     };
 
-    const result = await createCommentInService(input);
+    const result = await createComment(input);
 
     expect(result.success).toBe(true);
     if (!result.success) {
@@ -116,7 +116,7 @@ describe("comments-service 統合テスト", () => {
       content: "対応しました",
     };
 
-    const result = await createCommentInService(input);
+    const result = await createComment(input);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -142,7 +142,7 @@ describe("comments-service 統合テスト", () => {
       content: "対応しました",
     };
 
-    const result = await createCommentInService(input);
+    const result = await createComment(input);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -159,7 +159,7 @@ describe("comments-service 統合テスト", () => {
       content: "  対応しました  ",
     };
 
-    const result = await createCommentInService(input);
+    const result = await createComment(input);
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -176,7 +176,7 @@ describe("comments-service 統合テスト", () => {
       content: "   ",
     };
 
-    const result = await createCommentInService(input);
+    const result = await createComment(input);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -187,13 +187,13 @@ describe("comments-service 統合テスト", () => {
   it("チケットのコメント一覧と総件数を取得できる", async () => {
     const { organizationId, ownerId, ticketId } = await seedOrganization();
 
-    await createCommentInService({
+    await createComment({
       organizationId,
       ticketId,
       authorId: ownerId,
       content: "最初のコメント",
     });
-    await createCommentInService({
+    await createComment({
       organizationId,
       ticketId,
       authorId: ownerId,
@@ -217,7 +217,7 @@ describe("comments-service 統合テスト", () => {
     const first = await seedOrganization();
     const second = await seedOrganization();
 
-    await createCommentInService({
+    await createComment({
       organizationId: first.organizationId,
       ticketId: first.ticketId,
       authorId: first.ownerId,
@@ -238,13 +238,13 @@ describe("comments-service 統合テスト", () => {
   it("ページネーションで take がクランプされる", async () => {
     const { organizationId, ownerId, ticketId } = await seedOrganization();
 
-    await createCommentInService({
+    await createComment({
       organizationId,
       ticketId,
       authorId: ownerId,
       content: "older",
     });
-    await createCommentInService({
+    await createComment({
       organizationId,
       ticketId,
       authorId: ownerId,
