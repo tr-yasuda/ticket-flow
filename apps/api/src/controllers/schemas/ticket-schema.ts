@@ -47,12 +47,16 @@ export const updateTicketBodySchema = z
     description: ticketDescriptionSchema.optional(),
   })
   .strict()
-  .refine(
-    (data) => data.title !== undefined || data.description !== undefined,
-    {
-      message: "更新する項目を指定してください",
-      path: ["body"],
-    },
-  );
+  .superRefine((data, ctx) => {
+    if (data.title === undefined && data.description === undefined) {
+      for (const field of ["title", "description"] as const) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "更新する項目を指定してください",
+          path: [field],
+        });
+      }
+    }
+  });
 
 export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>;

@@ -683,6 +683,12 @@ describe("PATCH /api/organizations/:organizationId/tickets/:ticketId (ticket.upd
     const body = await response.json();
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "title" }),
+        expect.objectContaining({ field: "description" }),
+      ]),
+    );
   });
 
   it("未知のフィールドは 400 Bad Request", async () => {
