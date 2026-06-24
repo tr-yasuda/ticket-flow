@@ -15,18 +15,22 @@ import {
   createTicket,
   getTicket,
   listTickets,
+  updateTicket,
   type TicketServiceError,
 } from "../services/ticket-service.js";
 import {
   type CreateTicketBody,
   type GetTicketParamSchema,
   type ListTicketsQuery,
+  type UpdateTicketBody,
 } from "./schemas/ticket-schema.js";
 
 type ErrorMapping = Readonly<{
   code: ApiErrorCode;
   status:
     | typeof HttpStatus.BAD_REQUEST
+    | typeof HttpStatus.NOT_FOUND
+    | typeof HttpStatus.FORBIDDEN
     | typeof HttpStatus.INTERNAL_SERVER_ERROR;
   message: string;
   details?: ApiValidationErrorDetail[];
@@ -249,6 +253,63 @@ export async function getTicketController(c: Context) {
   return c.json(
     createApiSuccessResponse({
       ...result.data.ticket,
+      // TODO(#39): コメント数を実際の値に置き換える
+      commentCount: 0,
+    }),
+    HttpStatus.OK,
+  );
+}
+
+function mapUpdateTicketError(error: TicketServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function updateTicketController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const updatedBy = getRequiredContextValue(c, "userId");
+  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+  const data = getValidatedJson<UpdateTicketBody>(c);
+
+  const result = await updateTicket({
+    organizationId,
+    ticketId,
+    updatedBy,
+    title: data.title,
+    description: data.description,
+  });
+
+  if (!result.success) {
+    const { code, status, message, details } = mapUpdateTicketError(
+      result.error,
+    );
+    return c.json(createApiErrorResponse(code, message, details), status);
+  }
+
+  const { ticket } = result.data;
+
+  return c.json(
+    createApiSuccessResponse({
+      ...ticket,
       // TODO(#39): コメント数を実際の値に置き換える
       commentCount: 0,
     }),

@@ -263,6 +263,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         title: "after",
         description: "new",
       });
@@ -288,6 +289,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         title: "title only",
       });
 
@@ -312,6 +314,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         description: "   ",
       });
 
@@ -334,6 +337,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         assigneeId: memberId,
       });
 
@@ -356,6 +360,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         assigneeId: null,
       });
 
@@ -379,6 +384,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId: first.organizationId,
         ticketId: created.ticket.id,
+        updatedBy: first.ownerId,
         assigneeId: second.memberId,
       });
 
@@ -386,11 +392,12 @@ describe("ticket-service 統合テスト", () => {
     });
 
     it("存在しないチケットを更新するとエラー", async () => {
-      const { organizationId } = await seedOrganization();
+      const { organizationId, ownerId } = await seedOrganization();
 
       const result = await updateTicket({
         organizationId,
         ticketId: randomUUID(),
+        updatedBy: ownerId,
         title: "ghost",
       });
 
@@ -413,6 +420,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId: second.organizationId,
         ticketId: created.ticket.id,
+        updatedBy: first.ownerId,
         title: "hacked",
       });
 
@@ -434,6 +442,7 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         title: "   ",
       });
 
@@ -455,11 +464,53 @@ describe("ticket-service 統合テスト", () => {
       const result = await updateTicket({
         organizationId,
         ticketId: created.ticket.id,
+        updatedBy: ownerId,
         // @ts-expect-error 無効な値を実行時に渡す
         priority: "invalid",
       });
 
       expectError(result, "validation-error");
+    });
+
+    it("更新成功時に監査ログが記録される", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "before",
+          description: "old",
+          priority: "low",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicket({
+        organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: ownerId,
+        title: "after",
+      });
+
+      expectSuccess(result);
+
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.action).toBe("update");
+      expect(auditLog?.oldValues).toMatchObject({ title: "before" });
+      expect(auditLog?.newValues).toMatchObject({ title: "after" });
+      expect(
+        (auditLog?.oldValues as { title?: string } | null)?.title,
+      ).not.toBe((auditLog?.newValues as { title?: string } | null)?.title);
     });
   });
 

@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
+import { createAuditLog, type AuditLogValues } from "../domain/audit-log.js";
 import {
   createTicket as createTicketEntity,
   type CreateTicketInput as DomainCreateTicketInput,
@@ -14,6 +15,7 @@ import {
   updateTicketStatus as updateTicketStatusEntity,
   UserNotOrganizationMemberError,
 } from "../domain/ticket.js";
+import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import {
   countTicketsByOrganizationId,
   findTicketById,
@@ -168,8 +170,9 @@ export async function getTicket(
 export type UpdateTicketInput = Readonly<{
   organizationId: string;
   ticketId: string;
+  updatedBy: string;
   title?: string;
-  description?: string;
+  description?: string | null;
   priority?: TicketPriority;
   assigneeId?: string | null;
 }>;
@@ -178,12 +181,22 @@ export type UpdateTicketResult =
   | { success: true; data: { ticket: Ticket } }
   | { success: false; error: TicketServiceError };
 
+function ticketToAuditLogValues(ticket: Ticket): AuditLogValues {
+  return {
+    title: ticket.title,
+    description: ticket.description,
+    priority: ticket.priority,
+    status: ticket.status,
+    assigneeId: ticket.assigneeId,
+  };
+}
+
 export async function updateTicket(
   input: UpdateTicketInput,
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<UpdateTicketResult> {
   try {
-    const updatedTicket = await runInTransaction(db, async (tx) => {
+    const ticket = await runInTransaction(db, async (tx) => {
       const existing = await findTicketById(
         { organizationId: input.organizationId, ticketId: input.ticketId },
         tx,
@@ -231,10 +244,21 @@ export async function updateTicket(
         );
       }
 
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.updatedBy,
+        entityType: "ticket",
+        entityId: saved.id,
+        action: "update",
+        oldValues: ticketToAuditLogValues(existing),
+        newValues: ticketToAuditLogValues(saved),
+      });
+      await saveAuditLog(auditLog, tx);
+
       return saved;
     });
 
-    return { success: true, data: { ticket: updatedTicket } };
+    return { success: true, data: { ticket } };
   } catch (error) {
     return mapServiceError(error);
   }

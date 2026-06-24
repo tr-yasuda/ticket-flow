@@ -157,7 +157,7 @@ export function rehydrateTicket(input: RehydrateTicketInput): Ticket {
 
 export type UpdateTicketPatch = Readonly<{
   title?: string;
-  description?: string;
+  description?: string | null;
   priority?: TicketPriority;
   assigneeId?: string | null;
 }>;
