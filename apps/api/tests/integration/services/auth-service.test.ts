@@ -9,8 +9,10 @@ import {
 } from "../../../src/services/auth-service.js";
 
 async function cleanUsers(): Promise<void> {
+  await prisma.comment.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();
