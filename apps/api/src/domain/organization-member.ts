@@ -1,15 +1,10 @@
 import { randomUUID } from "node:crypto";
 
+import { organizationMemberRoles } from "@ticket-flow/shared";
+
 export type OrganizationMemberId = string;
 export type OrganizationId = string;
 export type UserId = string;
-
-export const organizationMemberRoles = [
-  "owner",
-  "admin",
-  "member",
-  "viewer",
-] as const;
 
 export type OrganizationMemberRole = (typeof organizationMemberRoles)[number];
 
@@ -97,9 +92,8 @@ export function rehydrateOrganizationMember(
 /**
  * メンバーのロールを変更する。
  *
- * この関数は純粋なロール更新を行うのみで、呼び出し元（ユースケース層）で
- * 操作者の権限・最後の owner 不在防止などの認可・不変条件を検証すること。
- * TODO: 認可ルールは #21 等で実装予定。
+ * この関数は純粋なロール更新を行うのみで、呼び出し元で操作者の権限を検証すること。
+ * 最後の owner 不在防止などの不変条件は service 層で検証する。
  */
 export function changeRole(
   member: OrganizationMember,

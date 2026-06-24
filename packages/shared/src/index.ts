@@ -2,6 +2,7 @@ export * from "./types/api-response.js";
 export * from "./types/ticket.js";
 export * from "./validation/auth-schema.js";
 export * from "./validation/invitation-schema.js";
+export * from "./validation/member-role-schema.js";
 export * from "./validation/organization-schema.js";
 export * from "./validation/ticket-schema.js";
 export * from "./validation/zod-error.js";

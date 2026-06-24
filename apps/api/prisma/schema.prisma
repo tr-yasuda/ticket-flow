@@ -89,6 +89,7 @@ model OrganizationMember {
 
   @@unique([organizationId, userId])
   @@index([userId])
+  @@index([organizationId, role])
   @@map("organization_members")
 }
 
