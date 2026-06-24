@@ -132,7 +132,6 @@ const deleteMemberRateLimitByUser = createRateLimitMiddleware({
   message: "メンバー削除は時間あたりの上限に達しました",
 });
 
-
 export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
   return (
     routes
