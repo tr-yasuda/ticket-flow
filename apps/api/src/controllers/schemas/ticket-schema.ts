@@ -7,6 +7,8 @@ import { z } from "zod";
 
 import { MAX_SKIP } from "../../infrastructure/database/pagination.js";
 
+export const MAX_TICKET_SEARCH_LENGTH = 100;
+
 export const createTicketBodySchema = z.object({
   title: ticketTitleSchema,
   description: ticketDescriptionSchema,
@@ -24,6 +26,12 @@ export const listTicketsQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).max(10000).default(1),
     perPage: z.coerce.number().int().min(1).max(100).default(20),
+    search: z
+      .string()
+      .max(MAX_TICKET_SEARCH_LENGTH, {
+        message: `検索キーワードは${MAX_TICKET_SEARCH_LENGTH}文字以内で入力してください`,
+      })
+      .optional(),
   })
   .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
     message: "ページ範囲が大きすぎます",

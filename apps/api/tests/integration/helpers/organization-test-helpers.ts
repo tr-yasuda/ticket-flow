@@ -65,6 +65,22 @@ export async function createOrganization(
   return body.data.id;
 }
 
+export async function createTicketRequest(
+  app: ReturnType<typeof createApp>,
+  accessToken: string,
+  organizationId: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return app.request(`/api/organizations/${organizationId}/tickets`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
 export async function createInvitation(
   organizationId: string,
   email: string,
