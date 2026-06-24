@@ -7,14 +7,14 @@ function trim(value: string): string {
   return value.trim();
 }
 
-function createNonEmptyIdSchema(fieldName: string, message: string) {
+function createNonEmptyIdSchema(fieldLabel: string, message: string) {
   return z
     .string({ message })
     .transform(trim)
     .refine((value) => value.length > 0, message)
     .refine(
       (value) => value.length <= MAX_ID_LENGTH,
-      `${fieldName}は${MAX_ID_LENGTH}文字以内で入力してください`,
+      `${fieldLabel}は${MAX_ID_LENGTH}文字以内で入力してください`,
     );
 }
 
@@ -35,17 +35,17 @@ export const commentContentSchema = z
   );
 
 export const commentTicketIdSchema = createNonEmptyIdSchema(
-  "ticketId",
+  "チケットID",
   "チケットIDを入力してください",
 );
 
 export const commentOrganizationIdSchema = createNonEmptyIdSchema(
-  "organizationId",
+  "組織ID",
   "組織IDを入力してください",
 );
 
 export const commentAuthorIdSchema = createNonEmptyIdSchema(
-  "authorId",
+  "作成者ID",
   "作成者IDを入力してください",
 );
 
