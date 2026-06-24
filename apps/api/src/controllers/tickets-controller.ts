@@ -13,11 +13,13 @@ import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createTicket,
+  getTicket,
   listTickets,
   type TicketServiceError,
 } from "../services/ticket-service.js";
 import {
   type CreateTicketBody,
+  type GetTicketParamSchema,
   type ListTicketsQuery,
 } from "./schemas/ticket-schema.js";
 
@@ -188,6 +190,65 @@ export async function listTicketsController(c: Context) {
         totalPages,
       },
     ),
+    HttpStatus.OK,
+  );
+}
+
+function mapGetTicketError(error: TicketServiceError): {
+  code: ApiErrorCode;
+  status:
+    | typeof HttpStatus.NOT_FOUND
+    | typeof HttpStatus.BAD_REQUEST
+    | typeof HttpStatus.FORBIDDEN
+    | typeof HttpStatus.INTERNAL_SERVER_ERROR;
+  message: string;
+} {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+      };
+    case "user-not-organization-member":
+      return {
+        code: ApiErrorCode.AUTH_FORBIDDEN,
+        status: HttpStatus.FORBIDDEN,
+        message: "この組織にアクセスする権限がありません",
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function getTicketController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+
+  const result = await getTicket({ organizationId, ticketId });
+
+  if (!result.success) {
+    const { code, status, message } = mapGetTicketError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  return c.json(
+    createApiSuccessResponse({
+      ...result.data.ticket,
+      // TODO(#39): コメント数を実際の値に置き換える
+      commentCount: 0,
+    }),
     HttpStatus.OK,
   );
 }

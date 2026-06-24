@@ -17,10 +17,12 @@ import {
 } from "../controllers/organizations-controller.js";
 import {
   createTicketBodySchema,
+  getTicketParamSchema,
   listTicketsQuerySchema,
 } from "../controllers/schemas/ticket-schema.js";
 import {
   createTicketController,
+  getTicketController,
   listTicketsController,
 } from "../controllers/tickets-controller.js";
 import { createRateLimitMiddleware } from "../lib/rate-limiter.js";
@@ -119,6 +121,12 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
       ticketRateLimitByUser,
       sValidator("json", createTicketBodySchema, validationHook),
       createTicketController,
+    )
+    .get(
+      "/:organizationId/tickets/:ticketId",
+      organizationScopeMiddleware,
+      sValidator("param", getTicketParamSchema, validationHook),
+      getTicketController,
     )
     .get(
       "/:organizationId",

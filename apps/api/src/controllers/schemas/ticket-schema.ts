@@ -31,3 +31,12 @@ export const listTicketsQuerySchema = z
   });
 
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;
+
+export const getTicketParamSchema = z.object({
+  ticketId: z
+    .string()
+    .uuid({ message: "チケットIDの形式が正しくありません" })
+    .transform((value) => value.toLowerCase()),
+});
+
+export type GetTicketParamSchema = z.infer<typeof getTicketParamSchema>;
