@@ -19,8 +19,10 @@ function uniqueEmail(prefix: string): string {
 }
 
 async function cleanAll(): Promise<void> {
-  await prisma.auditLog.deleteMany();
+  await prisma.comment.deleteMany();
   await prisma.ticket.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -598,6 +600,57 @@ describe("ticket-service 統合テスト", () => {
       expect(data.tickets).toHaveLength(1);
       expect(data.tickets[0]?.title).toBe("first org");
       expect(data.total).toBe(1);
+    });
+
+    it("search でタイトルまたは説明を検索でき総件数も一致する", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "billing issue",
+        description: "description",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+      await createTicket({
+        organizationId,
+        title: "ui bug",
+        description: "nothing relevant",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        search: "billing",
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(1);
+      expect(data.tickets[0]?.title).toBe("billing issue");
+      expect(data.total).toBe(1);
+    });
+
+    it("search は大文字小文字を区別しない", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "UPPERCASE TITLE",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        search: "uppercase",
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(1);
     });
   });
 });

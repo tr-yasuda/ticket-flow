@@ -165,7 +165,9 @@ export async function createTicketController(c: Context) {
 
 export async function listTicketsController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { page, perPage } = c.req.valid("query" as never) as ListTicketsQuery;
+  const { page, perPage, search } = c.req.valid(
+    "query" as never,
+  ) as ListTicketsQuery;
 
   const skip = (page - 1) * perPage;
 
@@ -173,6 +175,7 @@ export async function listTicketsController(c: Context) {
     organizationId,
     skip,
     take: perPage,
+    search,
   });
 
   if (!result.success) {

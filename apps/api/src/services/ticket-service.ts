@@ -17,6 +17,7 @@ import {
 } from "../domain/ticket.js";
 import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import {
+  countTicketsByOrganizationId,
   findTicketById,
   findTicketsByOrganizationId,
   saveTicket,
@@ -124,7 +125,7 @@ export async function listTickets(
     const result = await runInTransaction(db, async (tx) => {
       const [tickets, total] = await Promise.all([
         findTicketsByOrganizationId(input, tx),
-        tx.ticket.count({ where: { organizationId: input.organizationId } }),
+        countTicketsByOrganizationId(input, tx),
       ]);
       return { tickets, total };
     });

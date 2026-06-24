@@ -12,7 +12,10 @@ import { registerUser } from "../../../src/services/auth-service.js";
 import { createOrganization } from "../../../src/services/organizations-service.js";
 
 async function cleanAll(): Promise<void> {
+  await prisma.comment.deleteMany();
+  await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.refreshToken.deleteMany();

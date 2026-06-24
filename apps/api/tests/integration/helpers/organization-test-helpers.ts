@@ -14,6 +14,7 @@ export function uniqueEmail(prefix: string): string {
 export async function cleanAll(): Promise<void> {
   resetRateLimit();
   resetInvitationMailQueue();
+  await prisma.comment.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.organizationInvitation.deleteMany();
@@ -62,6 +63,22 @@ export async function createOrganization(
     throw new Error(`組織作成に失敗しました: ${JSON.stringify(body)}`);
   }
   return body.data.id;
+}
+
+export async function createTicketRequest(
+  app: ReturnType<typeof createApp>,
+  accessToken: string,
+  organizationId: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return app.request(`/api/organizations/${organizationId}/tickets`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 }
 
 export async function createInvitation(
