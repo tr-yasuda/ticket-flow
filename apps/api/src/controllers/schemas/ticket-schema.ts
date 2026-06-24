@@ -40,3 +40,19 @@ export const getTicketParamSchema = z.object({
 });
 
 export type GetTicketParamSchema = z.infer<typeof getTicketParamSchema>;
+
+export const updateTicketBodySchema = z
+  .object({
+    title: ticketTitleSchema.optional(),
+    description: ticketDescriptionSchema.optional(),
+  })
+  .strict()
+  .refine(
+    (data) => data.title !== undefined || data.description !== undefined,
+    {
+      message: "更新する項目を指定してください",
+      path: ["body"],
+    },
+  );
+
+export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>;
