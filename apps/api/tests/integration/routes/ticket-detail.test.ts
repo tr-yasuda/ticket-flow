@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { prisma } from "../../../src/lib/prisma.js";
 import { createApp } from "../../../src/routes/index.js";
 import {
   cleanAll,
@@ -15,7 +16,6 @@ async function addMember(
   userId: string,
   role: "admin" | "member" | "viewer",
 ): Promise<void> {
-  const { prisma } = await import("../../../src/lib/prisma.js");
   await prisma.organizationMember.create({
     data: { organizationId, userId, role },
   });
