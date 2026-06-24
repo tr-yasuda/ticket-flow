@@ -16,6 +16,8 @@ import { isUniqueConstraintTarget } from "../lib/prisma-error.js";
 import { prisma } from "../lib/prisma.js";
 import { tokenConfig } from "../lib/token-config.js";
 
+const MAX_REFRESH_TOKEN_HASH_ATTEMPTS = 5;
+
 export class InvalidEmailError extends Error {
   constructor(message: string) {
     super(message);
@@ -95,28 +97,39 @@ export async function createRegisteredUserWithTokens(
     },
   });
 
-  const [accessToken, refreshToken] = await Promise.all([
-    generateAccessToken({ userId: user.id }, tokenConfig),
-    generateRefreshToken({ userId: user.id }, tokenConfig),
-  ]);
+  const accessToken = await generateAccessToken(
+    { userId: user.id },
+    tokenConfig,
+  );
 
-  try {
-    await db.refreshToken.create({
-      data: {
-        tokenHash: hashRefreshToken(refreshToken),
-        userId: user.id,
-      },
-    });
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002" &&
-      isUniqueConstraintTarget(error, "token_hash")
-    ) {
-      // 極めて稀なトークンハッシュ衝突。再生成して再試行する。
-      return createRegisteredUserWithTokens(input, db);
+  let refreshToken: string | undefined;
+  for (let attempt = 1; attempt <= MAX_REFRESH_TOKEN_HASH_ATTEMPTS; attempt++) {
+    refreshToken = await generateRefreshToken({ userId: user.id }, tokenConfig);
+    try {
+      await db.refreshToken.create({
+        data: {
+          tokenHash: hashRefreshToken(refreshToken),
+          userId: user.id,
+        },
+      });
+      break;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        isUniqueConstraintTarget(error, "token_hash") &&
+        attempt < MAX_REFRESH_TOKEN_HASH_ATTEMPTS
+      ) {
+        // 極めて稀なトークンハッシュ衝突。リフレッシュトークンのみ再生成して再試行する。
+        continue;
+      }
+      throw error;
     }
-    throw error;
+  }
+  if (refreshToken === undefined) {
+    throw new Error(
+      "リフレッシュトークンの一意なハッシュを生成できませんでした",
+    );
   }
 
   return {
