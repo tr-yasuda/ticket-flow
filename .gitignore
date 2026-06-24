@@ -164,3 +164,4 @@ apps/api/prisma/seed-test.db-*
 
 # Claude Code editor settings
 .claude/
+.worktrees/
