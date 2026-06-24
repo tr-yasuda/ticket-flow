@@ -9,6 +9,7 @@ import {
   rehydrateTicket,
 } from "../../../../src/domain/ticket.js";
 import {
+  countTicketsByOrganizationId,
   findTicketById,
   findTicketsByOrganizationId,
   saveTicket,
@@ -439,5 +440,425 @@ describe("ticket-repository 統合テスト", () => {
     });
 
     expect(found).toBeNull();
+  });
+
+  it("search でタイトルに一致するチケットを取得できる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-match",
+        organizationId,
+        title: "billing issue",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-other",
+        organizationId,
+        title: "ui bug",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "billing",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-match");
+  });
+
+  it("search で説明に一致するチケットを取得できる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-desc-match",
+        organizationId,
+        title: "title only",
+        description: "hidden keyword here",
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "keyword",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-desc-match");
+  });
+
+  it("search は大文字小文字を区別しない", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-case",
+        organizationId,
+        title: "UPPERCASE TITLE",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "uppercase",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-case");
+  });
+
+  it("search が空文字の場合は全件返す", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-1",
+        organizationId,
+        title: "first",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-2",
+        organizationId,
+        title: "second",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "",
+    });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("search とページネーションを組み合わせられる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-a",
+        organizationId,
+        title: "searchable a",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-b",
+        organizationId,
+        title: "searchable b",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-other",
+        organizationId,
+        title: "unrelated",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "searchable",
+      take: 1,
+      skip: 1,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-a");
+  });
+
+  it("search が空白のみの場合は全件返す", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-1",
+        organizationId,
+        title: "first",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "   ",
+    });
+
+    expect(result).toHaveLength(1);
+  });
+
+  it("search で他組織のチケットは含まれない", async () => {
+    const first = await seedOrganization();
+    const second = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-first",
+        organizationId: first.organizationId,
+        title: "shared keyword first",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: first.ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-second",
+        organizationId: second.organizationId,
+        title: "shared keyword second",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: second.ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId: first.organizationId,
+      search: "shared",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-first");
+    expect(result[0]?.organizationId).toBe(first.organizationId);
+  });
+
+  it("search で LIKE ワイルドカード % は文字列として扱われる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-percent",
+        organizationId,
+        title: "50% discount",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-x",
+        organizationId,
+        title: "50x discount",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "50%",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-percent");
+  });
+
+  it("search で LIKE ワイルドカード _ は文字列として扱われる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-underscore",
+        organizationId,
+        title: "file_1",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-a",
+        organizationId,
+        title: "fileA1",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "file_1",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-underscore");
+  });
+
+  it("countTicketsByOrganizationId は組織内総件数を返す", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-1",
+        organizationId,
+        title: "first",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-2",
+        organizationId,
+        title: "second",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const total = await countTicketsByOrganizationId({ organizationId });
+
+    expect(total).toBe(2);
+  });
+
+  it("countTicketsByOrganizationId は search 条件に一致する件数を返す", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-match",
+        organizationId,
+        title: "billing issue",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-other",
+        organizationId,
+        title: "ui bug",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const total = await countTicketsByOrganizationId({
+      organizationId,
+      search: "billing",
+    });
+
+    expect(total).toBe(1);
   });
 });

@@ -7,6 +7,7 @@ import { createApp } from "../../../src/routes/index.js";
 import {
   cleanAll,
   createOrganization,
+  createTicketRequest,
   registerUser,
   uniqueEmail,
 } from "../helpers/organization-test-helpers.js";
@@ -21,22 +22,6 @@ async function addMember(
       organizationId,
       userId,
       role,
-    },
-  });
-}
-
-async function createTicketRequest(
-  app: ReturnType<typeof createApp>,
-  accessToken: string,
-  organizationId: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
-  return app.request(`/api/organizations/${organizationId}/tickets`, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
     },
   });
 }
