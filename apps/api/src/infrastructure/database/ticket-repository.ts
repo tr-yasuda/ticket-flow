@@ -22,6 +22,7 @@ function toTicket(row: Prisma.TicketGetPayload<Record<string, never>>): Ticket {
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt ?? null,
   });
 }
 
@@ -102,7 +103,10 @@ export async function countTicketsByOrganizationId(
 
   if (search === undefined) {
     return db.ticket.count({
-      where: { organizationId: input.organizationId },
+      where: {
+        organizationId: input.organizationId,
+        deletedAt: null,
+      },
     });
   }
 
@@ -111,6 +115,7 @@ export async function countTicketsByOrganizationId(
     SELECT COUNT(*) AS count
     FROM tickets
     WHERE organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
@@ -135,7 +140,10 @@ export async function findTicketsByOrganizationId(
 
   if (search === undefined) {
     const rows = await db.ticket.findMany({
-      where: { organizationId: input.organizationId },
+      where: {
+        organizationId: input.organizationId,
+        deletedAt: null,
+      },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take,
       skip,
@@ -187,6 +195,7 @@ export async function findTicketsByOrganizationId(
       updated_at AS updatedAt
     FROM tickets
     WHERE organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
@@ -211,6 +220,7 @@ export async function findTicketById(
     where: {
       id: input.ticketId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
   });
 
@@ -237,6 +247,7 @@ export async function updateTicket(
     where: {
       id: input.ticketId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
     data: {
       ...(input.title !== undefined && { title: input.title }),
@@ -255,6 +266,7 @@ export async function updateTicket(
     where: {
       id: input.ticketId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
   });
 
@@ -284,6 +296,7 @@ export async function updateTicketStatus(
       createdBy: string;
       createdAt: Date;
       updatedAt: Date;
+      deletedAt: Date | null;
     }>
   >`
     UPDATE tickets
@@ -291,6 +304,7 @@ export async function updateTicketStatus(
         updated_at = ${new Date()}
     WHERE id = ${input.ticketId}
       AND organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
       AND status = ${input.currentStatus}
     RETURNING
       id,
@@ -302,7 +316,8 @@ export async function updateTicketStatus(
       assignee_id AS assigneeId,
       created_by AS createdBy,
       created_at AS createdAt,
-      updated_at AS updatedAt
+      updated_at AS updatedAt,
+      deleted_at AS deletedAt
   `;
 
   if (rows.length === 0) {
@@ -335,6 +350,7 @@ export async function updateTicketPriority(
       createdBy: string;
       createdAt: Date;
       updatedAt: Date;
+      deletedAt: Date | null;
     }>
   >`
     UPDATE tickets
@@ -342,6 +358,7 @@ export async function updateTicketPriority(
         updated_at = ${new Date()}
     WHERE id = ${input.ticketId}
       AND organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
       AND priority = ${input.currentPriority}
     RETURNING
       id,
@@ -353,7 +370,8 @@ export async function updateTicketPriority(
       assignee_id AS assigneeId,
       created_by AS createdBy,
       created_at AS createdAt,
-      updated_at AS updatedAt
+      updated_at AS updatedAt,
+      deleted_at AS deletedAt
   `;
 
   if (rows.length === 0) {
@@ -386,6 +404,7 @@ export async function updateTicketAssignee(
       createdBy: string;
       createdAt: Date;
       updatedAt: Date;
+      deletedAt: Date | null;
     }>
   >`
     UPDATE tickets
@@ -393,6 +412,7 @@ export async function updateTicketAssignee(
         updated_at = ${new Date()}
     WHERE id = ${input.ticketId}
       AND organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
       AND (
         (${input.currentAssigneeId} IS NULL AND assignee_id IS NULL)
         OR assignee_id = ${input.currentAssigneeId}
@@ -407,7 +427,66 @@ export async function updateTicketAssignee(
       assignee_id AS assigneeId,
       created_by AS createdBy,
       created_at AS createdAt,
-      updated_at AS updatedAt
+      updated_at AS updatedAt,
+      deleted_at AS deletedAt
+  `;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return toTicket(rows[0]);
+}
+
+export type SoftDeleteTicketInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+}>;
+
+/**
+ * チケットを論理削除する。
+ *
+ * Prisma の単一 `update` では `deleted_at IS NULL` 条件付きの RETURNING が
+ * 表現できないため、`$queryRaw` を使用して 1 クエリで完了させる。
+ */
+export async function softDeleteTicket(
+  input: SoftDeleteTicketInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const now = new Date();
+  const rows = await db.$queryRaw<
+    Array<{
+      id: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      status: string;
+      priority: string;
+      assigneeId: string | null;
+      createdBy: string;
+      createdAt: Date;
+      updatedAt: Date;
+      deletedAt: Date;
+    }>
+  >`
+    UPDATE tickets
+    SET deleted_at = ${now},
+        updated_at = ${now}
+    WHERE id = ${input.ticketId}
+      AND organization_id = ${input.organizationId}
+      AND deleted_at IS NULL
+    RETURNING
+      id,
+      organization_id AS organizationId,
+      title,
+      description,
+      status,
+      priority,
+      assignee_id AS assigneeId,
+      created_by AS createdBy,
+      created_at AS createdAt,
+      updated_at AS updatedAt,
+      deleted_at AS deletedAt
   `;
 
   if (rows.length === 0) {

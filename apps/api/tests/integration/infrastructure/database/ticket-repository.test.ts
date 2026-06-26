@@ -13,6 +13,7 @@ import {
   findTicketById,
   findTicketsByOrganizationId,
   saveTicket,
+  softDeleteTicket,
 } from "../../../../src/infrastructure/database/ticket-repository.js";
 import { prisma } from "../../../../src/lib/prisma.js";
 import { cleanAll } from "../../helpers/organization-test-helpers.js";
@@ -861,4 +862,128 @@ describe("ticket-repository 統合テスト", () => {
 
     expect(total).toBe(1);
   });
+});
+
+it("softDeleteTicket でチケットを論理削除できる", async () => {
+  const { organizationId, ownerId } = await seedOrganization();
+  const ticket = rehydrateTicket({
+    id: "ticket-delete",
+    organizationId,
+    title: "delete target",
+    description: null,
+    status: TicketStatus.Open,
+    priority: TicketPriority.Medium,
+    assigneeId: null,
+    createdBy: ownerId,
+    createdAt: new Date("2026-06-19T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+  });
+  await saveTicket(ticket);
+
+  const deleted = await softDeleteTicket({
+    organizationId,
+    ticketId: ticket.id,
+  });
+
+  expect(deleted).not.toBeNull();
+  expect(deleted?.deletedAt).not.toBeNull();
+
+  const stored = await prisma.ticket.findUnique({
+    where: { id: ticket.id },
+  });
+  expect(stored?.deletedAt).not.toBeNull();
+});
+
+it("削除済みチケットは findTicketById で取得できない", async () => {
+  const { organizationId, ownerId } = await seedOrganization();
+  const ticket = rehydrateTicket({
+    id: "ticket-deleted",
+    organizationId,
+    title: "deleted ticket",
+    description: null,
+    status: TicketStatus.Open,
+    priority: TicketPriority.Medium,
+    assigneeId: null,
+    createdBy: ownerId,
+    createdAt: new Date("2026-06-19T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+  });
+  await saveTicket(ticket);
+  await softDeleteTicket({ organizationId, ticketId: ticket.id });
+
+  const found = await findTicketById({
+    organizationId,
+    ticketId: ticket.id,
+  });
+
+  expect(found).toBeNull();
+});
+
+it("削除済みチケットは findTicketsByOrganizationId に含まれない", async () => {
+  const { organizationId, ownerId } = await seedOrganization();
+  const ticket = rehydrateTicket({
+    id: "ticket-deleted-list",
+    organizationId,
+    title: "deleted list ticket",
+    description: null,
+    status: TicketStatus.Open,
+    priority: TicketPriority.Medium,
+    assigneeId: null,
+    createdBy: ownerId,
+    createdAt: new Date("2026-06-19T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+  });
+  await saveTicket(ticket);
+  await softDeleteTicket({ organizationId, ticketId: ticket.id });
+
+  const result = await findTicketsByOrganizationId({ organizationId });
+
+  expect(result).toHaveLength(0);
+});
+
+it("削除済みチケットを再削除しても null が返る", async () => {
+  const { organizationId, ownerId } = await seedOrganization();
+  const ticket = rehydrateTicket({
+    id: "ticket-already-deleted",
+    organizationId,
+    title: "already deleted",
+    description: null,
+    status: TicketStatus.Open,
+    priority: TicketPriority.Medium,
+    assigneeId: null,
+    createdBy: ownerId,
+    createdAt: new Date("2026-06-19T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+  });
+  await saveTicket(ticket);
+  await softDeleteTicket({ organizationId, ticketId: ticket.id });
+
+  const result = await softDeleteTicket({
+    organizationId,
+    ticketId: ticket.id,
+  });
+
+  expect(result).toBeNull();
+});
+
+it("countTicketsByOrganizationId は削除済みチケットをカウントしない", async () => {
+  const { organizationId, ownerId } = await seedOrganization();
+  const ticket = rehydrateTicket({
+    id: "ticket-count",
+    organizationId,
+    title: "count target",
+    description: null,
+    status: TicketStatus.Open,
+    priority: TicketPriority.Medium,
+    assigneeId: null,
+    createdBy: ownerId,
+    createdAt: new Date("2026-06-19T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+  });
+  await saveTicket(ticket);
+  await softDeleteTicket({ organizationId, ticketId: ticket.id });
+
+  const total = await countTicketsByOrganizationId({ organizationId });
+
+  expect(total).toBe(0);
 });

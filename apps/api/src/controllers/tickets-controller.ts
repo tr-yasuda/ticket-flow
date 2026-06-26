@@ -7,11 +7,13 @@ import {
 import type { Context } from "hono";
 
 import { createAuditLog } from "../domain/audit-log.js";
+import type { Ticket } from "../domain/ticket.js";
 import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createTicket,
+  deleteTicket,
   getTicket,
   listTickets,
   updateTicket,
@@ -32,9 +34,18 @@ import {
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
 
-function serializeTicket<T extends { id: string }>(ticket: T) {
+function serializeTicket(ticket: Ticket) {
   return {
-    ...ticket,
+    id: ticket.id,
+    organizationId: ticket.organizationId,
+    title: ticket.title,
+    description: ticket.description,
+    status: ticket.status,
+    priority: ticket.priority,
+    assigneeId: ticket.assigneeId,
+    createdBy: ticket.createdBy,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
     // TODO(#39): コメント数を実際の値に置き換える
     commentCount: 0,
   };
@@ -498,4 +509,41 @@ export async function updateTicketAssigneeController(c: Context) {
     createApiSuccessResponse(serializeTicket(ticket)),
     HttpStatus.OK,
   );
+}
+
+function mapDeleteTicketError(error: TicketServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function deleteTicketController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const deletedBy = getRequiredContextValue(c, "userId");
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+
+  const result = await deleteTicket({
+    organizationId,
+    ticketId,
+    deletedBy,
+  });
+
+  if (!result.success) {
+    const { code, status, message } = mapDeleteTicketError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  return c.body(null, HttpStatus.NO_CONTENT);
 }

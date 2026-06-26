@@ -43,6 +43,7 @@ model Ticket {
   createdBy      String       @map("created_by")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
   // 組織削除時にチケット履歴が失われないよう、明示的な削除・アーカイブを促す
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   assignee       User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
@@ -56,6 +57,7 @@ model Ticket {
   @@index([organizationId, updatedAt], map: "tickets_organization_id_updated_at_idx")
   @@index([organizationId, assigneeId])
   @@index([organizationId, createdBy])
+  @@index([organizationId, deletedAt, updatedAt, id])
 }
 
 model Organization {

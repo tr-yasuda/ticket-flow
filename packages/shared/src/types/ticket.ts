@@ -12,6 +12,7 @@ export type Ticket = {
   readonly createdBy: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly deletedAt: Date | null;
 };
 
 export function createTicket(
@@ -32,6 +33,7 @@ export function createTicket(
     createdBy,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
   };
 }
 
