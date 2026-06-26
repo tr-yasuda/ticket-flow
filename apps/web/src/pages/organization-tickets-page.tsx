@@ -14,6 +14,7 @@ export type OrganizationTicketsPageViewProps = {
   error?: Error | null;
   onRetry?: () => void;
   onRowClick?: (ticket: TicketListItem) => void;
+  onCreateClick?: () => void;
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -26,6 +27,7 @@ export function OrganizationTicketsPageView({
   error = null,
   onRetry,
   onRowClick,
+  onCreateClick,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
@@ -34,9 +36,14 @@ export function OrganizationTicketsPageView({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">チケット</h1>
-        <p data-testid="organization-id">{organizationId}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">チケット</h1>
+          <p data-testid="organization-id">{organizationId}</p>
+        </div>
+        <Button type="button" onClick={onCreateClick}>
+          新規作成
+        </Button>
       </div>
       <TicketTable
         tickets={tickets}
@@ -45,7 +52,7 @@ export function OrganizationTicketsPageView({
         onRetry={onRetry}
         onRowClick={onRowClick}
         emptyAction={
-          <Button type="button" className="mt-2">
+          <Button type="button" className="mt-2" onClick={onCreateClick}>
             新規作成
           </Button>
         }
@@ -82,10 +89,14 @@ export function OrganizationTicketsPage({
     currentPage * itemsPerPage,
   );
 
-  const handleRowClick = (ticket: TicketListItem) => {
-    // TODO: チケット詳細画面実装時に正しいルートへ遷移させる
+  // TODO: チケット詳細画面実装後に詳細ルートへ遷移させる
+  const handleRowClick = (_ticket: TicketListItem) => {
+    // no-op
+  };
+
+  const handleCreateClick = () => {
     void navigate({
-      to: `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`,
+      to: `/app/${encodeURIComponent(organizationId)}/tickets/new`,
     });
   };
 
@@ -94,6 +105,7 @@ export function OrganizationTicketsPage({
       organizationId={organizationId}
       tickets={paginatedTickets}
       onRowClick={handleRowClick}
+      onCreateClick={handleCreateClick}
       currentPage={currentPage}
       totalPages={totalPages}
       onPageChange={setCurrentPage}

@@ -31,15 +31,6 @@ function mapZodIssuesToDetails(
   return details;
 }
 
-function findDemoAssignee(assigneeId: string) {
-  return (
-    demoTickets
-      .map((ticket) => ticket.assignee)
-      .find((assignee) => assignee !== null && assignee.id === assigneeId) ??
-    null
-  );
-}
-
 function toTicketListAssignee(
   assignee: MockTicket["assignee"],
 ): MockTicketAssignee | null {
@@ -146,7 +137,7 @@ export const ticketHandlers = [
       );
     }
 
-    const parseResult = createTicketInputSchema.strict().safeParse({
+    const parseResult = createTicketInputSchema.safeParse({
       ...rawBody,
       organizationId: id,
       createdBy: "mock-user-id",
@@ -174,7 +165,7 @@ export const ticketHandlers = [
         description: description ?? null,
         status: "open",
         priority: priority ?? "medium",
-        assignee: assigneeId != null ? findDemoAssignee(assigneeId) : null,
+        assigneeId: assigneeId ?? null,
         createdBy: "mock-user-id",
         createdAt: now,
         updatedAt: now,

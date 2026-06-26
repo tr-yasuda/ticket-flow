@@ -4,17 +4,18 @@ import type { ZodType } from "zod";
 import { ApiError } from "@/lib/api-client";
 import { mapApiErrorToFields, mapZodErrorToFields } from "@/lib/validation";
 
-type UseAuthFormOptions<TValues extends Record<string, unknown>> = Readonly<{
-  schema: ZodType<TValues>;
-  defaultValues: TValues;
-  onSubmit: (values: TValues) => Promise<void>;
-}>;
+type UseValidatedFormOptions<TValues extends Record<string, unknown>> =
+  Readonly<{
+    schema: ZodType<TValues>;
+    defaultValues: TValues;
+    onSubmit: (values: TValues) => Promise<void>;
+  }>;
 
-export function useAuthForm<TValues extends Record<string, unknown>>({
+export function useValidatedForm<TValues extends Record<string, unknown>>({
   schema,
   defaultValues,
   onSubmit,
-}: UseAuthFormOptions<TValues>) {
+}: UseValidatedFormOptions<TValues>) {
   return useForm({
     defaultValues,
     validators: {

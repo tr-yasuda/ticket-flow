@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import { useToast } from "@/hooks/use-toast";
 import { reportApiError } from "@/lib/api-error";
 
@@ -8,9 +10,12 @@ export interface UseApiErrorHandlerReturn {
 export function useApiErrorHandler(): UseApiErrorHandlerReturn {
   const { notifyError } = useToast();
 
-  const handleApiError = (error: unknown) => {
-    reportApiError(error, notifyError);
-  };
+  const handleApiError = useCallback(
+    (error: unknown) => {
+      reportApiError(error, notifyError);
+    },
+    [notifyError],
+  );
 
   return { handleApiError };
 }

@@ -264,6 +264,35 @@ describe("POST /api/organizations/:organizationId/tickets (ticket.create)", () =
     expect(body.data.priority).toBe("medium");
   });
 
+  it("status を指定しても作成時は open になる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+
+    const response = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "status ignored ticket",
+        status: "closed",
+      },
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.status).toBe("open");
+  });
+
   it("説明を空文字にすると null になる", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,

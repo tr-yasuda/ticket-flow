@@ -154,6 +154,19 @@ describe("routing", () => {
     });
   });
 
+  it("renders /app/:organizationId/tickets/new inside AppShell when authenticated", async () => {
+    renderRoute("/app/org-123/tickets/new", true);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "チケットを作成" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Tickets/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("renders NotFound for unknown paths", async () => {
     renderRoute("/nonexistent");
 

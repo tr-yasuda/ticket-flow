@@ -118,14 +118,15 @@ describe("ticket mock handlers", () => {
     });
   });
 
-  it("作成時に status を送信すると 400", async () => {
-    await expect(
-      apiClient
-        .post("organizations/demo-org-001/tickets", {
-          json: { title: "New Ticket", status: "closed" },
-        })
-        .json(),
-    ).rejects.toMatchObject({ status: 400 });
+  it("作成時に status を送信しても無視され open になる", async () => {
+    const response = await apiClient
+      .post("organizations/demo-org-001/tickets", {
+        json: { title: "New Ticket", status: "closed" },
+      })
+      .json<ApiSuccessResponse<MockTicket>>();
+
+    expect(response.success).toBe(true);
+    expect(response.data.status).toBe("open");
   });
 
   it("説明と担当者を反映して作成できる", async () => {
@@ -143,9 +144,6 @@ describe("ticket mock handlers", () => {
     expect(response.success).toBe(true);
     expect(response.data.description).toBe("詳細説明");
     expect(response.data.priority).toBe("high");
-    expect(response.data.assignee).toEqual({
-      id: "demo-user-002",
-      name: "佐藤花子",
-    });
+    expect(response.data.assigneeId).toBe("demo-user-002");
   });
 });

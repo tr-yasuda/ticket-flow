@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { TextField } from "@/components/form/text-field";
-import { useAuthForm } from "@/hooks/use-auth-form";
+import { useValidatedForm } from "@/hooks/use-validated-form";
 import { ApiError } from "@/lib/api-client";
 
 const schema = z.object({
@@ -21,7 +21,7 @@ function TestForm({
 }: {
   onSubmit: (values: FormValues) => Promise<void>;
 }) {
-  const form = useAuthForm({
+  const form = useValidatedForm({
     schema,
     defaultValues: { email: "", password: "" },
     onSubmit,
@@ -70,7 +70,7 @@ function TestForm({
   );
 }
 
-describe("useAuthForm", () => {
+describe("useValidatedForm", () => {
   it("有効な入力で onSubmit を呼び出す", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<TestForm onSubmit={onSubmit} />);

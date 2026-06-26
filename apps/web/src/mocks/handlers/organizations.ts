@@ -1,12 +1,14 @@
 import {
   ApiErrorCode,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
   createOrganizationInputSchema,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
 import { demoOrganization } from "../data/organizations.js";
+import { demoUser } from "../data/users.js";
 import { normalizePathParam } from "./utils.js";
 
 export const organizationHandlers = [
@@ -35,6 +37,39 @@ export const organizationHandlers = [
         organizationId: demoOrganization.id,
         organizationRole: demoOrganization.role,
       }),
+      { status: 200 },
+    );
+  }),
+
+  http.get("/api/organizations/:id/members", ({ params }) => {
+    const id = normalizePathParam(params.id);
+
+    if (id !== demoOrganization.id) {
+      return HttpResponse.json(
+        createApiPaginatedSuccessResponse(
+          { members: [] },
+          { page: 1, perPage: 100, total: 0, totalPages: 1 },
+        ),
+        { status: 200 },
+      );
+    }
+
+    return HttpResponse.json(
+      createApiPaginatedSuccessResponse(
+        {
+          members: [
+            {
+              id: "demo-member-001",
+              userId: demoUser.id,
+              name: null,
+              email: demoUser.email,
+              role: "owner",
+              joinedAt: new Date().toISOString(),
+            },
+          ],
+        },
+        { page: 1, perPage: 100, total: 1, totalPages: 1 },
+      ),
       { status: 200 },
     );
   }),

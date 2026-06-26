@@ -85,9 +85,7 @@ describe("OrganizationTicketsPageView", () => {
   it("空状態を表示する", () => {
     render(<OrganizationTicketsPageView organizationId="org-1" tickets={[]} />);
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "新規作成" }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "新規作成" })).toHaveLength(2);
   });
 
   it("データあり状態を表示する", () => {
@@ -170,7 +168,7 @@ describe("OrganizationTicketsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("行クリックで詳細 URL へ遷移する", async () => {
+  it("行クリックしても遷移しない", async () => {
     const router = renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
@@ -181,8 +179,21 @@ describe("OrganizationTicketsPage", () => {
       screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
     );
     await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/app/demo-org-001/tickets");
+    });
+  });
+
+  it("新規作成ボタンで作成画面へ遷移する", async () => {
+    const router = renderRoute("/app/demo-org-001/tickets", true);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "チケット" }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "新規作成" })[0]);
+    await waitFor(() => {
       expect(router.state.location.pathname).toBe(
-        "/app/demo-org-001/tickets/demo-ticket-001",
+        "/app/demo-org-001/tickets/new",
       );
     });
   });

@@ -5,6 +5,7 @@ import ky, {
   type BeforeRetryHook,
 } from "ky";
 
+import { isRecord } from "./api-response";
 import {
   clearTokens,
   getAccessToken,
@@ -45,10 +46,6 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function extractTokens(
