@@ -6,6 +6,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { apiClient } from "@/lib/api-client";
+import type { Ticket } from "@/lib/tickets-api";
 import type { MockTicket, MockTicketListItem } from "@/mocks/data/tickets.js";
 
 describe("ticket mock handlers", () => {
@@ -78,7 +79,7 @@ describe("ticket mock handlers", () => {
       .post("organizations/demo-org-001/tickets", {
         json: { title: "New Ticket" },
       })
-      .json<ApiSuccessResponse<MockTicket>>();
+      .json<ApiSuccessResponse<Ticket>>();
 
     expect(response.success).toBe(true);
     expect(response.data.title).toBe("New Ticket");
@@ -123,7 +124,7 @@ describe("ticket mock handlers", () => {
       .post("organizations/demo-org-001/tickets", {
         json: { title: "New Ticket", status: "closed" },
       })
-      .json<ApiSuccessResponse<MockTicket>>();
+      .json<ApiSuccessResponse<Ticket>>();
 
     expect(response.success).toBe(true);
     expect(response.data.status).toBe("open");
@@ -139,7 +140,7 @@ describe("ticket mock handlers", () => {
           assigneeId: "demo-user-002",
         },
       })
-      .json<ApiSuccessResponse<MockTicket>>();
+      .json<ApiSuccessResponse<Ticket>>();
 
     expect(response.success).toBe(true);
     expect(response.data.description).toBe("詳細説明");
