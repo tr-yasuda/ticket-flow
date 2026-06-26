@@ -30,6 +30,7 @@ import {
   createTicketBodySchema,
   listTicketsQuerySchema,
   ticketIdParamSchema,
+  updateTicketAssigneeBodySchema,
   updateTicketBodySchema,
   updateTicketPriorityBodySchema,
   updateTicketStatusBodySchema,
@@ -38,6 +39,7 @@ import {
   createTicketController,
   getTicketController,
   listTicketsController,
+  updateTicketAssigneeController,
   updateTicketController,
   updateTicketPriorityController,
   updateTicketStatusController,
@@ -122,6 +124,21 @@ const updateTicketPriorityRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 100,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:priority:update`,
   message: "優先度更新は時間あたりの上限に達しました",
+});
+
+const updateTicketAssigneeRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) =>
+    `org:${c.req.param("organizationId")}:tickets:assignee:update`,
+  message: "この組織での担当者更新は時間あたりの上限に達しました",
+});
+
+const updateTicketAssigneeRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:tickets:assignee:update`,
+  message: "担当者更新は時間あたりの上限に達しました",
 });
 
 const listTicketsRateLimitByOrganization = createRateLimitMiddleware({
@@ -303,6 +320,16 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", updateTicketPriorityBodySchema, validationHook),
         updateTicketPriorityController,
+      )
+      .patch(
+        "/:organizationId/tickets/:ticketId/assignee",
+        updateTicketAssigneeRateLimitByOrganization,
+        updateTicketAssigneeRateLimitByUser,
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("json", updateTicketAssigneeBodySchema, validationHook),
+        updateTicketAssigneeController,
       )
       .get(
         "/:organizationId",

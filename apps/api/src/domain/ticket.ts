@@ -166,7 +166,6 @@ export type UpdateTicketPatch = Readonly<{
   title?: string;
   description?: string | null;
   priority?: TicketPriority;
-  assigneeId?: string | null;
 }>;
 
 export function updateTicket(ticket: Ticket, patch: UpdateTicketPatch): Ticket {
@@ -180,8 +179,6 @@ export function updateTicket(ticket: Ticket, patch: UpdateTicketPatch): Ticket {
         ? parsed.description
         : ticket.description,
     priority: parsed.priority ?? ticket.priority,
-    assigneeId:
-      parsed.assigneeId !== undefined ? parsed.assigneeId : ticket.assigneeId,
     updatedAt: new Date(),
   });
 }
@@ -249,6 +246,39 @@ export function updateTicketPriority(
   return parseWith(ticketSchema, {
     ...ticket,
     priority: parsed,
+    updatedAt: new Date(),
+  });
+}
+
+/**
+ * チケットの担当者を変更する。
+ *
+ * 同じ担当者への変更はエラーにならず、updatedAt も変更しない。
+ * 空文字の担当者IDは TicketValidationError を投げる。
+ *
+ * NOTE: この関数は `ticketAssigneeIdSchema` を使い、UUID 形式の検証は行わない。
+ * 空文字・null・undefined の正規化のみを担当する。
+ * UUID 形式や組織メンバーシップの検証は、API 境界（`updateTicketAssigneeInputSchema`）
+ * および service 層で別途行う。
+ *
+ * NOTE: service 層で organization_members 確認後に UPDATE を行うが、その間に
+ * メンバーが削除されるレースコンディションはありうる。チケットの assignee_id は
+ * users への FK だが organization_members への FK ではないため、担当者が組織に
+ * 所属しなくなってもチケットは残る。現状では許容し、次回変更時に検出・解消する。
+ */
+export function updateTicketAssignee(
+  ticket: Ticket,
+  assigneeId: string | null,
+): Ticket {
+  const parsed = parseWith(ticketAssigneeIdSchema, assigneeId);
+
+  if (parsed === ticket.assigneeId) {
+    return ticket;
+  }
+
+  return parseWith(ticketSchema, {
+    ...ticket,
+    assigneeId: parsed,
     updatedAt: new Date(),
   });
 }

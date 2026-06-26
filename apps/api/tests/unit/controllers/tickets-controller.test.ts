@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  updateTicketAssigneeController,
   updateTicketController,
   updateTicketPriorityController,
   updateTicketStatusController,
@@ -455,6 +456,232 @@ describe("tickets-controller", () => {
       });
 
       await updateTicketPriorityController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+  });
+
+  describe("updateTicketAssigneeController", () => {
+    it("更新成功時に 200 と commentCount を返す", async () => {
+      const ticket = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        title: "task",
+        description: null,
+        status: "open",
+        priority: "medium",
+        assigneeId: "550e8400-e29b-41d4-a716-446655440002",
+        createdBy: "user-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: true,
+        data: { ticket },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(ticketService.updateTicketAssignee).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        assigneeId: "550e8400-e29b-41d4-a716-446655440002",
+        updatedBy: "user-id",
+      });
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            ...ticket,
+            commentCount: 0,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("存在しないチケットの場合は 404 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: false,
+        error: { type: "ticket-not-found", message: "not found" },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
+    });
+
+    it("担当者が組織メンバーでない場合は 400 を返し assigneeId フィールドの詳細を含む", async () => {
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: false,
+        error: {
+          type: "user-not-organization-member",
+          message: "担当者が組織のメンバーではありません",
+        },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "VALIDATION_ERROR",
+            details: [
+              {
+                field: "assigneeId",
+                message: "担当者は同じ組織のメンバーを指定してください",
+              },
+            ],
+          }),
+        }),
+        400,
+      );
+    });
+
+    it("無効な assigneeId の場合は 400 を返し assigneeId フィールドの詳細を含む", async () => {
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: false,
+        error: {
+          type: "validation-error",
+          message: "担当者IDの形式が正しくありません",
+        },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "invalid" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "VALIDATION_ERROR",
+            details: [
+              {
+                field: "assigneeId",
+                message: "担当者IDの形式が正しくありません",
+              },
+            ],
+          }),
+        }),
+        400,
+      );
+    });
+
+    it("assigneeId: null で担当者を解除できる", async () => {
+      const ticket = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        title: "task",
+        description: null,
+        status: "open",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: "user-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: true,
+        data: { ticket },
+      });
+      const c = createTestContext({
+        body: { assigneeId: null },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(ticketService.updateTicketAssignee).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        assigneeId: null,
+        updatedBy: "user-id",
+      });
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            ...ticket,
+            commentCount: 0,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("並行更新で競合が発生した場合は 409 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: false,
+        error: {
+          type: "ticket-conflict",
+          message: "チケットの担当者が変更されたため、更新できません。",
+        },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "CONFLICT",
+            message: expect.stringContaining("チケットの担当者が変更された"),
+          }),
+        }),
+        409,
+      );
+    });
+
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+        success: false,
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        body: { assigneeId: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketAssigneeController(c);
 
       expect(c.json).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -51,6 +51,8 @@ export const ticketCreatedBySchema = z
   .transform(trim)
   .refine((value) => value.length > 0, "作成者IDを入力してください");
 
+// ドメイン層用: null・undefined を許容し、空文字は拒否する。
+// UUID 形式の検証は行わない。
 export const ticketAssigneeIdSchema = z
   .string()
   .transform(trim)
@@ -78,11 +80,19 @@ export const updateTicketPriorityInputSchema = z.object({
   priority: ticketPrioritySchema,
 });
 
+// API 境界用: 担当者IDは有効な UUID、または null（担当者解除）であることを要求する。
+// ドメイン層の ticketAssigneeIdSchema とは役割が異なる。
+export const updateTicketAssigneeInputSchema = z.object({
+  assigneeId: z
+    .string()
+    .uuid({ message: "担当者IDの形式が正しくありません" })
+    .nullable(),
+});
+
 export const updateTicketInputSchema = z.object({
   title: ticketTitleSchema.optional(),
   description: ticketDescriptionSchema,
   priority: ticketPrioritySchema.optional(),
-  assigneeId: ticketAssigneeIdSchema,
 });
 
 export type CreateTicketInput = z.infer<typeof createTicketInputSchema>;
@@ -92,4 +102,7 @@ export type UpdateTicketStatusInput = z.infer<
 >;
 export type UpdateTicketPriorityInput = z.infer<
   typeof updateTicketPriorityInputSchema
+>;
+export type UpdateTicketAssigneeInput = z.infer<
+  typeof updateTicketAssigneeInputSchema
 >;

@@ -227,7 +227,6 @@ export type UpdateTicketRepositoryInput = Readonly<{
   title?: string;
   description?: string | null;
   priority?: TicketPriority;
-  assigneeId?: string | null;
 }>;
 
 export async function updateTicket(
@@ -245,7 +244,6 @@ export async function updateTicket(
         description: input.description,
       }),
       ...(input.priority !== undefined && { priority: input.priority }),
-      ...(input.assigneeId !== undefined && { assigneeId: input.assigneeId }),
     },
   });
 
@@ -345,6 +343,60 @@ export async function updateTicketPriority(
     WHERE id = ${input.ticketId}
       AND organization_id = ${input.organizationId}
       AND priority = ${input.currentPriority}
+    RETURNING
+      id,
+      organization_id AS organizationId,
+      title,
+      description,
+      status,
+      priority,
+      assignee_id AS assigneeId,
+      created_by AS createdBy,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+  `;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return toTicket(rows[0]);
+}
+
+export type UpdateTicketAssigneeRepositoryInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  assigneeId: string | null;
+  currentAssigneeId: string | null;
+}>;
+
+export async function updateTicketAssignee(
+  input: UpdateTicketAssigneeRepositoryInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const rows = await db.$queryRaw<
+    Array<{
+      id: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      status: string;
+      priority: string;
+      assigneeId: string | null;
+      createdBy: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  >`
+    UPDATE tickets
+    SET assignee_id = ${input.assigneeId},
+        updated_at = ${new Date()}
+    WHERE id = ${input.ticketId}
+      AND organization_id = ${input.organizationId}
+      AND (
+        (${input.currentAssigneeId} IS NULL AND assignee_id IS NULL)
+        OR assignee_id = ${input.currentAssigneeId}
+      )
     RETURNING
       id,
       organization_id AS organizationId,

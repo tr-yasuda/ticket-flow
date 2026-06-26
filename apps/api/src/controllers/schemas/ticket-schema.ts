@@ -2,6 +2,7 @@ import {
   ticketDescriptionSchema,
   ticketPrioritySchema,
   ticketTitleSchema,
+  updateTicketAssigneeInputSchema,
   updateTicketPriorityInputSchema,
   updateTicketStatusInputSchema,
 } from "@ticket-flow/shared";
@@ -119,4 +120,13 @@ export const updateTicketPriorityBodySchema = createSingleFieldBodySchema(
 
 export type UpdateTicketPriorityBody = z.infer<
   typeof updateTicketPriorityBodySchema
+>;
+
+export const updateTicketAssigneeBodySchema = createSingleFieldBodySchema(
+  updateTicketAssigneeInputSchema,
+  "assigneeId",
+);
+
+export type UpdateTicketAssigneeBody = z.infer<
+  typeof updateTicketAssigneeBodySchema
 >;
