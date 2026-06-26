@@ -5,21 +5,12 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../../src/lib/prisma.js";
 import { createApp } from "../../../src/routes/index.js";
 import {
+  addMember,
   cleanAll,
   createOrganization,
   registerUser,
   uniqueEmail,
 } from "../helpers/organization-test-helpers.js";
-
-async function addMember(
-  organizationId: string,
-  userId: string,
-  role: "admin" | "member" | "viewer",
-): Promise<void> {
-  await prisma.organizationMember.create({
-    data: { organizationId, userId, role },
-  });
-}
 
 async function createTicket(
   app: ReturnType<typeof createApp>,
