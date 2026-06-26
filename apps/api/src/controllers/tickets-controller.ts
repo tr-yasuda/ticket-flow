@@ -15,6 +15,7 @@ import {
   getTicket,
   listTickets,
   updateTicket,
+  updateTicketAssignee,
   updateTicketPriority,
   updateTicketStatus,
   type TicketServiceError,
@@ -25,10 +26,33 @@ import {
   type CreateTicketBody,
   type ListTicketsQuery,
   type TicketIdParamSchema,
+  type UpdateTicketAssigneeBody,
   type UpdateTicketBody,
   type UpdateTicketPriorityBody,
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
+
+function serializeTicket<T extends { id: string }>(ticket: T) {
+  return {
+    ...ticket,
+    // TODO(#39): コメント数を実際の値に置き換える
+    commentCount: 0,
+  };
+}
+
+function mapAssigneeMembershipValidationError(): ErrorMapping {
+  return {
+    code: ApiErrorCode.VALIDATION_ERROR,
+    status: HttpStatus.BAD_REQUEST,
+    message: "担当者が組織のメンバーではありません",
+    details: [
+      {
+        field: "assigneeId",
+        message: "担当者は同じ組織のメンバーを指定してください",
+      },
+    ],
+  };
+}
 
 function mapCreateTicketError(error: TicketServiceError): ErrorMapping {
   switch (error.type) {
@@ -41,17 +65,7 @@ function mapCreateTicketError(error: TicketServiceError): ErrorMapping {
     case "user-not-organization-member":
       // organizationScopeMiddleware already verifies the creator's membership,
       // so this error in the controller path refers to the assignee.
-      return {
-        code: ApiErrorCode.VALIDATION_ERROR,
-        status: HttpStatus.BAD_REQUEST,
-        message: "担当者が組織のメンバーではありません",
-        details: [
-          {
-            field: "assigneeId",
-            message: "担当者は同じ組織のメンバーを指定してください",
-          },
-        ],
-      };
+      return mapAssigneeMembershipValidationError();
     case "ticket-not-found":
     case "unknown-error":
     default:
@@ -234,11 +248,7 @@ export async function getTicketController(c: Context) {
   }
 
   return c.json(
-    createApiSuccessResponse({
-      ...result.data.ticket,
-      // TODO(#39): コメント数を実際の値に置き換える
-      commentCount: 0,
-    }),
+    createApiSuccessResponse(serializeTicket(result.data.ticket)),
     HttpStatus.OK,
   );
 }
@@ -291,11 +301,7 @@ export async function updateTicketController(c: Context) {
   const { ticket } = result.data;
 
   return c.json(
-    createApiSuccessResponse({
-      ...ticket,
-      // TODO(#39): コメント数を実際の値に置き換える
-      commentCount: 0,
-    }),
+    createApiSuccessResponse(serializeTicket(ticket)),
     HttpStatus.OK,
   );
 }
@@ -359,11 +365,7 @@ export async function updateTicketStatusController(c: Context) {
   const { ticket } = result.data;
 
   return c.json(
-    createApiSuccessResponse({
-      ...ticket,
-      // TODO(#39): コメント数を実際の値に置き換える
-      commentCount: 0,
-    }),
+    createApiSuccessResponse(serializeTicket(ticket)),
     HttpStatus.OK,
   );
 }
@@ -381,12 +383,6 @@ function mapUpdateTicketPriorityError(error: TicketServiceError): ErrorMapping {
         code: ApiErrorCode.CONFLICT,
         status: HttpStatus.CONFLICT,
         message: error.message,
-      };
-    case "user-not-organization-member":
-      return {
-        code: ApiErrorCode.AUTH_FORBIDDEN,
-        status: HttpStatus.FORBIDDEN,
-        message: "この組織にアクセスする権限がありません",
       };
     case "validation-error":
       return {
@@ -433,11 +429,73 @@ export async function updateTicketPriorityController(c: Context) {
   const { ticket } = result.data;
 
   return c.json(
-    createApiSuccessResponse({
-      ...ticket,
-      // TODO(#39): コメント数を実際の値に置き換える
-      commentCount: 0,
-    }),
+    createApiSuccessResponse(serializeTicket(ticket)),
+    HttpStatus.OK,
+  );
+}
+
+function mapUpdateTicketAssigneeError(error: TicketServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "ticket-conflict":
+      return {
+        code: ApiErrorCode.CONFLICT,
+        status: HttpStatus.CONFLICT,
+        message: error.message,
+      };
+    case "user-not-organization-member":
+      return mapAssigneeMembershipValidationError();
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+        details: [
+          {
+            field: "assigneeId",
+            message: error.message,
+          },
+        ],
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function updateTicketAssigneeController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const updatedBy = getRequiredContextValue(c, "userId");
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const data = getValidatedJson<UpdateTicketAssigneeBody>(c);
+
+  const result = await updateTicketAssignee({
+    organizationId,
+    ticketId,
+    assigneeId: data.assigneeId,
+    updatedBy,
+  });
+
+  if (!result.success) {
+    const { code, status, message, details } = mapUpdateTicketAssigneeError(
+      result.error,
+    );
+    return c.json(createApiErrorResponse(code, message, details), status);
+  }
+
+  const { ticket } = result.data;
+
+  return c.json(
+    createApiSuccessResponse(serializeTicket(ticket)),
     HttpStatus.OK,
   );
 }

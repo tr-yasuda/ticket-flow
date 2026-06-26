@@ -13,6 +13,7 @@ import {
   TicketValidationError,
   type UpdateTicketPatch,
   updateTicket as updateTicketEntity,
+  updateTicketAssignee as updateTicketAssigneeEntity,
   updateTicketPriority as updateTicketPriorityEntity,
   updateTicketStatus as updateTicketStatusEntity,
   UserNotOrganizationMemberError,
@@ -24,6 +25,7 @@ import {
   findTicketsByOrganizationId,
   saveTicket,
   updateTicket as updateTicketRepository,
+  updateTicketAssignee as updateTicketAssigneeRepository,
   updateTicketPriority as updateTicketPriorityRepository,
   updateTicketStatus as updateTicketStatusRepository,
   type FindTicketsInput,
@@ -178,7 +180,6 @@ export type UpdateTicketInput = Readonly<{
   title?: string;
   description?: string | null;
   priority?: TicketPriority;
-  assigneeId?: string | null;
 }>;
 
 export type UpdateTicketResult =
@@ -215,20 +216,8 @@ export async function updateTicket(
         title: input.title,
         description: input.description,
         priority: input.priority,
-        assigneeId: input.assigneeId,
       };
       const updated = updateTicketEntity(existing, patch);
-
-      if (
-        updated.assigneeId !== null &&
-        updated.assigneeId !== existing.assigneeId
-      ) {
-        await assertUserIsOrganizationMember(
-          tx,
-          input.organizationId,
-          updated.assigneeId,
-        );
-      }
 
       const saved = await updateTicketRepository(
         {
@@ -237,7 +226,6 @@ export async function updateTicket(
           title: updated.title,
           description: updated.description,
           priority: updated.priority,
-          assigneeId: updated.assigneeId,
         },
         tx,
       );
@@ -419,6 +407,89 @@ export async function updateTicketPriority(
     });
 
     return { success: true, data: { ticket: updatedTicket } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
+export type UpdateTicketAssigneeInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  assigneeId: string | null;
+  updatedBy: string;
+}>;
+
+export type UpdateTicketAssigneeResult =
+  | { success: true; data: { ticket: Ticket } }
+  | { success: false; error: TicketServiceError };
+
+export async function updateTicketAssignee(
+  input: UpdateTicketAssigneeInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<UpdateTicketAssigneeResult> {
+  try {
+    const existing = await findTicketById(
+      { organizationId: input.organizationId, ticketId: input.ticketId },
+      db,
+    );
+    if (existing === null) {
+      return {
+        success: false,
+        error: {
+          type: "ticket-not-found",
+          message: "チケットが見つかりません",
+        },
+      };
+    }
+
+    const updatedEntity = updateTicketAssigneeEntity(
+      existing,
+      input.assigneeId,
+    );
+    if (updatedEntity.assigneeId === existing.assigneeId) {
+      return { success: true, data: { ticket: existing } };
+    }
+
+    const saved = await runInTransaction(db, async (tx) => {
+      if (input.assigneeId !== null) {
+        await assertUserIsOrganizationMember(
+          tx,
+          input.organizationId,
+          input.assigneeId,
+        );
+      }
+
+      const result = await updateTicketAssigneeRepository(
+        {
+          organizationId: input.organizationId,
+          ticketId: input.ticketId,
+          assigneeId: input.assigneeId,
+          currentAssigneeId: existing.assigneeId,
+        },
+        tx,
+      );
+
+      if (result === null) {
+        throw new TicketConflictError(
+          "チケットの担当者が変更されたため、更新できません。最新の状態を確認してください。",
+        );
+      }
+
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.updatedBy,
+        entityType: "ticket",
+        entityId: result.id,
+        action: "update_assignee",
+        oldValues: { assigneeId: existing.assigneeId },
+        newValues: { assigneeId: result.assigneeId },
+      });
+      await saveAuditLog(auditLog, tx);
+
+      return result;
+    });
+
+    return { success: true, data: { ticket: saved } };
   } catch (error) {
     return mapServiceError(error);
   }

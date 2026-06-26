@@ -4,6 +4,7 @@ import {
   ticketPrioritySchema,
   ticketStatusSchema,
   ticketTitleSchema,
+  updateTicketAssigneeInputSchema,
   updateTicketPriorityInputSchema,
   updateTicketStatusInputSchema,
 } from "../../src/validation/ticket-schema.js";
@@ -227,6 +228,53 @@ describe("updateTicketPriorityInputSchema", () => {
       expect(result.error.issues[0].message).toBe(
         "優先度の値が正しくありません",
       );
+    }
+  });
+});
+
+describe("updateTicketAssigneeInputSchema", () => {
+  it("有効な担当者IDを受け入れる", () => {
+    const result = updateTicketAssigneeInputSchema.safeParse({
+      assigneeId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("null で担当者を解除できる", () => {
+    const result = updateTicketAssigneeInputSchema.safeParse({
+      assigneeId: null,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assigneeId).toBeNull();
+    }
+  });
+
+  it("assigneeId がない場合は拒否する", () => {
+    const result = updateTicketAssigneeInputSchema.safeParse({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path[0]).toBe("assigneeId");
+    }
+  });
+
+  it("空文字の担当者IDを拒否する", () => {
+    const result = updateTicketAssigneeInputSchema.safeParse({
+      assigneeId: "   ",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path[0]).toBe("assigneeId");
+    }
+  });
+
+  it("無効なUUIDの担当者IDを拒否する", () => {
+    const result = updateTicketAssigneeInputSchema.safeParse({
+      assigneeId: "not-a-uuid",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path[0]).toBe("assigneeId");
     }
   });
 });

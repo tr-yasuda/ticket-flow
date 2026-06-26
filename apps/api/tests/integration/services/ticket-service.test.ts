@@ -10,6 +10,7 @@ import {
   getTicket,
   listTickets,
   updateTicket,
+  updateTicketAssignee,
   updateTicketPriority,
   updateTicketStatus,
   type TicketServiceError,
@@ -323,75 +324,6 @@ describe("ticket-service 統合テスト", () => {
       expect(data.ticket.description).toBeNull();
     });
 
-    it("担当者を同組織メンバーに変更できる", async () => {
-      const { organizationId, ownerId, memberId } = await seedOrganization();
-      const created = expectSuccess(
-        await createTicket({
-          organizationId,
-          title: "assign me",
-          priority: "medium",
-          assigneeId: null,
-          createdBy: ownerId,
-        }),
-      );
-
-      const result = await updateTicket({
-        organizationId,
-        ticketId: created.ticket.id,
-        updatedBy: ownerId,
-        assigneeId: memberId,
-      });
-
-      const data = expectSuccess(result);
-      expect(data.ticket.assigneeId).toBe(memberId);
-    });
-
-    it("担当者をクリアできる", async () => {
-      const { organizationId, ownerId, memberId } = await seedOrganization();
-      const created = expectSuccess(
-        await createTicket({
-          organizationId,
-          title: "unassign me",
-          priority: "medium",
-          assigneeId: memberId,
-          createdBy: ownerId,
-        }),
-      );
-
-      const result = await updateTicket({
-        organizationId,
-        ticketId: created.ticket.id,
-        updatedBy: ownerId,
-        assigneeId: null,
-      });
-
-      const data = expectSuccess(result);
-      expect(data.ticket.assigneeId).toBeNull();
-    });
-
-    it("他組織メンバーを担当者にするとエラー", async () => {
-      const first = await seedOrganization();
-      const second = await seedOrganization();
-      const created = expectSuccess(
-        await createTicket({
-          organizationId: first.organizationId,
-          title: "bad assignee",
-          priority: "medium",
-          assigneeId: null,
-          createdBy: first.ownerId,
-        }),
-      );
-
-      const result = await updateTicket({
-        organizationId: first.organizationId,
-        ticketId: created.ticket.id,
-        updatedBy: first.ownerId,
-        assigneeId: second.memberId,
-      });
-
-      expectError(result, "user-not-organization-member");
-    });
-
     it("存在しないチケットを更新するとエラー", async () => {
       const { organizationId, ownerId } = await seedOrganization();
 
@@ -512,6 +444,175 @@ describe("ticket-service 統合テスト", () => {
       expect(
         (auditLog?.oldValues as { title?: string } | null)?.title,
       ).not.toBe((auditLog?.newValues as { title?: string } | null)?.title);
+    });
+  });
+
+  describe("updateTicketAssignee", () => {
+    it("担当者を同組織メンバーに変更できる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "assign me",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketAssignee({
+        organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: ownerId,
+        assigneeId: memberId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.assigneeId).toBe(memberId);
+    });
+
+    it("担当者をクリアできる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "unassign me",
+          priority: "medium",
+          assigneeId: memberId,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketAssignee({
+        organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: ownerId,
+        assigneeId: null,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.assigneeId).toBeNull();
+    });
+
+    it("同じ担当者への変更は冪等となる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "same assignee",
+          priority: "medium",
+          assigneeId: memberId,
+          createdBy: ownerId,
+        }),
+      );
+      const before = created.ticket.updatedAt;
+
+      const result = await updateTicketAssignee({
+        organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: ownerId,
+        assigneeId: memberId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.assigneeId).toBe(memberId);
+      expect(data.ticket.updatedAt.getTime()).toBe(before.getTime());
+    });
+
+    it("他組織メンバーを担当者にするとエラー", async () => {
+      const first = await seedOrganization();
+      const second = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId: first.organizationId,
+          title: "bad assignee",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: first.ownerId,
+        }),
+      );
+
+      const result = await updateTicketAssignee({
+        organizationId: first.organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: first.ownerId,
+        assigneeId: second.memberId,
+      });
+
+      expectError(result, "user-not-organization-member");
+    });
+
+    it("存在しないチケットの担当者更新はエラー", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      const result = await updateTicketAssignee({
+        organizationId,
+        ticketId: randomUUID(),
+        updatedBy: ownerId,
+        assigneeId: ownerId,
+      });
+
+      expectError(result, "ticket-not-found");
+    });
+
+    it("他組織のチケットの担当者更新はエラー", async () => {
+      const first = await seedOrganization();
+      const second = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId: first.organizationId,
+          title: "cross org",
+          priority: "low",
+          assigneeId: null,
+          createdBy: first.ownerId,
+        }),
+      );
+
+      const result = await updateTicketAssignee({
+        organizationId: second.organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: first.ownerId,
+        assigneeId: first.ownerId,
+      });
+
+      expectError(result, "ticket-not-found");
+    });
+
+    it("更新成功時に監査ログが記録される", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "before",
+          priority: "low",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketAssignee({
+        organizationId,
+        ticketId: created.ticket.id,
+        updatedBy: ownerId,
+        assigneeId: memberId,
+      });
+
+      expectSuccess(result);
+
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_assignee",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.action).toBe("update_assignee");
+      expect(auditLog?.oldValues).toMatchObject({ assigneeId: null });
+      expect(auditLog?.newValues).toMatchObject({ assigneeId: memberId });
     });
   });
 
