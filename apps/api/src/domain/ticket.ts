@@ -75,6 +75,13 @@ export class TicketNotFoundError extends Error {
   }
 }
 
+export class TicketConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TicketConflictError";
+  }
+}
+
 export class UserNotOrganizationMemberError extends Error {
   constructor(message: string) {
     super(message);

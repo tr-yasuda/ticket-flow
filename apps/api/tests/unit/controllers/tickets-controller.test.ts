@@ -228,6 +228,36 @@ describe("tickets-controller", () => {
       );
     });
 
+    it("並行更新で競合が発生した場合は 409 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+        success: false,
+        error: {
+          type: "ticket-conflict",
+          message: "チケットのステータスが変更されたため、更新できません。",
+        },
+      });
+      const c = createTestContext({
+        body: { status: "in-progress" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketStatusController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "CONFLICT",
+            message: expect.stringContaining(
+              "チケットのステータスが変更された",
+            ),
+          }),
+        }),
+        409,
+      );
+    });
+
     it("無効な遷移の場合は 400 を返し status フィールドの詳細を含む", async () => {
       vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
         success: false,

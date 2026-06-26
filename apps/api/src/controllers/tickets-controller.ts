@@ -33,6 +33,7 @@ type ErrorMapping = Readonly<{
     | typeof HttpStatus.BAD_REQUEST
     | typeof HttpStatus.NOT_FOUND
     | typeof HttpStatus.FORBIDDEN
+    | typeof HttpStatus.CONFLICT
     | typeof HttpStatus.INTERNAL_SERVER_ERROR;
   message: string;
   details?: ApiValidationErrorDetail[];
@@ -326,6 +327,12 @@ function mapUpdateTicketStatusError(error: TicketServiceError): ErrorMapping {
         code: ApiErrorCode.NOT_FOUND,
         status: HttpStatus.NOT_FOUND,
         message: "チケットが見つかりません",
+      };
+    case "ticket-conflict":
+      return {
+        code: ApiErrorCode.CONFLICT,
+        status: HttpStatus.CONFLICT,
+        message: error.message,
       };
     case "validation-error":
       return {

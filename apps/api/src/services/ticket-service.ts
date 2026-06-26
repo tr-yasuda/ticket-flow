@@ -6,6 +6,7 @@ import {
   type CreateTicketInput as DomainCreateTicketInput,
   type Ticket,
   type TicketListItem,
+  TicketConflictError,
   TicketNotFoundError,
   TicketPriority,
   TicketStatus,
@@ -43,6 +44,7 @@ async function runInTransaction<T>(
 
 export type TicketServiceError = Readonly<
   | { type: "ticket-not-found"; message: string }
+  | { type: "ticket-conflict"; message: string }
   | { type: "user-not-organization-member"; message: string }
   | { type: "validation-error"; message: string }
   | { type: "unknown-error"; message: string }
@@ -317,7 +319,7 @@ export async function updateTicketStatus(
             `チケット ${input.ticketId} が見つかりません`,
           );
         }
-        throw new TicketValidationError(
+        throw new TicketConflictError(
           "チケットのステータスが変更されたため、更新できません。最新の状態を確認してください。",
         );
       }
@@ -367,6 +369,13 @@ function mapServiceError(error: unknown): {
   success: false;
   error: TicketServiceError;
 } {
+  if (error instanceof TicketConflictError) {
+    return {
+      success: false,
+      error: { type: "ticket-conflict", message: error.message },
+    };
+  }
+
   if (error instanceof TicketNotFoundError) {
     return {
       success: false,
