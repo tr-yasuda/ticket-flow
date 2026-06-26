@@ -97,7 +97,8 @@ export const updateTicketStatusBodySchema = updateTicketStatusInputSchema
         });
       }
     }
-  });
+  })
+  .transform((data) => ({ status: data.status }));
 
 export type UpdateTicketStatusBody = z.infer<
   typeof updateTicketStatusBodySchema

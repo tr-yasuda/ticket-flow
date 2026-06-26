@@ -308,8 +308,17 @@ export async function updateTicketStatus(
       );
 
       if (saved === null) {
-        throw new TicketNotFoundError(
-          `チケット ${input.ticketId} が見つかりません`,
+        const latest = await findTicketById(
+          { organizationId: input.organizationId, ticketId: input.ticketId },
+          tx,
+        );
+        if (latest === null) {
+          throw new TicketNotFoundError(
+            `チケット ${input.ticketId} が見つかりません`,
+          );
+        }
+        throw new TicketValidationError(
+          "チケットのステータスが変更されたため、更新できません。最新の状態を確認してください。",
         );
       }
 
