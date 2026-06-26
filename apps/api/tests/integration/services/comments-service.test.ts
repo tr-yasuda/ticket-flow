@@ -2,10 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  COMMENT_AUDIT_ACTION_CREATE,
-  COMMENT_AUDIT_ENTITY_TYPE,
-} from "../../../src/domain/comment.js";
 import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
 import {
@@ -92,17 +88,6 @@ describe("comments-service 統合テスト", () => {
       where: { id: result.data.comment.id },
     });
     expect(stored).not.toBeNull();
-
-    const auditLogs = await prisma.auditLog.findMany({
-      where: {
-        organizationId,
-        entityType: COMMENT_AUDIT_ENTITY_TYPE,
-        entityId: result.data.comment.id,
-        action: COMMENT_AUDIT_ACTION_CREATE,
-      },
-    });
-    expect(auditLogs).toHaveLength(1);
-    expect(auditLogs[0]?.actorId).toBe(ownerId);
   });
 
   it("チケットが組織に属していない場合は作成できない", async () => {
@@ -147,6 +132,31 @@ describe("comments-service 統合テスト", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.type).toBe("author-not-member");
+    }
+  });
+
+  it("skipAuthorMembershipCheck が true の場合、作成者のメンバー資格確認をスキップする", async () => {
+    const { organizationId, ticketId } = await seedOrganization();
+    const otherUserResult = await registerUser({
+      email: uniqueEmail("other"),
+      password: "password123",
+    });
+    expect(otherUserResult.success).toBe(true);
+    if (!otherUserResult.success) {
+      throw new Error("Failed to register user");
+    }
+
+    const result = await createComment({
+      organizationId,
+      ticketId,
+      authorId: otherUserResult.data.user.id,
+      content: "membership check skipped",
+      skipAuthorMembershipCheck: true,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.comment.content).toBe("membership check skipped");
     }
   });
 

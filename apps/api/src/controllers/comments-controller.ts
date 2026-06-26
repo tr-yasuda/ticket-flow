@@ -5,35 +5,20 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
+import { createAuditLog } from "../domain/audit-log.js";
+import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createComment,
   type CommentServiceError,
 } from "../services/comments-service.js";
+import { getRequiredContextValue } from "./context-helpers.js";
+import { type ErrorMapping } from "./error-mapping.js";
 import { type CreateCommentBody } from "./schemas/comment-schema.js";
-import { type GetTicketParamSchema } from "./schemas/ticket-schema.js";
+import { type TicketIdParamSchema } from "./schemas/ticket-schema.js";
 
-function getRequiredContextValue(
-  c: Context,
-  key: "organizationId" | "userId",
-): string {
-  const value = c.get(key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`Missing required context value: ${key}`);
-  }
-  return value;
-}
-
-function mapCreateCommentError(error: CommentServiceError): {
-  code: ApiErrorCode;
-  status:
-    | typeof HttpStatus.BAD_REQUEST
-    | typeof HttpStatus.NOT_FOUND
-    | typeof HttpStatus.FORBIDDEN
-    | typeof HttpStatus.INTERNAL_SERVER_ERROR;
-  message: string;
-} {
+function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
   switch (error.type) {
     case "ticket-not-found":
       return {
@@ -51,7 +36,7 @@ function mapCreateCommentError(error: CommentServiceError): {
       return {
         code: ApiErrorCode.AUTH_FORBIDDEN,
         status: HttpStatus.FORBIDDEN,
-        message: "この組織にアクセスする権限がありません",
+        message: "この操作を行う権限がありません",
       };
     case "unknown-error":
     default:
@@ -63,10 +48,41 @@ function mapCreateCommentError(error: CommentServiceError): {
   }
 }
 
+async function recordCommentCreationAuditLog(
+  organizationId: string,
+  actorId: string,
+  comment: {
+    id: string;
+    ticketId: string;
+    content: string;
+  },
+): Promise<void> {
+  try {
+    const auditLog = createAuditLog({
+      organizationId,
+      actorId,
+      entityType: "comment",
+      entityId: comment.id,
+      action: "create",
+      newValues: {
+        ticketId: comment.ticketId,
+        content: comment.content,
+      },
+    });
+    await saveAuditLog(auditLog);
+  } catch (error) {
+    console.error("Failed to save audit log for comment creation", {
+      organizationId,
+      entityId: comment.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export async function createCommentController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const authorId = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
   const data = getValidatedJson<CreateCommentBody>(c);
 
   const result = await createComment({
@@ -74,15 +90,18 @@ export async function createCommentController(c: Context) {
     ticketId,
     authorId,
     content: data.content,
+    skipAuthorMembershipCheck: true,
   });
 
   if (!result.success) {
-    const { code, status, message } = mapCreateCommentError(result.error);
-    return c.json(createApiErrorResponse(code, message), status);
+    const { code, status, message, details } = mapCreateCommentError(
+      result.error,
+    );
+    return c.json(createApiErrorResponse(code, message, details), status);
   }
 
-  return c.json(
-    createApiSuccessResponse({ comment: result.data.comment }),
-    HttpStatus.CREATED,
-  );
+  const { comment } = result.data;
+  await recordCommentCreationAuditLog(organizationId, authorId, comment);
+
+  return c.json(createApiSuccessResponse(comment), HttpStatus.CREATED);
 }

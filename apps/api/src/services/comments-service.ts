@@ -1,8 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import {
-  COMMENT_AUDIT_ACTION_CREATE,
-  COMMENT_AUDIT_ENTITY_TYPE,
   CommentValidationError,
   createComment as createCommentEntity,
   type Comment,
@@ -17,7 +15,6 @@ import {
 import { type Pagination } from "../infrastructure/database/pagination.js";
 import { findTicketById } from "../infrastructure/database/ticket-repository.js";
 import { prisma } from "../lib/prisma.js";
-import { saveAuditLog } from "./audit-logs-service.js";
 
 export class CommentAuthorNotMemberError extends Error {
   constructor(message: string) {
@@ -38,6 +35,7 @@ export type CreateCommentServiceInput = Readonly<{
   ticketId: string;
   authorId: string;
   content: string;
+  skipAuthorMembershipCheck?: boolean;
 }>;
 
 export type CreateCommentResult =
@@ -62,41 +60,23 @@ export async function createComment(
         );
       }
 
-      const membership = await tx.organizationMember.findUnique({
-        where: {
-          organizationId_userId: {
-            organizationId: comment.organizationId,
-            userId: comment.authorId,
+      if (input.skipAuthorMembershipCheck !== true) {
+        const membership = await tx.organizationMember.findUnique({
+          where: {
+            organizationId_userId: {
+              organizationId: comment.organizationId,
+              userId: comment.authorId,
+            },
           },
-        },
-      });
-      if (membership === null) {
-        throw new CommentAuthorNotMemberError(
-          `ユーザー ${comment.authorId} は組織 ${comment.organizationId} のメンバーではありません`,
-        );
+        });
+        if (membership === null) {
+          throw new CommentAuthorNotMemberError(
+            `ユーザー ${comment.authorId} は組織 ${comment.organizationId} のメンバーではありません`,
+          );
+        }
       }
 
-      const savedComment = await saveComment(comment, tx);
-
-      const auditLog = {
-        organizationId: savedComment.organizationId,
-        actorId: savedComment.authorId,
-        entityType: COMMENT_AUDIT_ENTITY_TYPE,
-        entityId: savedComment.id,
-        action: COMMENT_AUDIT_ACTION_CREATE,
-        newValues: {
-          ticketId: savedComment.ticketId,
-          content: savedComment.content,
-        },
-      };
-      const auditResult = await saveAuditLog(auditLog, tx);
-      if (!auditResult.success) {
-        throw new Error(
-          `監査ログの保存に失敗しました: ${auditResult.error.message}`,
-        );
-      }
-
-      return savedComment;
+      return saveComment(comment, tx);
     });
 
     return { success: true, data: { comment: saved } };
@@ -195,10 +175,7 @@ function mapServiceError(error: unknown): {
   }
 
   if (error instanceof Error) {
-    return {
-      success: false,
-      error: { type: "unknown-error", message: error.message },
-    };
+    console.error("Unexpected error:", error);
   }
 
   return {

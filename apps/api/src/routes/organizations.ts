@@ -28,8 +28,8 @@ import {
 } from "../controllers/schemas/organization-member-schema.js";
 import {
   createTicketBodySchema,
-  getTicketParamSchema,
   listTicketsQuerySchema,
+  ticketIdParamSchema,
   updateTicketBodySchema,
 } from "../controllers/schemas/ticket-schema.js";
 import {
@@ -230,16 +230,16 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         "/:organizationId/tickets/:ticketId/comments",
         organizationScopeMiddleware,
         requireMemberMiddleware,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("json", createCommentBodySchema, validationHook),
         createCommentRateLimitByOrganization,
         createCommentRateLimitByUser,
-        sValidator("param", getTicketParamSchema, validationHook),
-        sValidator("json", createCommentBodySchema, validationHook),
         createCommentController,
       )
       .get(
         "/:organizationId/tickets/:ticketId",
         organizationScopeMiddleware,
-        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("param", ticketIdParamSchema, validationHook),
         getTicketController,
       )
       .patch(
@@ -248,7 +248,7 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         requireMemberMiddleware,
         updateTicketRateLimitByOrganization,
         updateTicketRateLimitByUser,
-        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", updateTicketBodySchema, validationHook),
         updateTicketController,
       )

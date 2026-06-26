@@ -40,14 +40,14 @@ export const listTicketsQuerySchema = z
 
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;
 
-export const getTicketParamSchema = z.object({
+export const ticketIdParamSchema = z.object({
   ticketId: z
     .string()
     .uuid({ message: "チケットIDの形式が正しくありません" })
     .transform((value) => value.toLowerCase()),
 });
 
-export type GetTicketParamSchema = z.infer<typeof getTicketParamSchema>;
+export type TicketIdParamSchema = z.infer<typeof ticketIdParamSchema>;
 
 const allowedUpdateTicketKeys = new Set(["title", "description"]);
 
