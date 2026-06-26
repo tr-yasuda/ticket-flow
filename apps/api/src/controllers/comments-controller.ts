@@ -5,8 +5,6 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
-import { createAuditLog } from "../domain/audit-log.js";
-import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
@@ -38,6 +36,12 @@ function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
         status: HttpStatus.FORBIDDEN,
         message: "この操作を行う権限がありません",
       };
+    case "audit-log-error":
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "監査ログの保存に失敗しました",
+      };
     case "unknown-error":
     default:
       return {
@@ -45,37 +49,6 @@ function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         message: "サーバー内部でエラーが発生しました",
       };
-  }
-}
-
-async function recordCommentCreationAuditLog(
-  organizationId: string,
-  actorId: string,
-  comment: {
-    id: string;
-    ticketId: string;
-    content: string;
-  },
-): Promise<void> {
-  try {
-    const auditLog = createAuditLog({
-      organizationId,
-      actorId,
-      entityType: "comment",
-      entityId: comment.id,
-      action: "create",
-      newValues: {
-        ticketId: comment.ticketId,
-        content: comment.content,
-      },
-    });
-    await saveAuditLog(auditLog);
-  } catch (error) {
-    console.error("Failed to save audit log for comment creation", {
-      organizationId,
-      entityId: comment.id,
-      error: error instanceof Error ? error.message : String(error),
-    });
   }
 }
 
@@ -90,18 +63,15 @@ export async function createCommentController(c: Context) {
     ticketId,
     authorId,
     content: data.content,
-    skipAuthorMembershipCheck: true,
   });
 
   if (!result.success) {
-    const { code, status, message, details } = mapCreateCommentError(
-      result.error,
-    );
-    return c.json(createApiErrorResponse(code, message, details), status);
+    const { code, status, message } = mapCreateCommentError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
   }
 
-  const { comment } = result.data;
-  await recordCommentCreationAuditLog(organizationId, authorId, comment);
-
-  return c.json(createApiSuccessResponse(comment), HttpStatus.CREATED);
+  return c.json(
+    createApiSuccessResponse(result.data.comment),
+    HttpStatus.CREATED,
+  );
 }

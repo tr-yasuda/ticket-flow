@@ -20,6 +20,9 @@ export type Comment = Readonly<{
   updatedAt: Date;
 }>;
 
+export const COMMENT_AUDIT_ENTITY_TYPE = "comment";
+export const COMMENT_AUDIT_ACTION_CREATE = "create";
+
 export class CommentValidationError extends Error {
   constructor(message: string) {
     super(message);

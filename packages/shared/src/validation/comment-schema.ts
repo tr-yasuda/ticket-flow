@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MAX_COMMENT_CONTENT_LENGTH = 10000;
+export const MAX_COMMENT_CONTENT_LENGTH = 10000;
 const MAX_ID_LENGTH = 200;
 
 function trim(value: string): string {

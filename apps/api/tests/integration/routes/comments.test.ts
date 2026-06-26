@@ -1,3 +1,4 @@
+import { MAX_COMMENT_CONTENT_LENGTH } from "@ticket-flow/shared";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
@@ -10,8 +11,6 @@ import {
   registerUser,
   uniqueEmail,
 } from "../helpers/organization-test-helpers.js";
-
-const MAX_COMMENT_CONTENT_LENGTH = 10000;
 
 async function createCommentRequest(
   app: ReturnType<typeof createApp>,
@@ -426,8 +425,11 @@ describe("POST /api/organizations/:organizationId/tickets/:ticketId/comments (co
       },
     });
     expect(auditLog).not.toBeNull();
-    expect((auditLog!.newValues as { content?: string }).content).toBe(
-      "auditable comment",
-    );
+    expect(
+      (auditLog!.newValues as { content?: string; ticketId?: string }).content,
+    ).toBe("auditable comment");
+    expect(
+      (auditLog!.newValues as { content?: string; ticketId?: string }).ticketId,
+    ).toBe(ticketId);
   });
 });
