@@ -393,7 +393,10 @@ export async function updateTicketAssignee(
         updated_at = ${new Date()}
     WHERE id = ${input.ticketId}
       AND organization_id = ${input.organizationId}
-      AND assignee_id IS NOT DISTINCT FROM ${input.currentAssigneeId}
+      AND (
+        (${input.currentAssigneeId} IS NULL AND assignee_id IS NULL)
+        OR assignee_id = ${input.currentAssigneeId}
+      )
     RETURNING
       id,
       organization_id AS organizationId,

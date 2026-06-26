@@ -51,7 +51,7 @@ export const ticketCreatedBySchema = z
   .transform(trim)
   .refine((value) => value.length > 0, "作成者IDを入力してください");
 
-// ドメイン層用: null・undefined を null に正規化し、空文字は拒否する。
+// ドメイン層用: null・undefined を許容し、空文字は拒否する。
 // UUID 形式の検証は行わない。
 export const ticketAssigneeIdSchema = z
   .string()
