@@ -556,7 +556,7 @@ export async function deleteTicket(
         entityId: deleted.id,
         action: "delete",
         oldValues: ticketToAuditLogValues(existing),
-        newValues: { deletedAt: deleted.deletedAt },
+        newValues: { deletedAt: deleted.deletedAt!.toISOString() },
       });
       await saveAuditLog(auditLog, tx);
 
