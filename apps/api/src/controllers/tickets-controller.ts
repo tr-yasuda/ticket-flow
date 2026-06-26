@@ -3,7 +3,6 @@ import {
   createApiErrorResponse,
   createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
-  type ApiValidationErrorDetail,
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
@@ -19,25 +18,15 @@ import {
   updateTicketStatus,
   type TicketServiceError,
 } from "../services/ticket-service.js";
+import { getRequiredContextValue } from "./context-helpers.js";
+import { type ErrorMapping } from "./error-mapping.js";
 import {
   type CreateTicketBody,
-  type GetTicketParamSchema,
   type ListTicketsQuery,
+  type TicketIdParamSchema,
   type UpdateTicketBody,
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
-
-type ErrorMapping = Readonly<{
-  code: ApiErrorCode;
-  status:
-    | typeof HttpStatus.BAD_REQUEST
-    | typeof HttpStatus.NOT_FOUND
-    | typeof HttpStatus.FORBIDDEN
-    | typeof HttpStatus.CONFLICT
-    | typeof HttpStatus.INTERNAL_SERVER_ERROR;
-  message: string;
-  details?: ApiValidationErrorDetail[];
-}>;
 
 function mapCreateTicketError(error: TicketServiceError): ErrorMapping {
   switch (error.type) {
@@ -88,17 +77,6 @@ function mapListTicketsError(error: TicketServiceError): ErrorMapping {
         message: "サーバー内部でエラーが発生しました",
       };
   }
-}
-
-function getRequiredContextValue(
-  c: Context,
-  key: "organizationId" | "userId",
-): string {
-  const value = c.get(key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`Missing required context value: ${key}`);
-  }
-  return value;
 }
 
 async function recordTicketCreationAuditLog(
@@ -244,7 +222,7 @@ function mapGetTicketError(error: TicketServiceError): {
 
 export async function getTicketController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
 
   const result = await getTicket({ organizationId, ticketId });
 
@@ -290,7 +268,7 @@ function mapUpdateTicketError(error: TicketServiceError): ErrorMapping {
 export async function updateTicketController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
   const data = getValidatedJson<UpdateTicketBody>(c);
 
   const result = await updateTicket({
@@ -359,7 +337,7 @@ function mapUpdateTicketStatusError(error: TicketServiceError): ErrorMapping {
 export async function updateTicketStatusController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as GetTicketParamSchema;
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
   const data = getValidatedJson<UpdateTicketStatusBody>(c);
 
   const result = await updateTicketStatus({

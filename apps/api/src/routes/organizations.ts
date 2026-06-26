@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { createRequireRoleMiddleware } from "../controllers/authorization-middleware.js";
+import { createCommentController } from "../controllers/comments-controller.js";
 import { createOrganizationInvitationController } from "../controllers/organization-invitations-controller.js";
 import {
   deleteOrganizationMemberController,
@@ -20,14 +21,15 @@ import {
   getOrganizationMembersController,
   getOrganizationsController,
 } from "../controllers/organizations-controller.js";
+import { createCommentBodySchema } from "../controllers/schemas/comment-schema.js";
 import {
   deleteOrganizationMemberParamsSchema,
   updateOrganizationMemberRoleParamsSchema,
 } from "../controllers/schemas/organization-member-schema.js";
 import {
   createTicketBodySchema,
-  getTicketParamSchema,
   listTicketsQuerySchema,
+  ticketIdParamSchema,
   updateTicketBodySchema,
   updateTicketStatusBodySchema,
 } from "../controllers/schemas/ticket-schema.js";
@@ -118,6 +120,20 @@ const listTicketsRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 300,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:list`,
   message: "チケット一覧取得は時間あたりの上限に達しました",
+});
+
+const createCommentRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:comments:create`,
+  message: "この組織でのコメント投稿は時間あたりの上限に達しました",
+});
+
+const createCommentRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:comments:create`,
+  message: "コメント投稿は時間あたりの上限に達しました",
 });
 
 const updateMemberRoleRateLimitByOrganization = createRateLimitMiddleware({
@@ -226,10 +242,20 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("json", createTicketBodySchema, validationHook),
         createTicketController,
       )
+      .post(
+        "/:organizationId/tickets/:ticketId/comments",
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        createCommentRateLimitByOrganization,
+        createCommentRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("json", createCommentBodySchema, validationHook),
+        createCommentController,
+      )
       .get(
         "/:organizationId/tickets/:ticketId",
         organizationScopeMiddleware,
-        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("param", ticketIdParamSchema, validationHook),
         getTicketController,
       )
       .patch(
@@ -238,7 +264,7 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         requireMemberMiddleware,
         updateTicketRateLimitByOrganization,
         updateTicketRateLimitByUser,
-        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", updateTicketBodySchema, validationHook),
         updateTicketController,
       )
@@ -248,7 +274,7 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         requireMemberMiddleware,
         updateTicketStatusRateLimitByOrganization,
         updateTicketStatusRateLimitByUser,
-        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", updateTicketStatusBodySchema, validationHook),
         updateTicketStatusController,
       )

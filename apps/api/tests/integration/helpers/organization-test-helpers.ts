@@ -65,6 +65,20 @@ export async function createOrganization(
   return body.data.id;
 }
 
+export async function addMember(
+  organizationId: string,
+  userId: string,
+  role: "admin" | "member" | "viewer",
+): Promise<void> {
+  await prisma.organizationMember.create({
+    data: {
+      organizationId,
+      userId,
+      role,
+    },
+  });
+}
+
 export async function createTicketRequest(
   app: ReturnType<typeof createApp>,
   accessToken: string,

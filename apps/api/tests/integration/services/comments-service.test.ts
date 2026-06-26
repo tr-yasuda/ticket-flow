@@ -2,10 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  COMMENT_AUDIT_ACTION_CREATE,
-  COMMENT_AUDIT_ENTITY_TYPE,
-} from "../../../src/domain/comment.js";
 import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
 import {
@@ -96,13 +92,17 @@ describe("comments-service 統合テスト", () => {
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         organizationId,
-        entityType: COMMENT_AUDIT_ENTITY_TYPE,
+        entityType: "comment",
         entityId: result.data.comment.id,
-        action: COMMENT_AUDIT_ACTION_CREATE,
+        action: "create",
       },
     });
     expect(auditLogs).toHaveLength(1);
     expect(auditLogs[0]?.actorId).toBe(ownerId);
+    expect(auditLogs[0]?.newValues).toMatchObject({
+      ticketId,
+      content: "対応しました",
+    });
   });
 
   it("チケットが組織に属していない場合は作成できない", async () => {

@@ -8,12 +8,6 @@ import {
   createCommentInputSchema,
 } from "@ticket-flow/shared";
 import { z } from "zod";
-
-export const COMMENT_AUDIT_ENTITY_TYPE = "comment";
-export const COMMENT_AUDIT_ACTION_CREATE = "create";
-export const COMMENT_AUDIT_ACTION_UPDATE = "update";
-export const COMMENT_AUDIT_ACTION_DELETE = "delete";
-
 export type CommentId = string;
 
 export type Comment = Readonly<{
@@ -25,6 +19,9 @@ export type Comment = Readonly<{
   createdAt: Date;
   updatedAt: Date;
 }>;
+
+export const COMMENT_AUDIT_ENTITY_TYPE = "comment";
+export const COMMENT_AUDIT_ACTION_CREATE = "create";
 
 export class CommentValidationError extends Error {
   constructor(message: string) {
