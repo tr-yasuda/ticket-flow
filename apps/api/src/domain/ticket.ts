@@ -261,7 +261,7 @@ export function updateTicketPriority(
  * UUID 形式や組織メンバーシップの検証は、API 境界（`updateTicketAssigneeInputSchema`）
  * および service 層で別途行う。
  *
- * NOTE: service 層で organization_members 確認後に UPDATE を行うが、两者之间に
+ * NOTE: service 層で organization_members 確認後に UPDATE を行うが、その間に
  * メンバーが削除されるレースコンディションはありうる。チケットの assignee_id は
  * users への FK だが organization_members への FK ではないため、担当者が組織に
  * 所属しなくなってもチケットは残る。現状では許容し、次回変更時に検出・解消する。

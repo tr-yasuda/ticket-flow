@@ -451,11 +451,11 @@ export async function updateTicketAssignee(
     }
 
     const saved = await runInTransaction(db, async (tx) => {
-      if (input.assigneeId !== null) {
+      if (updatedEntity.assigneeId !== null) {
         await assertUserIsOrganizationMember(
           tx,
           input.organizationId,
-          input.assigneeId,
+          updatedEntity.assigneeId,
         );
       }
 
@@ -463,7 +463,7 @@ export async function updateTicketAssignee(
         {
           organizationId: input.organizationId,
           ticketId: input.ticketId,
-          assigneeId: input.assigneeId,
+          assigneeId: updatedEntity.assigneeId,
           currentAssigneeId: existing.assigneeId,
         },
         tx,
