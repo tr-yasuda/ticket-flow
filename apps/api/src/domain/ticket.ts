@@ -233,3 +233,22 @@ export function updateTicketStatus(
     updatedAt: new Date(),
   });
 }
+
+/**
+ * チケットの優先度を変更する。
+ *
+ * 同じ優先度への変更はエラーにならない。
+ * 無効な優先度値は TicketValidationError を投げる。
+ */
+export function updateTicketPriority(
+  ticket: Ticket,
+  priority: TicketPriority,
+): Ticket {
+  const parsed = parseWith(ticketPrioritySchema, priority);
+
+  return parseWith(ticketSchema, {
+    ...ticket,
+    priority: parsed,
+    updatedAt: new Date(),
+  });
+}

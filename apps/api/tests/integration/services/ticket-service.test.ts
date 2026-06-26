@@ -10,6 +10,7 @@ import {
   getTicket,
   listTickets,
   updateTicket,
+  updateTicketPriority,
   updateTicketStatus,
   type TicketServiceError,
 } from "../../../src/services/ticket-service.js";
@@ -685,6 +686,170 @@ describe("ticket-service 統合テスト", () => {
       expect(auditLog?.actorId).toBe(ownerId);
       expect(auditLog?.oldValues).toMatchObject({ status: "open" });
       expect(auditLog?.newValues).toMatchObject({ status: "in-progress" });
+    });
+  });
+
+  describe("updateTicketPriority", () => {
+    it("優先度を更新できる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "priority change",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketPriority({
+        organizationId,
+        ticketId: created.ticket.id,
+        priority: "urgent",
+        updatedBy: ownerId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.priority).toBe("urgent");
+    });
+
+    it("存在しないチケットの優先度更新はエラー", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      const result = await updateTicketPriority({
+        organizationId,
+        ticketId: randomUUID(),
+        priority: "high",
+        updatedBy: ownerId,
+      });
+
+      expectError(result, "ticket-not-found");
+    });
+
+    it("他組織のチケットの優先度更新はエラー", async () => {
+      const first = await seedOrganization();
+      const second = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId: first.organizationId,
+          title: "cross org priority",
+          priority: "low",
+          assigneeId: null,
+          createdBy: first.ownerId,
+        }),
+      );
+
+      const result = await updateTicketPriority({
+        organizationId: second.organizationId,
+        ticketId: created.ticket.id,
+        priority: "high",
+        updatedBy: first.ownerId,
+      });
+
+      expectError(result, "ticket-not-found");
+    });
+
+    it("無効な優先度値はエラー", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "invalid priority",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketPriority({
+        organizationId,
+        ticketId: created.ticket.id,
+        priority: "invalid" as "low",
+        updatedBy: ownerId,
+      });
+
+      expectError(result, "validation-error");
+    });
+
+    it("同じ優先度への更新は冪等に成功する", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "idempotent priority",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+      const beforeUpdatedAt = created.ticket.updatedAt;
+      const auditLogCountBefore = await prisma.auditLog.count({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_priority",
+        },
+      });
+
+      const result = await updateTicketPriority({
+        organizationId,
+        ticketId: created.ticket.id,
+        priority: created.ticket.priority,
+        updatedBy: ownerId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.priority).toBe(created.ticket.priority);
+      expect(data.ticket.updatedAt.getTime()).toBe(beforeUpdatedAt.getTime());
+
+      const auditLogCountAfter = await prisma.auditLog.count({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_priority",
+        },
+      });
+      expect(auditLogCountAfter).toBe(auditLogCountBefore);
+    });
+
+    it("優先度変更時に監査ログが記録される", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "audit log priority",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketPriority({
+        organizationId,
+        ticketId: created.ticket.id,
+        priority: "high",
+        updatedBy: ownerId,
+      });
+
+      expectSuccess(result);
+
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_priority",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.action).toBe("update_priority");
+      expect(auditLog?.actorId).toBe(ownerId);
+      expect(auditLog?.oldValues).toMatchObject({ priority: "medium" });
+      expect(auditLog?.newValues).toMatchObject({ priority: "high" });
     });
   });
 

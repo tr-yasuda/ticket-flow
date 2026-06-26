@@ -15,6 +15,19 @@ type RateLimitState = {
   resetAt: number;
 };
 
+/**
+ * インメモリのレート制限ストア。
+ *
+ * NOTE: このストアはプロセスローカルな Map のため、複数サーバーインスタンスで
+ *  horizontal scaling する環境ではインスタンスごとに独立してカウントされます。
+ * 厳密なグローバルレート制限が必要な場合は Redis などの共有ストアへの移行を
+ * 検討してください。
+ *
+ * また、有効期限切れエントリの掃除は store.size が SWEEP_THRESHOLD を超えた
+ * リクエスト path で同期的に行われます。キー数が閾値を大きく超えるとリクエスト
+ * 処理がブロックするため、高トラフィック環境では別途 TTL 付きストアの導入を
+ * 検討してください。
+ */
 const store = new Map<string, RateLimitState>();
 const SWEEP_THRESHOLD = 1000;
 

@@ -274,25 +274,93 @@ export async function updateTicketStatus(
   input: UpdateTicketStatusRepositoryInput,
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<Ticket | null> {
-  const rows = await db.ticket.updateMany({
-    where: {
-      id: input.ticketId,
-      organizationId: input.organizationId,
-      status: input.currentStatus,
-    },
-    data: { status: input.status },
-  });
+  const rows = await db.$queryRaw<
+    Array<{
+      id: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      status: string;
+      priority: string;
+      assigneeId: string | null;
+      createdBy: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  >`
+    UPDATE tickets
+    SET status = ${input.status},
+        updated_at = ${new Date()}
+    WHERE id = ${input.ticketId}
+      AND organization_id = ${input.organizationId}
+      AND status = ${input.currentStatus}
+    RETURNING
+      id,
+      organization_id AS organizationId,
+      title,
+      description,
+      status,
+      priority,
+      assignee_id AS assigneeId,
+      created_by AS createdBy,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+  `;
 
-  if (rows.count === 0) {
+  if (rows.length === 0) {
     return null;
   }
 
-  const row = await db.ticket.findUnique({
-    where: {
-      id: input.ticketId,
-      organizationId: input.organizationId,
-    },
-  });
+  return toTicket(rows[0]);
+}
 
-  return row === null ? null : toTicket(row);
+export type UpdateTicketPriorityRepositoryInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  priority: TicketPriority;
+  currentPriority: TicketPriority;
+}>;
+
+export async function updateTicketPriority(
+  input: UpdateTicketPriorityRepositoryInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Ticket | null> {
+  const rows = await db.$queryRaw<
+    Array<{
+      id: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      status: string;
+      priority: string;
+      assigneeId: string | null;
+      createdBy: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  >`
+    UPDATE tickets
+    SET priority = ${input.priority},
+        updated_at = ${new Date()}
+    WHERE id = ${input.ticketId}
+      AND organization_id = ${input.organizationId}
+      AND priority = ${input.currentPriority}
+    RETURNING
+      id,
+      organization_id AS organizationId,
+      title,
+      description,
+      status,
+      priority,
+      assignee_id AS assigneeId,
+      created_by AS createdBy,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+  `;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return toTicket(rows[0]);
 }

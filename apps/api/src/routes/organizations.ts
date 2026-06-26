@@ -31,6 +31,7 @@ import {
   listTicketsQuerySchema,
   ticketIdParamSchema,
   updateTicketBodySchema,
+  updateTicketPriorityBodySchema,
   updateTicketStatusBodySchema,
 } from "../controllers/schemas/ticket-schema.js";
 import {
@@ -38,6 +39,7 @@ import {
   getTicketController,
   listTicketsController,
   updateTicketController,
+  updateTicketPriorityController,
   updateTicketStatusController,
 } from "../controllers/tickets-controller.js";
 import { createRateLimitMiddleware } from "../lib/rate-limiter.js";
@@ -106,6 +108,20 @@ const updateTicketStatusRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 100,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:status:update`,
   message: "ステータス更新は時間あたりの上限に達しました",
+});
+
+const updateTicketPriorityRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:tickets:priority:update`,
+  message: "この組織での優先度更新は時間あたりの上限に達しました",
+});
+
+const updateTicketPriorityRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:tickets:priority:update`,
+  message: "優先度更新は時間あたりの上限に達しました",
 });
 
 const listTicketsRateLimitByOrganization = createRateLimitMiddleware({
@@ -277,6 +293,16 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", updateTicketStatusBodySchema, validationHook),
         updateTicketStatusController,
+      )
+      .patch(
+        "/:organizationId/tickets/:ticketId/priority",
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        updateTicketPriorityRateLimitByOrganization,
+        updateTicketPriorityRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("json", updateTicketPriorityBodySchema, validationHook),
+        updateTicketPriorityController,
       )
       .get(
         "/:organizationId",

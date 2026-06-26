@@ -7,6 +7,7 @@ import {
   createTicket,
   rehydrateTicket,
   updateTicket,
+  updateTicketPriority,
   updateTicketStatus,
 } from "../../../src/domain/ticket.js";
 
@@ -448,5 +449,46 @@ describe("チケット更新", () => {
     const ticket = baseTicket();
     const updated = updateTicketStatus(ticket, TicketStatus.Open);
     expect(updated.status).toBe(TicketStatus.Open);
+  });
+
+  it("優先度を更新できる", () => {
+    const ticket = baseTicket();
+    const updated = updateTicketPriority(ticket, TicketPriority.High);
+
+    expect(updated.priority).toBe(TicketPriority.High);
+    expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      ticket.updatedAt.getTime(),
+    );
+  });
+
+  it.each([
+    ["low", TicketPriority.Low],
+    ["medium", TicketPriority.Medium],
+    ["high", TicketPriority.High],
+    ["urgent", TicketPriority.Urgent],
+  ])("優先度を %s に変更できる", (_label, priority) => {
+    const ticket = baseTicket();
+    const updated = updateTicketPriority(ticket, priority);
+
+    expect(updated.priority).toBe(priority);
+  });
+
+  it("無効な優先度は拒否される", () => {
+    const ticket = baseTicket();
+    expect(() =>
+      updateTicketPriority(ticket, "invalid" as TicketPriority),
+    ).toThrow(TicketValidationError);
+  });
+
+  it("同じ優先度への変更は許可される", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグ",
+      priority: TicketPriority.Medium,
+      createdBy: "user-1",
+    });
+    const updated = updateTicketPriority(ticket, TicketPriority.Medium);
+
+    expect(updated.priority).toBe(TicketPriority.Medium);
   });
 });

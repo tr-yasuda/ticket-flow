@@ -15,6 +15,7 @@ import {
   getTicket,
   listTickets,
   updateTicket,
+  updateTicketPriority,
   updateTicketStatus,
   type TicketServiceError,
 } from "../services/ticket-service.js";
@@ -25,6 +26,7 @@ import {
   type ListTicketsQuery,
   type TicketIdParamSchema,
   type UpdateTicketBody,
+  type UpdateTicketPriorityBody,
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
 
@@ -349,6 +351,80 @@ export async function updateTicketStatusController(c: Context) {
 
   if (!result.success) {
     const { code, status, message, details } = mapUpdateTicketStatusError(
+      result.error,
+    );
+    return c.json(createApiErrorResponse(code, message, details), status);
+  }
+
+  const { ticket } = result.data;
+
+  return c.json(
+    createApiSuccessResponse({
+      ...ticket,
+      // TODO(#39): コメント数を実際の値に置き換える
+      commentCount: 0,
+    }),
+    HttpStatus.OK,
+  );
+}
+
+function mapUpdateTicketPriorityError(error: TicketServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "ticket-conflict":
+      return {
+        code: ApiErrorCode.CONFLICT,
+        status: HttpStatus.CONFLICT,
+        message: error.message,
+      };
+    case "user-not-organization-member":
+      return {
+        code: ApiErrorCode.AUTH_FORBIDDEN,
+        status: HttpStatus.FORBIDDEN,
+        message: "この組織にアクセスする権限がありません",
+      };
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+        details: [
+          {
+            field: "priority",
+            message: error.message,
+          },
+        ],
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function updateTicketPriorityController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const updatedBy = getRequiredContextValue(c, "userId");
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const data = getValidatedJson<UpdateTicketPriorityBody>(c);
+
+  const result = await updateTicketPriority({
+    organizationId,
+    ticketId,
+    priority: data.priority,
+    updatedBy,
+  });
+
+  if (!result.success) {
+    const { code, status, message, details } = mapUpdateTicketPriorityError(
       result.error,
     );
     return c.json(createApiErrorResponse(code, message, details), status);

@@ -13,6 +13,7 @@ import {
   TicketValidationError,
   type UpdateTicketPatch,
   updateTicket as updateTicketEntity,
+  updateTicketPriority as updateTicketPriorityEntity,
   updateTicketStatus as updateTicketStatusEntity,
   UserNotOrganizationMemberError,
 } from "../domain/ticket.js";
@@ -23,6 +24,7 @@ import {
   findTicketsByOrganizationId,
   saveTicket,
   updateTicket as updateTicketRepository,
+  updateTicketPriority as updateTicketPriorityRepository,
   updateTicketStatus as updateTicketStatusRepository,
   type FindTicketsInput,
 } from "../infrastructure/database/ticket-repository.js";
@@ -332,6 +334,84 @@ export async function updateTicketStatus(
         action: "update_status",
         oldValues: { status: existing.status },
         newValues: { status: saved.status },
+      });
+      await saveAuditLog(auditLog, tx);
+
+      return saved;
+    });
+
+    return { success: true, data: { ticket: updatedTicket } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
+export type UpdateTicketPriorityInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  priority: TicketPriority;
+  updatedBy: string;
+}>;
+
+export type UpdateTicketPriorityResult =
+  | { success: true; data: { ticket: Ticket } }
+  | { success: false; error: TicketServiceError };
+
+export async function updateTicketPriority(
+  input: UpdateTicketPriorityInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<UpdateTicketPriorityResult> {
+  try {
+    const updatedTicket = await runInTransaction(db, async (tx) => {
+      const existing = await findTicketById(
+        { organizationId: input.organizationId, ticketId: input.ticketId },
+        tx,
+      );
+      if (existing === null) {
+        throw new TicketNotFoundError(
+          `チケット ${input.ticketId} が見つかりません`,
+        );
+      }
+
+      const updated = updateTicketPriorityEntity(existing, input.priority);
+
+      if (updated.priority === existing.priority) {
+        return existing;
+      }
+
+      const saved = await updateTicketPriorityRepository(
+        {
+          organizationId: input.organizationId,
+          ticketId: input.ticketId,
+          priority: updated.priority,
+          currentPriority: existing.priority,
+        },
+        tx,
+      );
+
+      if (saved === null) {
+        const latest = await findTicketById(
+          { organizationId: input.organizationId, ticketId: input.ticketId },
+          tx,
+        );
+        if (latest === null) {
+          throw new TicketNotFoundError(
+            `チケット ${input.ticketId} が見つかりません`,
+          );
+        }
+        throw new TicketConflictError(
+          "チケットの優先度が変更されたため、更新できません。最新の状態を確認してください。",
+        );
+      }
+
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.updatedBy,
+        entityType: "ticket",
+        entityId: saved.id,
+        action: "update_priority",
+        oldValues: { priority: existing.priority },
+        newValues: { priority: saved.priority },
       });
       await saveAuditLog(auditLog, tx);
 

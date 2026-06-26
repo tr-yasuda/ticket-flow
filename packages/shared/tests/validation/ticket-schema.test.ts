@@ -4,6 +4,7 @@ import {
   ticketPrioritySchema,
   ticketStatusSchema,
   ticketTitleSchema,
+  updateTicketPriorityInputSchema,
   updateTicketStatusInputSchema,
 } from "../../src/validation/ticket-schema.js";
 
@@ -196,6 +197,36 @@ describe("updateTicketStatusInputSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].path[0]).toBe("status");
+    }
+  });
+});
+
+describe("updateTicketPriorityInputSchema", () => {
+  it.each(["low", "medium", "high", "urgent"] as const)(
+    "有効な優先度 %s を受け入れる",
+    (priority) => {
+      const result = updateTicketPriorityInputSchema.safeParse({ priority });
+      expect(result.success).toBe(true);
+    },
+  );
+
+  it("優先度がない場合は拒否する", () => {
+    const result = updateTicketPriorityInputSchema.safeParse({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path[0]).toBe("priority");
+    }
+  });
+
+  it("無効な優先度を拒否する", () => {
+    const result = updateTicketPriorityInputSchema.safeParse({
+      priority: "invalid",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "優先度の値が正しくありません",
+      );
     }
   });
 });
