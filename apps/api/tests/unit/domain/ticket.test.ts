@@ -412,4 +412,41 @@ describe("チケット更新", () => {
       TicketValidationError,
     );
   });
+
+  it.each([
+    ["open から in-progress", TicketStatus.Open, TicketStatus.InProgress],
+    ["open から closed", TicketStatus.Open, TicketStatus.Closed],
+    ["in-progress から closed", TicketStatus.InProgress, TicketStatus.Closed],
+  ])("有効な遷移: %s", (_label, fromStatus, toStatus) => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "transition",
+      createdBy: "user-1",
+    });
+    const ticketWithStatus = { ...ticket, status: fromStatus };
+    const updated = updateTicketStatus(ticketWithStatus, toStatus);
+    expect(updated.status).toBe(toStatus);
+  });
+
+  it.each([
+    ["closed から open", TicketStatus.Closed, TicketStatus.Open],
+    ["closed から in-progress", TicketStatus.Closed, TicketStatus.InProgress],
+    ["in-progress から open", TicketStatus.InProgress, TicketStatus.Open],
+  ])("無効な遷移: %s", (_label, fromStatus, toStatus) => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "transition",
+      createdBy: "user-1",
+    });
+    const ticketWithStatus = { ...ticket, status: fromStatus };
+    expect(() => updateTicketStatus(ticketWithStatus, toStatus)).toThrow(
+      TicketValidationError,
+    );
+  });
+
+  it("同じステータスへの変更は許可される", () => {
+    const ticket = baseTicket();
+    const updated = updateTicketStatus(ticket, TicketStatus.Open);
+    expect(updated.status).toBe(TicketStatus.Open);
+  });
 });

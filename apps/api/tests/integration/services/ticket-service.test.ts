@@ -531,6 +531,7 @@ describe("ticket-service 統合テスト", () => {
         organizationId,
         ticketId: created.ticket.id,
         status: "closed",
+        updatedBy: ownerId,
       });
 
       const data = expectSuccess(result);
@@ -538,12 +539,13 @@ describe("ticket-service 統合テスト", () => {
     });
 
     it("存在しないチケットのステータス更新はエラー", async () => {
-      const { organizationId } = await seedOrganization();
+      const { organizationId, ownerId } = await seedOrganization();
 
       const result = await updateTicketStatus({
         organizationId,
         ticketId: randomUUID(),
         status: "closed",
+        updatedBy: ownerId,
       });
 
       expectError(result, "ticket-not-found");
@@ -566,9 +568,123 @@ describe("ticket-service 統合テスト", () => {
         organizationId: second.organizationId,
         ticketId: created.ticket.id,
         status: "closed",
+        updatedBy: first.ownerId,
       });
 
       expectError(result, "ticket-not-found");
+    });
+
+    it("無効なステータス遷移はエラー", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "invalid transition",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const closed = expectSuccess(
+        await updateTicketStatus({
+          organizationId,
+          ticketId: created.ticket.id,
+          status: "closed",
+          updatedBy: ownerId,
+        }),
+      );
+      expect(closed.ticket.status).toBe("closed");
+
+      const result = await updateTicketStatus({
+        organizationId,
+        ticketId: created.ticket.id,
+        status: "open",
+        updatedBy: ownerId,
+      });
+
+      expectError(result, "validation-error");
+    });
+
+    it("同じステータスへの更新は冪等に成功する", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "idempotent",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+      const beforeUpdatedAt = created.ticket.updatedAt;
+      const auditLogCountBefore = await prisma.auditLog.count({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_status",
+        },
+      });
+
+      const result = await updateTicketStatus({
+        organizationId,
+        ticketId: created.ticket.id,
+        status: created.ticket.status,
+        updatedBy: ownerId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.status).toBe(created.ticket.status);
+      expect(data.ticket.updatedAt.getTime()).toBe(beforeUpdatedAt.getTime());
+
+      const auditLogCountAfter = await prisma.auditLog.count({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_status",
+        },
+      });
+      expect(auditLogCountAfter).toBe(auditLogCountBefore);
+    });
+
+    it("ステータス変更時に監査ログが記録される", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const created = expectSuccess(
+        await createTicket({
+          organizationId,
+          title: "audit log",
+          priority: "medium",
+          assigneeId: null,
+          createdBy: ownerId,
+        }),
+      );
+
+      const result = await updateTicketStatus({
+        organizationId,
+        ticketId: created.ticket.id,
+        status: "in-progress",
+        updatedBy: ownerId,
+      });
+
+      expectSuccess(result);
+
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          organizationId,
+          entityType: "ticket",
+          entityId: created.ticket.id,
+          action: "update_status",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.action).toBe("update_status");
+      expect(auditLog?.actorId).toBe(ownerId);
+      expect(auditLog?.oldValues).toMatchObject({ status: "open" });
+      expect(auditLog?.newValues).toMatchObject({ status: "in-progress" });
     });
   });
 

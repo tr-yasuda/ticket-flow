@@ -6,6 +6,7 @@ import {
   type CreateTicketInput as DomainCreateTicketInput,
   type Ticket,
   type TicketListItem,
+  TicketConflictError,
   TicketNotFoundError,
   TicketPriority,
   TicketStatus,
@@ -43,6 +44,7 @@ async function runInTransaction<T>(
 
 export type TicketServiceError = Readonly<
   | { type: "ticket-not-found"; message: string }
+  | { type: "ticket-conflict"; message: string }
   | { type: "user-not-organization-member"; message: string }
   | { type: "validation-error"; message: string }
   | { type: "unknown-error"; message: string }
@@ -268,6 +270,7 @@ export type UpdateTicketStatusInput = Readonly<{
   organizationId: string;
   ticketId: string;
   status: TicketStatus;
+  updatedBy: string;
 }>;
 
 export type UpdateTicketStatusResult =
@@ -292,20 +295,45 @@ export async function updateTicketStatus(
 
       const updated = updateTicketStatusEntity(existing, input.status);
 
+      if (updated.status === existing.status) {
+        return existing;
+      }
+
       const saved = await updateTicketStatusRepository(
         {
           organizationId: input.organizationId,
           ticketId: input.ticketId,
           status: updated.status,
+          currentStatus: existing.status,
         },
         tx,
       );
 
       if (saved === null) {
-        throw new TicketNotFoundError(
-          `チケット ${input.ticketId} が見つかりません`,
+        const latest = await findTicketById(
+          { organizationId: input.organizationId, ticketId: input.ticketId },
+          tx,
+        );
+        if (latest === null) {
+          throw new TicketNotFoundError(
+            `チケット ${input.ticketId} が見つかりません`,
+          );
+        }
+        throw new TicketConflictError(
+          "チケットのステータスが変更されたため、更新できません。最新の状態を確認してください。",
         );
       }
+
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.updatedBy,
+        entityType: "ticket",
+        entityId: saved.id,
+        action: "update_status",
+        oldValues: { status: existing.status },
+        newValues: { status: saved.status },
+      });
+      await saveAuditLog(auditLog, tx);
 
       return saved;
     });
@@ -341,6 +369,13 @@ function mapServiceError(error: unknown): {
   success: false;
   error: TicketServiceError;
 } {
+  if (error instanceof TicketConflictError) {
+    return {
+      success: false,
+      error: { type: "ticket-conflict", message: error.message },
+    };
+  }
+
   if (error instanceof TicketNotFoundError) {
     return {
       success: false,
