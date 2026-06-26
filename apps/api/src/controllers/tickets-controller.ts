@@ -168,7 +168,10 @@ export async function createTicketController(c: Context) {
   const { ticket } = result.data;
   await recordTicketCreationAuditLog(organizationId, createdBy, ticket);
 
-  return c.json(createApiSuccessResponse(ticket), HttpStatus.CREATED);
+  return c.json(
+    createApiSuccessResponse(serializeTicket(ticket)),
+    HttpStatus.CREATED,
+  );
 }
 
 export async function listTicketsController(c: Context) {

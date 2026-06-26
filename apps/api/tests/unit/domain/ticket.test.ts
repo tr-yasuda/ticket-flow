@@ -247,7 +247,7 @@ describe("チケット復元", () => {
       createdBy: "user-1",
       createdAt: new Date("2026-06-19T00:00:00.000Z"),
       updatedAt: new Date("2026-06-19T01:00:00.000Z"),
-      deletedAt: null as Date | null,
+      deletedAt: null,
     };
 
     const ticket = rehydrateTicket(input);
