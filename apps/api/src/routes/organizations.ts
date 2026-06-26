@@ -29,12 +29,14 @@ import {
   getTicketParamSchema,
   listTicketsQuerySchema,
   updateTicketBodySchema,
+  updateTicketStatusBodySchema,
 } from "../controllers/schemas/ticket-schema.js";
 import {
   createTicketController,
   getTicketController,
   listTicketsController,
   updateTicketController,
+  updateTicketStatusController,
 } from "../controllers/tickets-controller.js";
 import { createRateLimitMiddleware } from "../lib/rate-limiter.js";
 import { validationHook } from "../lib/validation-hook.js";
@@ -88,6 +90,20 @@ const updateTicketRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 100,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:update`,
   message: "チケット更新は時間あたりの上限に達しました",
+});
+
+const updateTicketStatusRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:tickets:status:update`,
+  message: "この組織でのステータス更新は時間あたりの上限に達しました",
+});
+
+const updateTicketStatusRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:tickets:status:update`,
+  message: "ステータス更新は時間あたりの上限に達しました",
 });
 
 const listTicketsRateLimitByOrganization = createRateLimitMiddleware({
@@ -225,6 +241,16 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("param", getTicketParamSchema, validationHook),
         sValidator("json", updateTicketBodySchema, validationHook),
         updateTicketController,
+      )
+      .patch(
+        "/:organizationId/tickets/:ticketId/status",
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        updateTicketStatusRateLimitByOrganization,
+        updateTicketStatusRateLimitByUser,
+        sValidator("param", getTicketParamSchema, validationHook),
+        sValidator("json", updateTicketStatusBodySchema, validationHook),
+        updateTicketStatusController,
       )
       .get(
         "/:organizationId",

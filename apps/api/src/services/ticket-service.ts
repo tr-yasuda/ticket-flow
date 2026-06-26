@@ -268,6 +268,7 @@ export type UpdateTicketStatusInput = Readonly<{
   organizationId: string;
   ticketId: string;
   status: TicketStatus;
+  updatedBy: string;
 }>;
 
 export type UpdateTicketStatusResult =
@@ -292,11 +293,16 @@ export async function updateTicketStatus(
 
       const updated = updateTicketStatusEntity(existing, input.status);
 
+      if (updated.status === existing.status) {
+        return existing;
+      }
+
       const saved = await updateTicketStatusRepository(
         {
           organizationId: input.organizationId,
           ticketId: input.ticketId,
           status: updated.status,
+          currentStatus: existing.status,
         },
         tx,
       );
@@ -306,6 +312,17 @@ export async function updateTicketStatus(
           `チケット ${input.ticketId} が見つかりません`,
         );
       }
+
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.updatedBy,
+        entityType: "ticket",
+        entityId: saved.id,
+        action: "update_status",
+        oldValues: { status: existing.status },
+        newValues: { status: saved.status },
+      });
+      await saveAuditLog(auditLog, tx);
 
       return saved;
     });

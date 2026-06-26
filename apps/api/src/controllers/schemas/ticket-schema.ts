@@ -2,6 +2,7 @@ import {
   ticketDescriptionSchema,
   ticketPrioritySchema,
   ticketTitleSchema,
+  updateTicketStatusInputSchema,
 } from "@ticket-flow/shared";
 import { z } from "zod";
 
@@ -83,3 +84,21 @@ export type UpdateTicketBody = {
   title?: string;
   description?: string | null;
 };
+
+export const updateTicketStatusBodySchema = updateTicketStatusInputSchema
+  .passthrough()
+  .superRefine((data, ctx) => {
+    for (const key of Object.keys(data)) {
+      if (key !== "status") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "許可されていないフィールドです",
+          path: [key],
+        });
+      }
+    }
+  });
+
+export type UpdateTicketStatusBody = z.infer<
+  typeof updateTicketStatusBodySchema
+>;

@@ -179,11 +179,46 @@ export function updateTicket(ticket: Ticket, patch: UpdateTicketPatch): Ticket {
   });
 }
 
+const allowedStatusTransitions: Record<TicketStatus, readonly TicketStatus[]> =
+  {
+    [TicketStatus.Open]: [TicketStatus.InProgress, TicketStatus.Closed],
+    [TicketStatus.InProgress]: [TicketStatus.Closed],
+    [TicketStatus.Closed]: [],
+  };
+
+function validateTicketStatusTransition(
+  fromStatus: TicketStatus,
+  toStatus: TicketStatus,
+): void {
+  if (fromStatus === toStatus) {
+    return;
+  }
+
+  const allowed = allowedStatusTransitions[fromStatus];
+  if (!allowed.includes(toStatus)) {
+    throw new TicketValidationError(
+      `ステータスを ${fromStatus} から ${toStatus} に変更することはできません`,
+    );
+  }
+}
+
+/**
+ * チケットのステータスを変更する。
+ *
+ * 許可される遷移:
+ * - open → in-progress
+ * - open → closed
+ * - in-progress → closed
+ *
+ * 同じステータスへの変更はエラーにならない。
+ * 上記以外の遷移は TicketValidationError を投げる。
+ */
 export function updateTicketStatus(
   ticket: Ticket,
   status: TicketStatus,
 ): Ticket {
   const parsed = parseWith(ticketStatusSchema, status);
+  validateTicketStatusTransition(ticket.status, parsed);
 
   return parseWith(ticketSchema, {
     ...ticket,

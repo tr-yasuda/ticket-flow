@@ -1,7 +1,10 @@
 import type { Context } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { updateTicketController } from "../../../src/controllers/tickets-controller.js";
+import {
+  updateTicketController,
+  updateTicketStatusController,
+} from "../../../src/controllers/tickets-controller.js";
 import * as ticketService from "../../../src/services/ticket-service.js";
 
 function createTestContext({
@@ -148,6 +151,129 @@ describe("tickets-controller", () => {
       });
 
       await updateTicketController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+  });
+
+  describe("updateTicketStatusController", () => {
+    it("更新成功時に 200 と commentCount を返す", async () => {
+      const ticket = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        title: "task",
+        description: null,
+        status: "in-progress",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: "user-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+        success: true,
+        data: { ticket },
+      });
+      const c = createTestContext({
+        body: { status: "in-progress" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketStatusController(c);
+
+      expect(ticketService.updateTicketStatus).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        status: "in-progress",
+        updatedBy: "user-id",
+      });
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            ...ticket,
+            commentCount: 0,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("存在しないチケットの場合は 404 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+        success: false,
+        error: { type: "ticket-not-found", message: "not found" },
+      });
+      const c = createTestContext({
+        body: { status: "in-progress" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketStatusController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
+    });
+
+    it("無効な遷移の場合は 400 を返し status フィールドの詳細を含む", async () => {
+      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+        success: false,
+        error: {
+          type: "validation-error",
+          message: "ステータスを closed から open に変更することはできません",
+        },
+      });
+      const c = createTestContext({
+        body: { status: "open" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketStatusController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "VALIDATION_ERROR",
+            details: [
+              {
+                field: "status",
+                message:
+                  "ステータスを closed から open に変更することはできません",
+              },
+            ],
+          }),
+        }),
+        400,
+      );
+    });
+
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+        success: false,
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        body: { status: "in-progress" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketStatusController(c);
 
       expect(c.json).toHaveBeenCalledWith(
         expect.objectContaining({
