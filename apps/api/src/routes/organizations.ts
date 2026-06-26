@@ -246,10 +246,10 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         "/:organizationId/tickets/:ticketId/comments",
         organizationScopeMiddleware,
         requireMemberMiddleware,
-        sValidator("param", ticketIdParamSchema, validationHook),
-        sValidator("json", createCommentBodySchema, validationHook),
         createCommentRateLimitByOrganization,
         createCommentRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("json", createCommentBodySchema, validationHook),
         createCommentController,
       )
       .get(
