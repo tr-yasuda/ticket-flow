@@ -17,6 +17,7 @@ describe("createTicket", () => {
       createdBy: "user-1",
       createdAt: expect.any(Date),
       updatedAt: expect.any(Date),
+      deletedAt: null,
     });
   });
 

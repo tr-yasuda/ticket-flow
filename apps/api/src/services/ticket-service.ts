@@ -24,6 +24,7 @@ import {
   findTicketById,
   findTicketsByOrganizationId,
   saveTicket,
+  softDeleteTicket,
   updateTicket as updateTicketRepository,
   updateTicketAssignee as updateTicketAssigneeRepository,
   updateTicketPriority as updateTicketPriorityRepository,
@@ -470,6 +471,15 @@ export async function updateTicketAssignee(
       );
 
       if (result === null) {
+        const latest = await findTicketById(
+          { organizationId: input.organizationId, ticketId: input.ticketId },
+          tx,
+        );
+        if (latest === null) {
+          throw new TicketNotFoundError(
+            `チケット ${input.ticketId} が見つかりません`,
+          );
+        }
         throw new TicketConflictError(
           "チケットの担当者が変更されたため、更新できません。最新の状態を確認してください。",
         );
@@ -490,6 +500,68 @@ export async function updateTicketAssignee(
     });
 
     return { success: true, data: { ticket: saved } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
+export type DeleteTicketInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  deletedBy: string;
+}>;
+
+export type DeleteTicketResult =
+  | { success: true; data: { ticket: Ticket } }
+  | { success: false; error: TicketServiceError };
+
+export async function deleteTicket(
+  input: DeleteTicketInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<DeleteTicketResult> {
+  try {
+    return await runInTransaction(db, async (tx) => {
+      const existing = await findTicketById(
+        { organizationId: input.organizationId, ticketId: input.ticketId },
+        tx,
+      );
+      if (existing === null) {
+        return {
+          success: false,
+          error: {
+            type: "ticket-not-found",
+            message: "チケットが見つかりません",
+          },
+        };
+      }
+
+      const deleted = await softDeleteTicket(
+        { organizationId: input.organizationId, ticketId: input.ticketId },
+        tx,
+      );
+      if (deleted === null) {
+        return {
+          success: false,
+          error: {
+            type: "ticket-not-found",
+            message: "チケットが見つかりません",
+          },
+        };
+      }
+
+      const auditLog = createAuditLog({
+        organizationId: input.organizationId,
+        actorId: input.deletedBy,
+        entityType: "ticket",
+        entityId: deleted.id,
+        action: "delete",
+        oldValues: ticketToAuditLogValues(existing),
+        newValues: { deletedAt: deleted.deletedAt!.toISOString() },
+      });
+      await saveAuditLog(auditLog, tx);
+
+      return { success: true, data: { ticket: deleted } };
+    });
   } catch (error) {
     return mapServiceError(error);
   }

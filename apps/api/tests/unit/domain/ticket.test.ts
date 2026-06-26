@@ -31,6 +31,7 @@ describe("チケット作成", () => {
       createdBy: "user-1",
       createdAt: expect.any(Date),
       updatedAt: expect.any(Date),
+      deletedAt: null,
     });
     expect(ticket.createdAt.getTime()).toBe(ticket.updatedAt.getTime());
   });
@@ -246,6 +247,7 @@ describe("チケット復元", () => {
       createdBy: "user-1",
       createdAt: new Date("2026-06-19T00:00:00.000Z"),
       updatedAt: new Date("2026-06-19T01:00:00.000Z"),
+      deletedAt: null,
     };
 
     const ticket = rehydrateTicket(input);

@@ -7,6 +7,7 @@ import { registerUser } from "../../../src/services/auth-service.js";
 import { createOrganization } from "../../../src/services/organizations-service.js";
 import {
   createTicket,
+  deleteTicket,
   getTicket,
   listTickets,
   updateTicket,
@@ -1033,6 +1034,138 @@ describe("ticket-service 統合テスト", () => {
 
       const data = expectSuccess(result);
       expect(data.tickets).toHaveLength(1);
+    });
+  });
+});
+
+describe("deleteTicket", () => {
+  it("チケットを論理削除できる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+    const created = await createTicket({
+      organizationId,
+      title: "削除対象チケット",
+      createdBy: ownerId,
+    });
+    const ticket = expectSuccess(created);
+
+    const result = await deleteTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+      deletedBy: ownerId,
+    });
+
+    const data = expectSuccess(result);
+    expect(data.ticket.deletedAt).not.toBeNull();
+
+    const fetched = await getTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+    });
+    expect(fetched.success).toBe(false);
+    expect(!fetched.success && fetched.error.type).toBe("ticket-not-found");
+  });
+
+  it("存在しないチケットを削除すると not-found エラー", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    const result = await deleteTicket({
+      organizationId,
+      ticketId: randomUUID(),
+      deletedBy: ownerId,
+    });
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.type).toBe("ticket-not-found");
+  });
+
+  it("他組織のチケットを削除すると not-found エラー", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+    const otherOrg = await createOrganization({
+      name: "Other Inc.",
+      slug: `other-${randomUUID()}`,
+      ownerUserId: ownerId,
+    });
+    expect(otherOrg.success).toBe(true);
+    if (!otherOrg.success) {
+      throw new Error("failed to create other organization");
+    }
+
+    const created = await createTicket({
+      organizationId: otherOrg.data.id,
+      title: "他組織チケット",
+      createdBy: ownerId,
+    });
+    const ticket = expectSuccess(created);
+
+    const result = await deleteTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+      deletedBy: ownerId,
+    });
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.type).toBe("ticket-not-found");
+  });
+
+  it("削除済みチケットを再削除すると not-found エラー", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+    const created = await createTicket({
+      organizationId,
+      title: "削除対象チケット",
+      createdBy: ownerId,
+    });
+    const ticket = expectSuccess(created);
+
+    await deleteTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+      deletedBy: ownerId,
+    });
+
+    const result = await deleteTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+      deletedBy: ownerId,
+    });
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.type).toBe("ticket-not-found");
+  });
+
+  it("削除時に監査ログが記録される", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+    const created = await createTicket({
+      organizationId,
+      title: "監査対象チケット",
+      priority: "high",
+      createdBy: ownerId,
+    });
+    const ticket = expectSuccess(created);
+
+    const result = await deleteTicket({
+      organizationId,
+      ticketId: ticket.ticket.id,
+      deletedBy: ownerId,
+    });
+    const data = expectSuccess(result);
+
+    const auditLog = await prisma.auditLog.findFirst({
+      where: {
+        organizationId,
+        entityType: "ticket",
+        entityId: ticket.ticket.id,
+        action: "delete",
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(auditLog).not.toBeNull();
+    expect(auditLog?.actorId).toBe(ownerId);
+    expect(auditLog?.oldValues).toMatchObject({
+      title: "監査対象チケット",
+      priority: "high",
+    });
+    expect(auditLog?.newValues).toMatchObject({
+      deletedAt: data.ticket.deletedAt.toISOString(),
     });
   });
 });

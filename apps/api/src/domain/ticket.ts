@@ -42,6 +42,7 @@ export type Ticket = Readonly<{
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
 }>;
 
 export type TicketAssignee = Readonly<{
@@ -102,6 +103,9 @@ const ticketSchema = z.object({
   createdBy: ticketCreatedBySchema,
   createdAt: z.date({ message: "作成日時は必須です" }),
   updatedAt: z.date({ message: "更新日時は必須です" }),
+  deletedAt: z
+    .date({ message: "削除日時は日付または null である必要があります" })
+    .nullable(),
 });
 
 function parseWith<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -142,6 +146,7 @@ export function createTicket(input: CreateTicketInput): Ticket {
     createdBy: parsed.createdBy,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
   });
 }
 
@@ -156,10 +161,14 @@ export type RehydrateTicketInput = Readonly<{
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date | null;
 }>;
 
 export function rehydrateTicket(input: RehydrateTicketInput): Ticket {
-  return parseWith(ticketSchema, input);
+  return parseWith(ticketSchema, {
+    ...input,
+    deletedAt: input.deletedAt ?? null,
+  });
 }
 
 export type UpdateTicketPatch = Readonly<{
