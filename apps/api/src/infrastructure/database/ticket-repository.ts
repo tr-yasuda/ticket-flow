@@ -267,6 +267,7 @@ export type UpdateTicketStatusRepositoryInput = Readonly<{
   organizationId: string;
   ticketId: string;
   status: TicketStatus;
+  currentStatus: TicketStatus;
 }>;
 
 export async function updateTicketStatus(
@@ -277,6 +278,7 @@ export async function updateTicketStatus(
     where: {
       id: input.ticketId,
       organizationId: input.organizationId,
+      status: input.currentStatus,
     },
     data: { status: input.status },
   });
