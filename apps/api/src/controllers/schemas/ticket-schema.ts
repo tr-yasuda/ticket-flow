@@ -2,6 +2,7 @@ import {
   ticketDescriptionSchema,
   ticketPrioritySchema,
   ticketTitleSchema,
+  updateTicketPriorityInputSchema,
   updateTicketStatusInputSchema,
 } from "@ticket-flow/shared";
 import { z } from "zod";
@@ -85,11 +86,13 @@ export type UpdateTicketBody = {
   description?: string | null;
 };
 
-export const updateTicketStatusBodySchema = updateTicketStatusInputSchema
-  .passthrough()
-  .superRefine((data, ctx) => {
+function createSingleFieldBodySchema<T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>,
+  allowedField: keyof T & string,
+) {
+  return schema.passthrough().superRefine((data, ctx) => {
     for (const key of Object.keys(data)) {
-      if (key !== "status") {
+      if (key !== allowedField) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "許可されていないフィールドです",
@@ -97,9 +100,23 @@ export const updateTicketStatusBodySchema = updateTicketStatusInputSchema
         });
       }
     }
-  })
-  .transform((data) => ({ status: data.status }));
+  });
+}
+
+export const updateTicketStatusBodySchema = createSingleFieldBodySchema(
+  updateTicketStatusInputSchema,
+  "status",
+);
 
 export type UpdateTicketStatusBody = z.infer<
   typeof updateTicketStatusBodySchema
+>;
+
+export const updateTicketPriorityBodySchema = createSingleFieldBodySchema(
+  updateTicketPriorityInputSchema,
+  "priority",
+);
+
+export type UpdateTicketPriorityBody = z.infer<
+  typeof updateTicketPriorityBodySchema
 >;

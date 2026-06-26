@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   updateTicketController,
+  updateTicketPriorityController,
   updateTicketStatusController,
 } from "../../../src/controllers/tickets-controller.js";
 import * as ticketService from "../../../src/services/ticket-service.js";
@@ -304,6 +305,156 @@ describe("tickets-controller", () => {
       });
 
       await updateTicketStatusController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+  });
+
+  describe("updateTicketPriorityController", () => {
+    it("更新成功時に 200 と commentCount を返す", async () => {
+      const ticket = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        title: "task",
+        description: null,
+        status: "open",
+        priority: "urgent",
+        assigneeId: null,
+        createdBy: "user-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+        success: true,
+        data: { ticket },
+      });
+      const c = createTestContext({
+        body: { priority: "urgent" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketPriorityController(c);
+
+      expect(ticketService.updateTicketPriority).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        priority: "urgent",
+        updatedBy: "user-id",
+      });
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            ...ticket,
+            commentCount: 0,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("存在しないチケットの場合は 404 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+        success: false,
+        error: { type: "ticket-not-found", message: "not found" },
+      });
+      const c = createTestContext({
+        body: { priority: "high" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketPriorityController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
+    });
+
+    it("並行更新で競合が発生した場合は 409 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+        success: false,
+        error: {
+          type: "ticket-conflict",
+          message: "チケットの優先度が変更されたため、更新できません。",
+        },
+      });
+      const c = createTestContext({
+        body: { priority: "high" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketPriorityController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "CONFLICT",
+            message: expect.stringContaining("チケットの優先度が変更された"),
+          }),
+        }),
+        409,
+      );
+    });
+
+    it("無効な優先度の場合は 400 を返し priority フィールドの詳細を含む", async () => {
+      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+        success: false,
+        error: {
+          type: "validation-error",
+          message: "優先度の値が正しくありません",
+        },
+      });
+      const c = createTestContext({
+        body: { priority: "invalid" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketPriorityController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            code: "VALIDATION_ERROR",
+            details: [
+              {
+                field: "priority",
+                message: "優先度の値が正しくありません",
+              },
+            ],
+          }),
+        }),
+        400,
+      );
+    });
+
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+        success: false,
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        body: { priority: "high" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await updateTicketPriorityController(c);
 
       expect(c.json).toHaveBeenCalledWith(
         expect.objectContaining({
