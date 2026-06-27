@@ -261,7 +261,7 @@ describe("GET /api/organizations/:organizationId/tickets/:ticketId/history (tick
       title: "更新 1",
     });
     await new Promise((resolve) => {
-      setTimeout(resolve, 2);
+      setTimeout(resolve, 20);
     });
     await updateTicket(app, ownerToken, organizationId, ticketId, {
       title: "更新 2",
@@ -457,7 +457,7 @@ describe("GET /api/organizations/:organizationId/tickets/:ticketId/history (tick
       title: "更新 1",
     });
     await new Promise((resolve) => {
-      setTimeout(resolve, 2);
+      setTimeout(resolve, 20);
     });
     await updateTicket(app, ownerToken, organizationId, ticketId, {
       title: "更新 2",

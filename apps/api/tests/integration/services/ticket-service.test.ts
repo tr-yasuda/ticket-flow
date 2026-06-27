@@ -1312,7 +1312,7 @@ describe("deleteTicket", () => {
       });
       expectSuccess(update1);
       await new Promise((resolve) => {
-        setTimeout(resolve, 2);
+        setTimeout(resolve, 20);
       });
       const update2 = await updateTicket({
         organizationId,
@@ -1381,7 +1381,7 @@ describe("deleteTicket", () => {
       });
       expectSuccess(update1);
       await new Promise((resolve) => {
-        setTimeout(resolve, 2);
+        setTimeout(resolve, 20);
       });
       const update2 = await updateTicket({
         organizationId,

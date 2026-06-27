@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { createAuditLog } from "../../../../src/domain/audit-log.js";
 import {
   findAuditLogsByEntityWithActor,
   saveAuditLog,
@@ -65,14 +66,16 @@ describe("audit-log-repository 統合テスト", () => {
 
   it("エンティティ履歴を actor 情報付きで取得できる", async () => {
     const { organizationId, actorId } = await seedOrganization();
-    const saved = await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "create",
-      newValues: { title: "First" },
-    });
+    const saved = await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "create",
+        newValues: { title: "First" },
+      }),
+    );
 
     const logs = await findAuditLogsByEntityWithActor({
       organizationId,
@@ -93,21 +96,25 @@ describe("audit-log-repository 統合テスト", () => {
 
   it("履歴が時系列順に返される", async () => {
     const { organizationId, actorId } = await seedOrganization();
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "create",
-    });
-    await waitMilliseconds(2);
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "update",
-    });
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "create",
+      }),
+    );
+    await waitMilliseconds(20);
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "update",
+      }),
+    );
 
     const logs = await findAuditLogsByEntityWithActor({
       organizationId,
@@ -125,29 +132,35 @@ describe("audit-log-repository 統合テスト", () => {
 
   it("take/skip でページネーションできる", async () => {
     const { organizationId, actorId } = await seedOrganization();
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "create",
-    });
-    await waitMilliseconds(2);
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "update",
-    });
-    await waitMilliseconds(2);
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "delete",
-    });
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "create",
+      }),
+    );
+    await waitMilliseconds(20);
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "update",
+      }),
+    );
+    await waitMilliseconds(20);
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "delete",
+      }),
+    );
 
     const page1 = await findAuditLogsByEntityWithActor({
       organizationId,
@@ -174,20 +187,24 @@ describe("audit-log-repository 統合テスト", () => {
   it("他組織のログは含まれない", async () => {
     const { organizationId, actorId } = await seedOrganization();
     const other = await seedOrganization();
-    await saveAuditLog({
-      organizationId,
-      actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "create",
-    });
-    await saveAuditLog({
-      organizationId: other.organizationId,
-      actorId: other.actorId,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "update",
-    });
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "create",
+      }),
+    );
+    await saveAuditLog(
+      createAuditLog({
+        organizationId: other.organizationId,
+        actorId: other.actorId,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "update",
+      }),
+    );
 
     const logs = await findAuditLogsByEntityWithActor({
       organizationId,
@@ -201,14 +218,16 @@ describe("audit-log-repository 統合テスト", () => {
 
   it("actor が null の履歴は actor: null で返る", async () => {
     const { organizationId } = await seedOrganization();
-    await saveAuditLog({
-      organizationId,
-      actorId: null,
-      entityType: "ticket",
-      entityId: "ticket-1",
-      action: "system",
-      newValues: { note: "auto" },
-    });
+    await saveAuditLog(
+      createAuditLog({
+        organizationId,
+        actorId: null,
+        entityType: "ticket",
+        entityId: "ticket-1",
+        action: "system",
+        newValues: { note: "auto" },
+      }),
+    );
 
     const logs = await findAuditLogsByEntityWithActor({
       organizationId,
