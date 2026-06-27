@@ -54,11 +54,13 @@ model Ticket {
 
   @@map("tickets")
   @@index([organizationId, status])
+  @@index([organizationId, priority])
   @@index([organizationId, createdAt])
   @@index([organizationId, updatedAt], map: "tickets_organization_id_updated_at_idx")
   @@index([organizationId, assigneeId])
   @@index([organizationId, createdBy])
   @@index([organizationId, deletedAt, updatedAt, id])
+  @@index([organizationId, assigneeId, deletedAt, status])
 }
 
 model Organization {

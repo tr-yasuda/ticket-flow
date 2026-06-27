@@ -13,6 +13,7 @@ import {
   listCommentsController,
   updateCommentController,
 } from "../controllers/comments-controller.js";
+import { getOrganizationDashboardController } from "../controllers/dashboard-controller.js";
 import { createOrganizationInvitationController } from "../controllers/organization-invitations-controller.js";
 import {
   deleteOrganizationMemberController,
@@ -249,6 +250,20 @@ const deleteMemberRateLimitByUser = createRateLimitMiddleware({
   message: "メンバー削除は時間あたりの上限に達しました",
 });
 
+const dashboardRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 3000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:dashboard`,
+  message: "この組織でのダッシュボード取得は時間あたりの上限に達しました",
+});
+
+const dashboardRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 300,
+  keyGenerator: (c) => `user:${c.get("userId")}:dashboard`,
+  message: "ダッシュボード取得は時間あたりの上限に達しました",
+});
+
 export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
   return (
     routes
@@ -410,6 +425,13 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         deleteTicketRateLimitByUser,
         sValidator("param", ticketIdParamSchema, validationHook),
         deleteTicketController,
+      )
+      .get(
+        "/:organizationId/dashboard",
+        organizationScopeMiddleware,
+        dashboardRateLimitByOrganization,
+        dashboardRateLimitByUser,
+        getOrganizationDashboardController,
       )
       .get(
         "/:organizationId",
