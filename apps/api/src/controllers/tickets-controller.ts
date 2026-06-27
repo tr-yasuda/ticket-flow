@@ -191,7 +191,7 @@ export async function createTicketController(c: Context) {
 
 export async function listTicketsController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { page, perPage, search } = c.req.valid(
+  const { page, perPage, search, status } = c.req.valid(
     "query" as never,
   ) as ListTicketsQuery;
 
@@ -202,13 +202,17 @@ export async function listTicketsController(c: Context) {
     skip,
     take: perPage,
     search,
+    status,
   });
 
   if (!result.success) {
-    const { code, status, message, details } = mapListTicketsError(
-      result.error,
-    );
-    return c.json(createApiErrorResponse(code, message, details), status);
+    const {
+      code,
+      status: httpStatus,
+      message,
+      details,
+    } = mapListTicketsError(result.error);
+    return c.json(createApiErrorResponse(code, message, details), httpStatus);
   }
 
   const totalPages = Math.max(1, Math.ceil(result.data.total / perPage));

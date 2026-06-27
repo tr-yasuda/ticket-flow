@@ -51,6 +51,7 @@ export async function saveTicket(
 export type FindTicketsInput = Readonly<{
   organizationId: string;
   search?: string;
+  status?: TicketStatus[];
 }> &
   Pagination;
 
@@ -68,6 +69,18 @@ export function escapeLikePattern(value: string): string {
 
 function buildSearchPattern(search: string): string {
   return `%${escapeLikePattern(search)}%`;
+}
+
+function hasStatusFilter(
+  status: TicketStatus[] | undefined,
+): status is TicketStatus[] {
+  return status !== undefined && status.length > 0;
+}
+
+function buildStatusFilter(status: TicketStatus[] | undefined): Prisma.Sql {
+  return hasStatusFilter(status)
+    ? Prisma.sql`AND status IN (${Prisma.join(status)})`
+    : Prisma.empty;
 }
 
 function toTicketListItem(
@@ -110,16 +123,19 @@ export async function countTicketsByOrganizationId(
       where: {
         organizationId: input.organizationId,
         deletedAt: null,
+        ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
       },
     });
   }
 
   const pattern = buildSearchPattern(search);
+  const statusFilter = buildStatusFilter(input.status);
   const rows = await db.$queryRaw<Array<{ count: number }>>`
     SELECT COUNT(*) AS count
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
+      ${statusFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
@@ -147,6 +163,7 @@ export async function findTicketsByOrganizationId(
       where: {
         organizationId: input.organizationId,
         deletedAt: null,
+        ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take,
@@ -173,6 +190,7 @@ export async function findTicketsByOrganizationId(
   }
 
   const pattern = buildSearchPattern(search);
+  const statusFilter = buildStatusFilter(input.status);
 
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
   // LOWER() で大文字小文字を区別せず、PRAGMA 等の設定差分に依存しません。
@@ -211,6 +229,7 @@ export async function findTicketsByOrganizationId(
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
+      ${statusFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'

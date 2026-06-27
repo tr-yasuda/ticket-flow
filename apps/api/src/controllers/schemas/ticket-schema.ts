@@ -8,6 +8,7 @@ import {
 } from "@ticket-flow/shared";
 import { z } from "zod";
 
+import { TicketStatus } from "../../domain/ticket.js";
 import { MAX_SKIP } from "../../infrastructure/database/pagination.js";
 
 export const MAX_TICKET_SEARCH_LENGTH = 100;
@@ -25,6 +26,25 @@ export const createTicketBodySchema = z.object({
 
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>;
 
+const ticketStatusValues: readonly TicketStatus[] = Object.values(TicketStatus);
+
+function parseStatusQuery(
+  value: string | string[] | undefined,
+): TicketStatus[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const rawValues = Array.isArray(value) ? value : value.split(",");
+  const statuses = rawValues
+    .map((item) => item.trim())
+    .filter((item): item is TicketStatus =>
+      ticketStatusValues.includes(item as TicketStatus),
+    );
+
+  return statuses.length > 0 ? statuses : undefined;
+}
+
 export const listTicketsQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).max(10000).default(1),
@@ -35,6 +55,10 @@ export const listTicketsQuerySchema = z
         message: `検索キーワードは${MAX_TICKET_SEARCH_LENGTH}文字以内で入力してください`,
       })
       .optional(),
+    status: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .transform(parseStatusQuery),
   })
   .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
     message: "ページ範囲が大きすぎます",
