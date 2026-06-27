@@ -140,13 +140,18 @@ function buildDashboard(
     aggregation.priorityCounts.map((row) => [row.priority, row._count._all]),
   );
 
+  let total = 0;
+  for (const count of statusCounts.values()) {
+    total += count;
+  }
+
   const open = statusCounts.get(TicketStatus.Open) ?? 0;
   const inProgress = statusCounts.get(TicketStatus.InProgress) ?? 0;
   const closed = statusCounts.get(TicketStatus.Closed) ?? 0;
 
   return {
     ticketSummary: {
-      total: open + inProgress + closed,
+      total,
       open,
       inProgress,
       closed,

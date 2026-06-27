@@ -60,7 +60,7 @@ model Ticket {
   @@index([organizationId, assigneeId])
   @@index([organizationId, createdBy])
   @@index([organizationId, deletedAt, updatedAt, id])
-  @@index([organizationId, assigneeId, status, deletedAt])
+  @@index([organizationId, assigneeId, deletedAt, status])
 }
 
 model Organization {
