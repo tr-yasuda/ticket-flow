@@ -150,7 +150,6 @@ model Comment {
   author         User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   @@map("comments")
-  @@index([organizationId, ticketId, createdAt])
   @@index([organizationId, ticketId, deletedAt, createdAt])
   @@index([ticketId])
   @@index([authorId])
