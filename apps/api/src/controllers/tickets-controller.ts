@@ -191,7 +191,7 @@ export async function createTicketController(c: Context) {
 
 export async function listTicketsController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { page, perPage, search, status } = c.req.valid(
+  const { page, perPage, search, status, assignee } = c.req.valid(
     "query" as never,
   ) as ListTicketsQuery;
 
@@ -203,6 +203,7 @@ export async function listTicketsController(c: Context) {
     take: perPage,
     search,
     status,
+    assigneeId: assignee,
   });
 
   if (!result.success) {
