@@ -10,6 +10,7 @@ import { z } from "zod";
 import { createRequireRoleMiddleware } from "../controllers/authorization-middleware.js";
 import {
   createCommentController,
+  deleteCommentController,
   listCommentsController,
   updateCommentController,
 } from "../controllers/comments-controller.js";
@@ -28,6 +29,7 @@ import {
 } from "../controllers/organizations-controller.js";
 import {
   createCommentBodySchema,
+  deleteCommentParamsSchema,
   listCommentsQuerySchema,
   updateCommentBodySchema,
   updateCommentParamsSchema,
@@ -224,6 +226,20 @@ const updateCommentRateLimitByUser = createRateLimitMiddleware({
   message: "コメント編集は時間あたりの上限に達しました",
 });
 
+const deleteCommentRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:comments:delete`,
+  message: "この組織でのコメント削除は時間あたりの上限に達しました",
+});
+
+const deleteCommentRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:comments:delete`,
+  message: "コメント削除は時間あたりの上限に達しました",
+});
+
 const updateMemberRoleRateLimitByOrganization = createRateLimitMiddleware({
   windowMs: 60 * 60 * 1000,
   maxRequests: 100,
@@ -372,6 +388,15 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("param", updateCommentParamsSchema, validationHook),
         sValidator("json", updateCommentBodySchema, validationHook),
         updateCommentController,
+      )
+      .delete(
+        "/:organizationId/tickets/:ticketId/comments/:commentId",
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        deleteCommentRateLimitByOrganization,
+        deleteCommentRateLimitByUser,
+        sValidator("param", deleteCommentParamsSchema, validationHook),
+        deleteCommentController,
       )
       .get(
         "/:organizationId/tickets/:ticketId",

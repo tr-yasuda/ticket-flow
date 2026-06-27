@@ -6,6 +6,7 @@ import { prisma } from "../../../src/lib/prisma.js";
 import { registerUser } from "../../../src/services/auth-service.js";
 import {
   createComment,
+  deleteComment,
   listCommentsByTicketId,
   updateComment,
   type CreateCommentServiceInput,
@@ -536,5 +537,346 @@ describe("comments-service 統合テスト", () => {
     expect(auditLogs[0]?.actorId).toBe(ownerId);
     expect(auditLogs[0]?.oldValues).toMatchObject({ content: "original" });
     expect(auditLogs[0]?.newValues).toMatchObject({ content: "updated" });
+  });
+
+  describe("deleteComment", () => {
+    it("投稿者は自分のコメントを削除できる", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "delete me",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      expect(result.success).toBe(true);
+      const stored = await prisma.comment.findUnique({
+        where: { id: created.data.comment.id },
+      });
+      expect(stored?.deletedAt).not.toBeNull();
+    });
+
+    it("Owner は他ユーザーのコメントを削除できる", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const memberResult = await registerUser({
+        email: uniqueEmail("member"),
+        password: "password123",
+      });
+      expect(memberResult.success).toBe(true);
+      if (!memberResult.success) {
+        throw new Error("Failed to register user");
+      }
+      await prisma.organizationMember.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          userId: memberResult.data.user.id,
+          role: "member",
+        },
+      });
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: memberResult.data.user.id,
+        content: "delete by owner",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("Admin は他ユーザーのコメントを削除できる", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const adminResult = await registerUser({
+        email: uniqueEmail("admin"),
+        password: "password123",
+      });
+      expect(adminResult.success).toBe(true);
+      if (!adminResult.success) {
+        throw new Error("Failed to register user");
+      }
+      await prisma.organizationMember.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          userId: adminResult.data.user.id,
+          role: "admin",
+        },
+      });
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "delete by admin",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: adminResult.data.user.id,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("Member は他ユーザーのコメントを削除できない", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const memberResult = await registerUser({
+        email: uniqueEmail("member"),
+        password: "password123",
+      });
+      expect(memberResult.success).toBe(true);
+      if (!memberResult.success) {
+        throw new Error("Failed to register user");
+      }
+      await prisma.organizationMember.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          userId: memberResult.data.user.id,
+          role: "member",
+        },
+      });
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "owner comment",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: memberResult.data.user.id,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("not-comment-author");
+      }
+      const stored = await prisma.comment.findUnique({
+        where: { id: created.data.comment.id },
+      });
+      expect(stored?.deletedAt).toBeNull();
+    });
+
+    it("存在しないコメントは削除できない", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: "550e8400-e29b-41d4-a716-446655440000",
+        actorId: ownerId,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("comment-not-found");
+      }
+    });
+
+    it("別のチケットのコメントは削除できない", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const otherTicket = await prisma.ticket.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          title: "other ticket",
+          createdBy: ownerId,
+        },
+      });
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "original",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId: otherTicket.id,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("comment-not-found");
+      }
+    });
+
+    it("組織メンバーでないユーザーは削除できない", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "original",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+      const outsiderResult = await registerUser({
+        email: uniqueEmail("outsider"),
+        password: "password123",
+      });
+      expect(outsiderResult.success).toBe(true);
+      if (!outsiderResult.success) {
+        throw new Error("Failed to register user");
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: outsiderResult.data.user.id,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("author-not-member");
+      }
+    });
+
+    it("削除成功時に監査ログが記録される", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "to be deleted",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      const result = await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      expect(result.success).toBe(true);
+      const auditLogs = await prisma.auditLog.findMany({
+        where: {
+          organizationId,
+          entityType: "comment",
+          entityId: created.data.comment.id,
+          action: "delete",
+        },
+      });
+      expect(auditLogs).toHaveLength(1);
+      const auditLog = auditLogs[0];
+      expect(auditLog).toBeDefined();
+      expect(auditLog!.actorId).toBe(ownerId);
+      expect(auditLog!.oldValues).toMatchObject({ content: "to be deleted" });
+      expect(
+        (auditLog!.newValues as { deletedAt?: string }).deletedAt,
+      ).toBeDefined();
+    });
+
+    it("削除済みのコメントは一覧に含まれず total が減少する", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "will be hidden",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      const listResult = await listCommentsByTicketId({
+        organizationId,
+        ticketId,
+      });
+      expect(listResult.success).toBe(true);
+      if (listResult.success) {
+        expect(listResult.data.comments).toHaveLength(0);
+        expect(listResult.data.total).toBe(0);
+      }
+    });
+
+    it("削除済みのコメントを更新しようとすると not-comment-author ではなく not-found になる", async () => {
+      const { organizationId, ownerId, ticketId } = await seedOrganization();
+      const created = await createComment({
+        organizationId,
+        ticketId,
+        authorId: ownerId,
+        content: "original",
+      });
+      expect(created.success).toBe(true);
+      if (!created.success) {
+        return;
+      }
+
+      await deleteComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+      });
+
+      const result = await updateComment({
+        organizationId,
+        ticketId,
+        commentId: created.data.comment.id,
+        actorId: ownerId,
+        content: "updated after delete",
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("comment-not-found");
+      }
+    });
   });
 });

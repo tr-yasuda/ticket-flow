@@ -10,6 +10,7 @@ import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createComment,
+  deleteComment,
   listCommentsByTicketId,
   updateComment,
   type CommentServiceError,
@@ -18,6 +19,7 @@ import { getRequiredContextValue } from "./context-helpers.js";
 import { type ErrorMapping } from "./error-mapping.js";
 import {
   type CreateCommentBody,
+  type DeleteCommentParams,
   type ListCommentsQuery,
   type UpdateCommentBody,
   type UpdateCommentParams,
@@ -154,6 +156,71 @@ export async function updateCommentController(c: Context) {
   }
 
   return c.json(createApiSuccessResponse(result.data.comment), HttpStatus.OK);
+}
+
+function mapDeleteCommentError(error: CommentServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "comment-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "コメントが見つかりません",
+      };
+    case "author-not-member":
+    case "not-comment-author":
+      return {
+        code: ApiErrorCode.AUTH_FORBIDDEN,
+        status: HttpStatus.FORBIDDEN,
+        message: "この操作を行う権限がありません",
+      };
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+      };
+    case "audit-log-error":
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "監査ログの保存に失敗しました",
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function deleteCommentController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const actorId = getRequiredContextValue(c, "userId");
+  const { ticketId, commentId } = c.req.valid(
+    "param" as never,
+  ) as DeleteCommentParams;
+
+  const result = await deleteComment({
+    organizationId,
+    ticketId,
+    commentId,
+    actorId,
+  });
+
+  if (!result.success) {
+    const { code, status, message } = mapDeleteCommentError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  return c.body(null, HttpStatus.NO_CONTENT);
 }
 
 function mapListCommentsError(error: CommentServiceError): ErrorMapping {

@@ -140,15 +140,16 @@ describe("マイグレーションコマンド", () => {
       expect(commentColumnNames).toContain("content");
       expect(commentColumnNames).toContain("created_at");
       expect(commentColumnNames).toContain("updated_at");
+      expect(commentColumnNames).toContain("deleted_at");
 
       const commentIndexes = (await prisma.$queryRaw`
         PRAGMA index_list('comments')
       `) as Array<{ name: string }>;
       const commentIndexNames = commentIndexes.map((index) => index.name);
       expect(commentIndexNames).toContain(
-        "comments_organization_id_ticket_id_created_at_idx",
+        "comments_organization_id_ticket_id_deleted_at_created_at_idx",
       );
-      expect(commentIndexNames).toContain(
+      expect(commentIndexNames).not.toContain(
         "comments_organization_id_created_at_idx",
       );
       expect(commentIndexNames).toContain("comments_ticket_id_idx");
