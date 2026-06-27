@@ -945,7 +945,7 @@ describe("ticket-repository 統合テスト", () => {
     expect(result[0]?.id).toBe("ticket-unassigned");
   });
 
-  it("findTicketsByOrganizationId は非メンバーの assigneeId で空結果を返す", async () => {
+  it("findTicketsByOrganizationId は一致する assigneeId のチケットがない場合は空配列を返す", async () => {
     const { organizationId, ownerId } = await seedOrganization();
     const nonMemberId = await createUser("non-member@example.com");
 

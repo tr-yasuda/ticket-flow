@@ -1097,12 +1097,18 @@ describe("ticket-service 統合テスト", () => {
     it("非メンバーの assigneeId を指定すると空結果を返す", async () => {
       const { organizationId, ownerId, nonMemberId } = await seedOrganization();
 
-      await createTicket({
+      const createResult = await createTicket({
         organizationId,
         title: "ticket",
         priority: "medium",
-        assigneeId: null,
+        assigneeId: ownerId,
         createdBy: ownerId,
+      });
+      const { ticket } = expectSuccess(createResult);
+
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { assigneeId: nonMemberId },
       });
 
       const result = await listTickets({
