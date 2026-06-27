@@ -5,7 +5,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { rehydrateComment } from "../../../../src/domain/comment.js";
 import {
-  findCommentsByTicketId,
+  findCommentWithAuthorById,
+  findCommentsWithAuthorByTicketId,
   saveComment,
 } from "../../../../src/infrastructure/database/comment-repository.js";
 import { prisma } from "../../../../src/lib/prisma.js";
@@ -102,7 +103,7 @@ describe("comment-repository 統合テスト", () => {
     expect(stored?.content).toBe("対応しました");
   });
 
-  it("チケットのコメントを取得できる", async () => {
+  it("チケットのコメントを作成日時降順で取得できる", async () => {
     const { organizationId, ownerId, ticketId } =
       await seedOrganizationWithTicket();
     const otherTicketId = await createTicket(organizationId, ownerId);
@@ -139,7 +140,7 @@ describe("comment-repository 統合テスト", () => {
     await saveComment(secondComment);
     await saveComment(otherTicketComment);
 
-    const result = await findCommentsByTicketId({
+    const result = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
     });
@@ -147,6 +148,7 @@ describe("comment-repository 統合テスト", () => {
     expect(result).toHaveLength(2);
     expect(result[0]?.id).toBe(secondComment.id);
     expect(result[1]?.id).toBe(firstComment.id);
+    expect(result[0]?.author.id).toBe(ownerId);
   });
 
   it("他組織のコメントはチケット取得結果に含まれない", async () => {
@@ -175,7 +177,7 @@ describe("comment-repository 統合テスト", () => {
     await saveComment(firstComment);
     await saveComment(secondComment);
 
-    const result = await findCommentsByTicketId({
+    const result = await findCommentsWithAuthorByTicketId({
       organizationId: first.organizationId,
       ticketId: first.ticketId,
     });
@@ -183,6 +185,7 @@ describe("comment-repository 統合テスト", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe(firstComment.id);
     expect(result[0]?.organizationId).toBe(first.organizationId);
+    expect(result[0]?.author.id).toBe(first.ownerId);
   });
 
   it("ページネーションの take がクランプされる", async () => {
@@ -211,7 +214,7 @@ describe("comment-repository 統合テスト", () => {
     await saveComment(older);
     await saveComment(newer);
 
-    const takeZero = await findCommentsByTicketId({
+    const takeZero = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
       take: 0,
@@ -219,7 +222,7 @@ describe("comment-repository 統合テスト", () => {
     expect(takeZero).toHaveLength(1);
     expect(takeZero[0]?.id).toBe(newer.id);
 
-    const takeOne = await findCommentsByTicketId({
+    const takeOne = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
       take: 1,
@@ -227,7 +230,7 @@ describe("comment-repository 統合テスト", () => {
     expect(takeOne).toHaveLength(1);
     expect(takeOne[0]?.id).toBe(newer.id);
 
-    const takeHuge = await findCommentsByTicketId({
+    const takeHuge = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
       take: 100_000,
@@ -250,19 +253,48 @@ describe("comment-repository 統合テスト", () => {
     });
     await saveComment(comment);
 
-    const skipNegative = await findCommentsByTicketId({
+    const skipNegative = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
       skip: -1,
     });
     expect(skipNegative).toHaveLength(1);
 
-    const skipHuge = await findCommentsByTicketId({
+    const skipHuge = await findCommentsWithAuthorByTicketId({
       organizationId,
       ticketId,
       skip: 100_000,
     });
     expect(skipHuge).toHaveLength(0);
+  });
+
+  it("ID で作者情報を含むコメントを取得できる", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "対応しました",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveComment(comment);
+
+    const result = await findCommentWithAuthorById(comment.id);
+
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe(comment.id);
+    expect(result?.content).toBe(comment.content);
+    expect(result?.author.id).toBe(ownerId);
+    expect(result?.createdAt).toBe(comment.createdAt.toISOString());
+  });
+
+  it("存在しないコメントIDを指定すると null を返す", async () => {
+    const result = await findCommentWithAuthorById(randomUUID());
+    expect(result).toBeNull();
   });
 
   it("重複した id を保存すると一意制約違反のエラーになる", async () => {
@@ -405,6 +437,35 @@ describe("comment-repository 統合テスト", () => {
     await expect(
       prisma.user.delete({ where: { id: ownerId } }),
     ).rejects.toThrow(Prisma.PrismaClientKnownRequestError);
+  });
+
+  it("作者情報を JOIN して取得できる", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+    const owner = await prisma.user.findUnique({ where: { id: ownerId } });
+    expect(owner).not.toBeNull();
+
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "対応しました",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveComment(comment);
+
+    const result = await findCommentsWithAuthorByTicketId({
+      organizationId,
+      ticketId,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe(comment.id);
+    expect(result[0]?.author.id).toBe(ownerId);
+    expect(result[0]?.author.email).toBe(owner?.email);
+    expect(result[0]?.author.name).toBeNull();
   });
 });
 

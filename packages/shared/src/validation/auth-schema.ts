@@ -50,9 +50,15 @@ export const loginInputSchema = z.object({
   password: loginPasswordSchema,
 });
 
+export const userNameSchema = z
+  .string()
+  .max(100, "名前は100文字以内で入力してください")
+  .optional();
+
 export const registerInputSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
+  name: userNameSchema,
 });
 
 export type LoginInput = z.infer<typeof loginInputSchema>;

@@ -60,6 +60,7 @@ export type TicketListItem = Readonly<{
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  commentCount: number;
 }>;
 
 export class TicketValidationError extends Error {

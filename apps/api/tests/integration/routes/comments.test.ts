@@ -32,6 +32,25 @@ async function createCommentRequest(
   );
 }
 
+async function listCommentsRequest(
+  app: ReturnType<typeof createApp>,
+  accessToken: string | undefined,
+  organizationId: string,
+  ticketId: string,
+): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (accessToken !== undefined) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return app.request(
+    `/api/organizations/${organizationId}/tickets/${ticketId}/comments`,
+    {
+      method: "GET",
+      headers,
+    },
+  );
+}
+
 async function setupOrganizationWithTicket(
   app: ReturnType<typeof createApp>,
   memberRole?: "admin" | "member" | "viewer",
@@ -39,6 +58,7 @@ async function setupOrganizationWithTicket(
   ownerToken: string;
   memberToken: string;
   memberUserId: string;
+  memberEmail: string;
   organizationId: string;
   ticketId: string;
 }> {
@@ -47,9 +67,10 @@ async function setupOrganizationWithTicket(
     uniqueEmail("owner"),
     "password123",
   );
+  const memberEmail = uniqueEmail("member");
   const { userId: memberUserId, accessToken: memberToken } = await registerUser(
     app,
-    uniqueEmail("member"),
+    memberEmail,
     "password123",
   );
   const organizationId = await createOrganization(
@@ -72,6 +93,7 @@ async function setupOrganizationWithTicket(
     ownerToken,
     memberToken,
     memberUserId,
+    memberEmail,
     organizationId,
     ticketId: ticketBody.data.id,
   };
@@ -145,8 +167,8 @@ describe("POST /api/organizations/:organizationId/tickets/:ticketId/comments (co
     expect(body.data.content).toBe("admin comment");
   });
 
-  it("コメントの author_id が現在のユーザーになる", async () => {
-    const { memberToken, memberUserId, organizationId, ticketId } =
+  it("コメントの author.id が現在のユーザーになる", async () => {
+    const { memberToken, memberUserId, memberEmail, organizationId, ticketId } =
       await setupOrganizationWithTicket(app, "member");
 
     const response = await createCommentRequest(
@@ -160,7 +182,9 @@ describe("POST /api/organizations/:organizationId/tickets/:ticketId/comments (co
     expect(response.status).toBe(201);
     const body = await response.json();
     expect(body.success).toBe(true);
-    expect(body.data.authorId).toBe(memberUserId);
+    expect(body.data.author.id).toBe(memberUserId);
+    expect(body.data.author.email).toBe(memberEmail);
+    expect(body.data.author.name).toBeNull();
 
     const stored = await prisma.comment.findUnique({
       where: { id: body.data.id },
@@ -431,5 +455,325 @@ describe("POST /api/organizations/:organizationId/tickets/:ticketId/comments (co
     expect(
       (auditLog!.newValues as { content?: string; ticketId?: string }).ticketId,
     ).toBe(ticketId);
+  });
+});
+
+describe("GET /api/organizations/:organizationId/tickets/:ticketId/comments (comment.list)", () => {
+  let app: ReturnType<typeof createApp>;
+
+  beforeEach(async () => {
+    await cleanAll();
+    app = createApp();
+  });
+  afterAll(async () => {
+    await cleanAll();
+  });
+
+  it("Member がコメント一覧を取得できる", async () => {
+    const { memberToken, memberUserId, memberEmail, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    await createCommentRequest(app, memberToken, organizationId, ticketId, {
+      content: "comment by member",
+    });
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.meta.total).toBe(1);
+    expect(body.data.comments).toHaveLength(1);
+    expect(body.data.comments[0]?.content).toBe("comment by member");
+    expect(body.data.comments[0]?.author.id).toBe(memberUserId);
+    expect(body.data.comments[0]?.author.email).toBe(memberEmail);
+    expect(body.data.comments[0]?.author.name).toBeNull();
+    expect(typeof body.data.comments[0]?.createdAt).toBe("string");
+  });
+
+  it("コメントが 0 件の場合は空配列を返す", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.meta.total).toBe(0);
+    expect(body.data.comments).toHaveLength(0);
+    expect(body.meta.page).toBe(1);
+    expect(body.meta.perPage).toBe(20);
+    expect(body.meta.totalPages).toBe(1);
+  });
+
+  it("Admin がコメント一覧を取得できる", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "admin");
+
+    await createCommentRequest(app, memberToken, organizationId, ticketId, {
+      content: "comment by admin",
+    });
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.comments).toHaveLength(1);
+    expect(body.data.comments[0]?.content).toBe("comment by admin");
+  });
+
+  it("Viewer がコメント一覧を取得できる", async () => {
+    const { ownerToken, memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "viewer");
+
+    await createCommentRequest(app, ownerToken, organizationId, ticketId, {
+      content: "comment by owner",
+    });
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.comments).toHaveLength(1);
+    expect(body.data.comments[0]?.content).toBe("comment by owner");
+  });
+
+  it("コメントが作成日時順に返される", async () => {
+    const { memberToken, memberUserId, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    await prisma.comment.createMany({
+      data: [
+        {
+          id: crypto.randomUUID(),
+          ticketId,
+          organizationId,
+          authorId: memberUserId,
+          content: "older comment",
+          createdAt: new Date("2026-06-20T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-20T00:00:00.000Z"),
+        },
+        {
+          id: crypto.randomUUID(),
+          ticketId,
+          organizationId,
+          authorId: memberUserId,
+          content: "newer comment",
+          createdAt: new Date("2026-06-20T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-20T00:00:01.000Z"),
+        },
+      ],
+    });
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.comments).toHaveLength(2);
+    expect(body.data.comments[0]?.content).toBe("newer comment");
+    expect(body.data.comments[1]?.content).toBe("older comment");
+  });
+
+  it("他組織のチケットは 404 Not Found", async () => {
+    const { ownerToken, organizationId } =
+      await setupOrganizationWithTicket(app);
+    const { accessToken: otherToken } = await registerUser(
+      app,
+      uniqueEmail("other"),
+      "password123",
+    );
+    const otherOrganizationId = await createOrganization(
+      app,
+      otherToken,
+      "Other Inc.",
+      `other-${crypto.randomUUID()}`,
+    );
+    const ticketResponse = await createTicketRequest(
+      app,
+      otherToken,
+      otherOrganizationId,
+      { title: "other org ticket" },
+    );
+    const ticketBody = await ticketResponse.json();
+
+    const response = await listCommentsRequest(
+      app,
+      ownerToken,
+      organizationId,
+      ticketBody.data.id,
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("存在しないチケットは 404 Not Found", async () => {
+    const { ownerToken, organizationId } =
+      await setupOrganizationWithTicket(app);
+
+    const response = await listCommentsRequest(
+      app,
+      ownerToken,
+      organizationId,
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("無効なチケット ID 形式は 400 Bad Request", async () => {
+    const { ownerToken, organizationId } =
+      await setupOrganizationWithTicket(app);
+
+    const response = await listCommentsRequest(
+      app,
+      ownerToken,
+      organizationId,
+      "not-a-uuid",
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "ticketId" })]),
+    );
+  });
+
+  it("組織に所属していないユーザーは 403 Forbidden", async () => {
+    const { organizationId, ticketId } = await setupOrganizationWithTicket(app);
+    const { accessToken: otherToken } = await registerUser(
+      app,
+      uniqueEmail("other"),
+      "password123",
+    );
+
+    const response = await listCommentsRequest(
+      app,
+      otherToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("論理削除済みのチケットは 404 Not Found", async () => {
+    const { ownerToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app);
+
+    await prisma.ticket.updateMany({
+      where: { id: ticketId, organizationId },
+      data: { deletedAt: new Date() },
+    });
+
+    const response = await listCommentsRequest(
+      app,
+      ownerToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("ページネーションパラメータで件数を制御できる", async () => {
+    const { memberToken, memberUserId, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    await prisma.comment.createMany({
+      data: [
+        {
+          id: crypto.randomUUID(),
+          ticketId,
+          organizationId,
+          authorId: memberUserId,
+          content: "older",
+          createdAt: new Date("2026-06-20T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-20T00:00:00.000Z"),
+        },
+        {
+          id: crypto.randomUUID(),
+          ticketId,
+          organizationId,
+          authorId: memberUserId,
+          content: "newer",
+          createdAt: new Date("2026-06-20T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-20T00:00:01.000Z"),
+        },
+      ],
+    });
+
+    const response = await app.request(
+      `/api/organizations/${organizationId}/tickets/${ticketId}/comments?page=1&perPage=1`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${memberToken}` },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.comments).toHaveLength(1);
+    expect(body.data.comments[0]?.content).toBe("newer");
+    expect(body.meta.total).toBe(2);
+    expect(body.meta.page).toBe(1);
+    expect(body.meta.perPage).toBe(1);
+    expect(body.meta.totalPages).toBe(2);
+  });
+
+  it("未認証の場合は 401 Unauthorized", async () => {
+    const response = await listCommentsRequest(
+      app,
+      undefined,
+      "550e8400-e29b-41d4-a716-446655440000",
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
   });
 });

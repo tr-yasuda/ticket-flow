@@ -7,8 +7,9 @@ import {
 import type { Context } from "hono";
 
 import { createAuditLog } from "../domain/audit-log.js";
-import type { Ticket } from "../domain/ticket.js";
+import type { Ticket, TicketListItem } from "../domain/ticket.js";
 import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
+import { countCommentsByTicketId } from "../infrastructure/database/comment-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
@@ -34,7 +35,7 @@ import {
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
 
-function serializeTicket(ticket: Ticket) {
+function serializeTicket(ticket: Ticket, commentCount: number) {
   return {
     id: ticket.id,
     organizationId: ticket.organizationId,
@@ -46,8 +47,22 @@ function serializeTicket(ticket: Ticket) {
     createdBy: ticket.createdBy,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
-    // TODO(#39): コメント数を実際の値に置き換える
-    commentCount: 0,
+    commentCount,
+  };
+}
+
+function serializeTicketListItem(ticket: TicketListItem, commentCount: number) {
+  return {
+    id: ticket.id,
+    organizationId: ticket.organizationId,
+    title: ticket.title,
+    status: ticket.status,
+    priority: ticket.priority,
+    assignee: ticket.assignee,
+    createdBy: ticket.createdBy,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+    commentCount,
   };
 }
 
@@ -169,7 +184,7 @@ export async function createTicketController(c: Context) {
   await recordTicketCreationAuditLog(organizationId, createdBy, ticket);
 
   return c.json(
-    createApiSuccessResponse(serializeTicket(ticket)),
+    createApiSuccessResponse(serializeTicket(ticket, 0)),
     HttpStatus.CREATED,
   );
 }
@@ -200,7 +215,11 @@ export async function listTicketsController(c: Context) {
 
   return c.json(
     createApiPaginatedSuccessResponse(
-      { tickets: result.data.tickets },
+      {
+        tickets: result.data.tickets.map((ticket) =>
+          serializeTicketListItem(ticket, ticket.commentCount),
+        ),
+      },
       {
         page,
         perPage,
@@ -261,8 +280,13 @@ export async function getTicketController(c: Context) {
     return c.json(createApiErrorResponse(code, message), status);
   }
 
+  const commentCount = await countCommentsByTicketId({
+    organizationId,
+    ticketId,
+  });
+
   return c.json(
-    createApiSuccessResponse(serializeTicket(result.data.ticket)),
+    createApiSuccessResponse(serializeTicket(result.data.ticket, commentCount)),
     HttpStatus.OK,
   );
 }
@@ -313,9 +337,13 @@ export async function updateTicketController(c: Context) {
   }
 
   const { ticket } = result.data;
+  const commentCount = await countCommentsByTicketId({
+    organizationId,
+    ticketId,
+  });
 
   return c.json(
-    createApiSuccessResponse(serializeTicket(ticket)),
+    createApiSuccessResponse(serializeTicket(ticket, commentCount)),
     HttpStatus.OK,
   );
 }
@@ -377,9 +405,13 @@ export async function updateTicketStatusController(c: Context) {
   }
 
   const { ticket } = result.data;
+  const commentCount = await countCommentsByTicketId({
+    organizationId,
+    ticketId,
+  });
 
   return c.json(
-    createApiSuccessResponse(serializeTicket(ticket)),
+    createApiSuccessResponse(serializeTicket(ticket, commentCount)),
     HttpStatus.OK,
   );
 }
@@ -441,9 +473,13 @@ export async function updateTicketPriorityController(c: Context) {
   }
 
   const { ticket } = result.data;
+  const commentCount = await countCommentsByTicketId({
+    organizationId,
+    ticketId,
+  });
 
   return c.json(
-    createApiSuccessResponse(serializeTicket(ticket)),
+    createApiSuccessResponse(serializeTicket(ticket, commentCount)),
     HttpStatus.OK,
   );
 }
@@ -507,9 +543,13 @@ export async function updateTicketAssigneeController(c: Context) {
   }
 
   const { ticket } = result.data;
+  const commentCount = await countCommentsByTicketId({
+    organizationId,
+    ticketId,
+  });
 
   return c.json(
-    createApiSuccessResponse(serializeTicket(ticket)),
+    createApiSuccessResponse(serializeTicket(ticket, commentCount)),
     HttpStatus.OK,
   );
 }
