@@ -8,7 +8,10 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { createRequireRoleMiddleware } from "../controllers/authorization-middleware.js";
-import { createCommentController } from "../controllers/comments-controller.js";
+import {
+  createCommentController,
+  listCommentsController,
+} from "../controllers/comments-controller.js";
 import { createOrganizationInvitationController } from "../controllers/organization-invitations-controller.js";
 import {
   deleteOrganizationMemberController,
@@ -21,7 +24,10 @@ import {
   getOrganizationMembersController,
   getOrganizationsController,
 } from "../controllers/organizations-controller.js";
-import { createCommentBodySchema } from "../controllers/schemas/comment-schema.js";
+import {
+  createCommentBodySchema,
+  listCommentsQuerySchema,
+} from "../controllers/schemas/comment-schema.js";
 import {
   deleteOrganizationMemberParamsSchema,
   updateOrganizationMemberRoleParamsSchema,
@@ -170,6 +176,20 @@ const listTicketsRateLimitByUser = createRateLimitMiddleware({
   message: "チケット一覧取得は時間あたりの上限に達しました",
 });
 
+const listCommentsRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 3000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:comments:list`,
+  message: "この組織でのコメント一覧取得は時間あたりの上限に達しました",
+});
+
+const listCommentsRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 300,
+  keyGenerator: (c) => `user:${c.get("userId")}:comments:list`,
+  message: "コメント一覧取得は時間あたりの上限に達しました",
+});
+
 const createCommentRateLimitByOrganization = createRateLimitMiddleware({
   windowMs: 60 * 60 * 1000,
   maxRequests: 1000,
@@ -289,6 +309,15 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         ticketRateLimitByUser,
         sValidator("json", createTicketBodySchema, validationHook),
         createTicketController,
+      )
+      .get(
+        "/:organizationId/tickets/:ticketId/comments",
+        organizationScopeMiddleware,
+        listCommentsRateLimitByOrganization,
+        listCommentsRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("query", listCommentsQuerySchema, validationHook),
+        listCommentsController,
       )
       .post(
         "/:organizationId/tickets/:ticketId/comments",

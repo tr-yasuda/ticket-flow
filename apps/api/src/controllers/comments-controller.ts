@@ -1,6 +1,7 @@
 import {
   ApiErrorCode,
   createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
@@ -9,11 +10,15 @@ import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createComment,
+  listCommentsByTicketId,
   type CommentServiceError,
 } from "../services/comments-service.js";
 import { getRequiredContextValue } from "./context-helpers.js";
 import { type ErrorMapping } from "./error-mapping.js";
-import { type CreateCommentBody } from "./schemas/comment-schema.js";
+import {
+  type CreateCommentBody,
+  type ListCommentsQuery,
+} from "./schemas/comment-schema.js";
 import { type TicketIdParamSchema } from "./schemas/ticket-schema.js";
 
 function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
@@ -73,5 +78,58 @@ export async function createCommentController(c: Context) {
   return c.json(
     createApiSuccessResponse(result.data.comment),
     HttpStatus.CREATED,
+  );
+}
+
+function mapListCommentsError(error: CommentServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function listCommentsController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const { page, perPage } = c.req.valid("query" as never) as ListCommentsQuery;
+
+  const skip = (page - 1) * perPage;
+
+  const result = await listCommentsByTicketId({
+    organizationId,
+    ticketId,
+    skip,
+    take: perPage,
+  });
+
+  if (!result.success) {
+    const { code, status, message } = mapListCommentsError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(result.data.total / perPage));
+
+  return c.json(
+    createApiPaginatedSuccessResponse(
+      { comments: result.data.comments },
+      {
+        page,
+        perPage,
+        total: result.data.total,
+        totalPages,
+      },
+    ),
+    HttpStatus.OK,
   );
 }

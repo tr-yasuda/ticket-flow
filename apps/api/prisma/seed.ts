@@ -6,6 +6,7 @@ import { TicketStatus } from "../src/domain/ticket.js";
 const DEMO_USER_EMAIL = "demo@example.com";
 const DEMO_USER_PASSWORD = "demo1234";
 const DEMO_USER_ID = "demo-user-001";
+const DEMO_USER_NAME = "Demo User";
 const DEMO_ORGANIZATION_ID = "demo-organization-001";
 const DEMO_ORGANIZATION_SLUG = "demo-organization";
 const DEMO_MEMBER_ID = "demo-member-001";
@@ -51,9 +52,11 @@ async function seedDemoUser(prisma: PrismaClient): Promise<string> {
     create: {
       id: DEMO_USER_ID,
       email: DEMO_USER_EMAIL,
+      name: DEMO_USER_NAME,
       passwordHash,
     },
     update: {
+      name: DEMO_USER_NAME,
       passwordHash,
     },
   });

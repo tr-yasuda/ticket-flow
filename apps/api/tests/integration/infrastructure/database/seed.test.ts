@@ -58,7 +58,7 @@ describe("デモ seed 統合テスト", () => {
   beforeEach(async () => {
     await cleanSeedTestDatabase();
     await runPrismaMigrateDeploy();
-  });
+  }, 30_000);
   afterEach(cleanSeedTestDatabase);
 
   it("db:seed でデモユーザーとデモチケットが投入される", async () => {

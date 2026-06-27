@@ -70,17 +70,20 @@ function buildSearchPattern(search: string): string {
   return `%${escapeLikePattern(search)}%`;
 }
 
-function toTicketListItem(row: {
-  id: string;
-  organizationId: string;
-  title: string;
-  status: string;
-  priority: string;
-  assigneeId: string | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}): TicketListItem {
+function toTicketListItem(
+  row: {
+    id: string;
+    organizationId: string;
+    title: string;
+    status: string;
+    priority: string;
+    assigneeId: string | null;
+    createdBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  commentCount: number,
+): TicketListItem {
   return {
     id: row.id,
     organizationId: row.organizationId,
@@ -92,6 +95,7 @@ function toTicketListItem(row: {
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    commentCount,
   };
 }
 
@@ -157,10 +161,15 @@ export async function findTicketsByOrganizationId(
         createdBy: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
       },
     });
 
-    return rows.map(toTicketListItem);
+    return rows.map((row) => toTicketListItem(row, row._count.comments));
   }
 
   const pattern = buildSearchPattern(search);
@@ -181,6 +190,7 @@ export async function findTicketsByOrganizationId(
       createdBy: string;
       createdAt: Date;
       updatedAt: Date;
+      commentCount: number;
     }>
   >`
     SELECT
@@ -192,7 +202,12 @@ export async function findTicketsByOrganizationId(
       assignee_id AS assigneeId,
       created_by AS createdBy,
       created_at AS createdAt,
-      updated_at AS updatedAt
+      updated_at AS updatedAt,
+      (
+        SELECT COUNT(*)
+        FROM comments c
+        WHERE c.ticket_id = tickets.id
+      ) AS commentCount
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
@@ -204,7 +219,7 @@ export async function findTicketsByOrganizationId(
     LIMIT ${take} OFFSET ${skip}
   `;
 
-  return rows.map(toTicketListItem);
+  return rows.map((row) => toTicketListItem(row, Number(row.commentCount)));
 }
 
 export type FindTicketByIdInput = Readonly<{

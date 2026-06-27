@@ -1,18 +1,18 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { type CommentWithAuthor } from "@ticket-flow/shared";
 
 import {
   COMMENT_AUDIT_ACTION_CREATE,
   COMMENT_AUDIT_ENTITY_TYPE,
   CommentValidationError,
   createComment as createCommentEntity,
-  type Comment,
 } from "../domain/comment.js";
 import { TicketNotFoundError } from "../domain/ticket.js";
 import {
   countCommentsByTicketId,
-  findCommentsByTicketId,
+  findCommentWithAuthorById,
+  findCommentsWithAuthorByTicketId,
   saveComment,
-  type FindCommentsByTicketIdInput,
 } from "../infrastructure/database/comment-repository.js";
 import { type Pagination } from "../infrastructure/database/pagination.js";
 import { findTicketById } from "../infrastructure/database/ticket-repository.js";
@@ -56,7 +56,7 @@ export type CreateCommentServiceInput = Readonly<{
 }>;
 
 export type CreateCommentResult =
-  | { success: true; data: { comment: Comment } }
+  | { success: true; data: { comment: CommentWithAuthor } }
   | { success: false; error: CommentServiceError };
 
 export async function createComment(
@@ -92,6 +92,15 @@ export async function createComment(
       }
 
       const savedComment = await saveComment(comment, tx);
+      const commentWithAuthor = await findCommentWithAuthorById(
+        { commentId: savedComment.id, organizationId: comment.organizationId },
+        tx,
+      );
+      if (commentWithAuthor === null) {
+        throw new Error(
+          `作成したコメント ${savedComment.id} の取得に失敗しました`,
+        );
+      }
 
       const auditResult = await saveAuditLog(
         {
@@ -111,7 +120,7 @@ export async function createComment(
         throw new AuditLogError(auditResult.error.message);
       }
 
-      return savedComment;
+      return commentWithAuthor;
     });
 
     return { success: true, data: { comment: saved } };
@@ -135,7 +144,10 @@ export type ListCommentsByTicketIdInput = Readonly<
 >;
 
 export type ListCommentsByTicketIdResult =
-  | { success: true; data: { comments: readonly Comment[]; total: number } }
+  | {
+      success: true;
+      data: { comments: readonly CommentWithAuthor[]; total: number };
+    }
   | { success: false; error: CommentServiceError };
 
 export async function listCommentsByTicketId(
@@ -143,39 +155,28 @@ export async function listCommentsByTicketId(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<ListCommentsByTicketIdResult> {
   try {
-    const result = await runInTransaction(db, async (tx) => {
-      const ticket = await findTicketById(
-        { organizationId: input.organizationId, ticketId: input.ticketId },
-        tx,
+    const ticket = await findTicketById(
+      { organizationId: input.organizationId, ticketId: input.ticketId },
+      db,
+    );
+    if (ticket === null) {
+      throw new TicketNotFoundError(
+        `チケット ${input.ticketId} が見つかりません`,
       );
-      if (ticket === null) {
-        throw new TicketNotFoundError(
-          `チケット ${input.ticketId} が見つかりません`,
-        );
-      }
+    }
 
-      const repositoryInput: FindCommentsByTicketIdInput = {
-        organizationId: input.organizationId,
-        ticketId: input.ticketId,
-        take: input.take,
-        skip: input.skip,
-      };
+    const [comments, total] = await Promise.all([
+      findCommentsWithAuthorByTicketId(input, db),
+      countCommentsByTicketId(
+        {
+          organizationId: input.organizationId,
+          ticketId: input.ticketId,
+        },
+        db,
+      ),
+    ]);
 
-      const [comments, total] = await Promise.all([
-        findCommentsByTicketId(repositoryInput, tx),
-        countCommentsByTicketId(
-          {
-            organizationId: input.organizationId,
-            ticketId: input.ticketId,
-          },
-          tx,
-        ),
-      ]);
-
-      return { comments, total };
-    });
-
-    return { success: true, data: result };
+    return { success: true, data: { comments, total } };
   } catch (error) {
     return mapServiceError(error);
   }

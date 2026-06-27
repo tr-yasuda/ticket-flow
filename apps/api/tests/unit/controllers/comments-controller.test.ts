@@ -1,7 +1,10 @@
 import type { Context } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createCommentController } from "../../../src/controllers/comments-controller.js";
+import {
+  createCommentController,
+  listCommentsController,
+} from "../../../src/controllers/comments-controller.js";
 import * as commentsService from "../../../src/services/comments-service.js";
 
 function createTestContext({
@@ -22,6 +25,9 @@ function createTestContext({
         }
         if (target === "param") {
           return { ticketId: "550e8400-e29b-41d4-a716-446655440000" };
+        }
+        if (target === "query") {
+          return { page: 1, perPage: 20 };
         }
         return undefined;
       }),
@@ -53,10 +59,14 @@ describe("comments-controller", () => {
         id: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         organizationId: "550e8400-e29b-41d4-a716-446655440002",
-        authorId: "user-id",
         content: "hello",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        author: {
+          id: "user-id",
+          name: null,
+          email: "user@example.com",
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       vi.spyOn(commentsService, "createComment").mockResolvedValue({
         success: true,
@@ -201,6 +211,96 @@ describe("comments-controller", () => {
       });
 
       await expect(createCommentController(c)).rejects.toThrow();
+    });
+  });
+
+  describe("listCommentsController", () => {
+    it("コメント一覧取得成功時に 200 と一覧を返す", async () => {
+      const comments = [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440001",
+          ticketId: "550e8400-e29b-41d4-a716-446655440000",
+          organizationId: "550e8400-e29b-41d4-a716-446655440002",
+          content: "hello",
+          author: {
+            id: "user-id",
+            name: null,
+            email: "user@example.com",
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      vi.spyOn(commentsService, "listCommentsByTicketId").mockResolvedValue({
+        success: true,
+        data: { comments, total: 1 },
+      });
+      const c = createTestContext({
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+      });
+
+      await listCommentsController(c);
+
+      expect(commentsService.listCommentsByTicketId).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        skip: 0,
+        take: 20,
+      });
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: { comments },
+          meta: { page: 1, perPage: 20, total: 1, totalPages: 1 },
+        }),
+        200,
+      );
+    });
+
+    it("存在しないチケットの場合は 404 を返す", async () => {
+      vi.spyOn(commentsService, "listCommentsByTicketId").mockResolvedValue({
+        success: false,
+        error: { type: "ticket-not-found", message: "not found" },
+      });
+      const c = createTestContext({
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+      });
+
+      await listCommentsController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
+    });
+
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(commentsService, "listCommentsByTicketId").mockResolvedValue({
+        success: false,
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+      });
+
+      await listCommentsController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+
+    it("コンテキスト値が欠落している場合は HTTPException を投げる", async () => {
+      const c = createTestContext();
+
+      await expect(listCommentsController(c)).rejects.toThrow();
     });
   });
 });

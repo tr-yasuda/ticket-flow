@@ -19,10 +19,12 @@ function uniqueEmail(prefix: string): string {
 async function seedOrganization(): Promise<{
   organizationId: string;
   ownerId: string;
+  ownerEmail: string;
   ticketId: string;
 }> {
+  const ownerEmail = uniqueEmail("owner");
   const userResult = await registerUser({
-    email: uniqueEmail("owner"),
+    email: ownerEmail,
     password: "password123",
   });
   expect(userResult.success).toBe(true);
@@ -52,6 +54,7 @@ async function seedOrganization(): Promise<{
   return {
     organizationId: organizationResult.data.id,
     ownerId: userResult.data.user.id,
+    ownerEmail,
     ticketId: ticket.id,
   };
 }
@@ -82,7 +85,7 @@ describe("comments-service 統合テスト", () => {
     expect(result.data.comment.content).toBe("対応しました");
     expect(result.data.comment.ticketId).toBe(ticketId);
     expect(result.data.comment.organizationId).toBe(organizationId);
-    expect(result.data.comment.authorId).toBe(ownerId);
+    expect(result.data.comment.author.id).toBe(ownerId);
 
     const stored = await prisma.comment.findUnique({
       where: { id: result.data.comment.id },
@@ -185,7 +188,8 @@ describe("comments-service 統合テスト", () => {
   });
 
   it("チケットのコメント一覧と総件数を取得できる", async () => {
-    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const { organizationId, ownerId, ownerEmail, ticketId } =
+      await seedOrganization();
 
     await createComment({
       organizationId,
@@ -210,6 +214,9 @@ describe("comments-service 統合テスト", () => {
       expect(result.data.total).toBe(2);
       expect(result.data.comments).toHaveLength(2);
       expect(result.data.comments[0]?.content).toBe("2番目のコメント");
+      expect(result.data.comments[0]?.author.id).toBe(ownerId);
+      expect(result.data.comments[0]?.author.email).toBe(ownerEmail);
+      expect(result.data.comments[0]?.author.name).toBeNull();
     }
   });
 

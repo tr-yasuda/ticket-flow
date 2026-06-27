@@ -1,4 +1,5 @@
 export * from "./types/api-response.js";
+export * from "./types/comment.js";
 export * from "./types/ticket.js";
 export * from "./validation/auth-schema.js";
 export * from "./validation/comment-schema.js";

@@ -42,10 +42,11 @@ export class DuplicateEmailError extends Error {
 export type RegisterUserInput = Readonly<{
   email: string;
   password: string;
+  name?: string;
 }>;
 
 export type AuthSuccess = Readonly<{
-  user: { id: string; email: string };
+  user: { id: string; email: string; name: string | null };
   accessToken: string;
   refreshToken: string;
 }>;
@@ -87,12 +88,13 @@ export async function createRegisteredUserWithTokens(
   }
 
   const passwordHash = await hashPassword(input.password);
-  const user = createUser(normalizedEmail, passwordHash);
+  const user = createUser(normalizedEmail, passwordHash, input.name ?? null);
 
   await db.user.create({
     data: {
       id: user.id,
       email: user.email,
+      name: user.name,
       passwordHash: user.passwordHash,
     },
   });
@@ -133,7 +135,7 @@ export async function createRegisteredUserWithTokens(
   }
 
   return {
-    user: { id: user.id, email: user.email },
+    user: { id: user.id, email: user.email, name: user.name },
     accessToken,
     refreshToken,
   };
@@ -228,7 +230,7 @@ export async function loginUser(
 
   const user = await db.user.findUnique({
     where: { email: normalizedEmail },
-    select: { id: true, email: true, passwordHash: true },
+    select: { id: true, email: true, name: true, passwordHash: true },
   });
   if (user === null) {
     return {
@@ -273,7 +275,7 @@ export async function loginUser(
   return {
     success: true,
     data: {
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, name: user.name },
       accessToken,
       refreshToken,
     },

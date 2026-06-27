@@ -7,7 +7,10 @@ export type GetCurrentUserInput = Readonly<{
 }>;
 
 export type GetCurrentUserResult =
-  | { success: true; data: { user: { id: string; email: string } } }
+  | {
+      success: true;
+      data: { user: { id: string; email: string; name: string | null } };
+    }
   | { success: false; error: { type: "user-not-found" } };
 
 export async function getCurrentUser(
@@ -16,7 +19,7 @@ export async function getCurrentUser(
 ): Promise<GetCurrentUserResult> {
   const user = await db.user.findUnique({
     where: { id: input.userId },
-    select: { id: true, email: true },
+    select: { id: true, email: true, name: true },
   });
 
   if (user === null) {
