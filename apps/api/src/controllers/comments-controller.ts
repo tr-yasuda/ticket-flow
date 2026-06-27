@@ -11,6 +11,7 @@ import { getValidatedJson } from "../lib/validated-json.js";
 import {
   createComment,
   listCommentsByTicketId,
+  updateComment,
   type CommentServiceError,
 } from "../services/comments-service.js";
 import { getRequiredContextValue } from "./context-helpers.js";
@@ -18,6 +19,8 @@ import { type ErrorMapping } from "./error-mapping.js";
 import {
   type CreateCommentBody,
   type ListCommentsQuery,
+  type UpdateCommentBody,
+  type UpdateCommentParams,
 } from "./schemas/comment-schema.js";
 import { type TicketIdParamSchema } from "./schemas/ticket-schema.js";
 
@@ -79,6 +82,78 @@ export async function createCommentController(c: Context) {
     createApiSuccessResponse(result.data.comment),
     HttpStatus.CREATED,
   );
+}
+
+function mapUpdateCommentError(error: CommentServiceError): ErrorMapping {
+  switch (error.type) {
+    case "ticket-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "チケットが見つかりません",
+      };
+    case "comment-not-found":
+      return {
+        code: ApiErrorCode.NOT_FOUND,
+        status: HttpStatus.NOT_FOUND,
+        message: "コメントが見つかりません",
+      };
+    case "author-not-member":
+      return {
+        code: ApiErrorCode.AUTH_FORBIDDEN,
+        status: HttpStatus.FORBIDDEN,
+        message: "この操作を行う権限がありません",
+      };
+    case "not-comment-author":
+      return {
+        code: ApiErrorCode.AUTH_FORBIDDEN,
+        status: HttpStatus.FORBIDDEN,
+        message: "この操作を行う権限がありません",
+      };
+    case "validation-error":
+      return {
+        code: ApiErrorCode.VALIDATION_ERROR,
+        status: HttpStatus.BAD_REQUEST,
+        message: error.message,
+      };
+    case "audit-log-error":
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "監査ログの保存に失敗しました",
+      };
+    case "unknown-error":
+    default:
+      return {
+        code: ApiErrorCode.INTERNAL_ERROR,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "サーバー内部でエラーが発生しました",
+      };
+  }
+}
+
+export async function updateCommentController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const actorId = getRequiredContextValue(c, "userId");
+  const { ticketId, commentId } = c.req.valid(
+    "param" as never,
+  ) as UpdateCommentParams;
+  const { content } = getValidatedJson<UpdateCommentBody>(c);
+
+  const result = await updateComment({
+    organizationId,
+    ticketId,
+    commentId,
+    actorId,
+    content,
+  });
+
+  if (!result.success) {
+    const { code, status, message } = mapUpdateCommentError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  return c.json(createApiSuccessResponse(result.data.comment), HttpStatus.OK);
 }
 
 function mapListCommentsError(error: CommentServiceError): ErrorMapping {

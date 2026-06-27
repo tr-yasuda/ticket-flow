@@ -23,6 +23,10 @@ function toComment(
   });
 }
 
+function hasBeenEdited(row: { createdAt: Date; updatedAt: Date }): boolean {
+  return row.createdAt.getTime() !== row.updatedAt.getTime();
+}
+
 function toCommentWithAuthor(
   row: PrismaComment & {
     author: { id: string; name: string | null; email: string };
@@ -38,6 +42,7 @@ function toCommentWithAuthor(
       name: row.author.name,
       email: row.author.email,
     },
+    isEdited: hasBeenEdited(row),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -60,6 +65,57 @@ export async function saveComment(
   });
 
   return toComment(row);
+}
+
+export type FindCommentByIdInput = Readonly<{
+  commentId: string;
+  organizationId: string;
+}>;
+
+export async function findCommentById(
+  input: FindCommentByIdInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Comment | null> {
+  const row = await db.comment.findUnique({
+    where: {
+      id: input.commentId,
+      organizationId: input.organizationId,
+    },
+  });
+
+  if (row === null) {
+    return null;
+  }
+
+  return toComment(row);
+}
+
+export type UpdateCommentInput = Readonly<{
+  commentId: string;
+  organizationId: string;
+  content: string;
+}>;
+
+export async function updateComment(
+  input: UpdateCommentInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<CommentWithAuthor> {
+  const row = await db.comment.update({
+    where: {
+      id: input.commentId,
+      organizationId: input.organizationId,
+    },
+    data: {
+      content: input.content,
+    },
+    include: {
+      author: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+  });
+
+  return toCommentWithAuthor(row);
 }
 
 export type CountCommentsByTicketIdInput = Readonly<{

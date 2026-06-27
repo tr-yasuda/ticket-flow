@@ -4,6 +4,7 @@ import {
   CommentValidationError,
   createComment,
   rehydrateComment,
+  updateCommentContent,
 } from "../../../src/domain/comment.js";
 
 describe("コメント作成", () => {
@@ -168,6 +169,56 @@ describe("コメント作成", () => {
         content,
       }),
     ).toThrow(CommentValidationError);
+  });
+});
+
+describe("コメント編集", () => {
+  it("content を更新できる", () => {
+    const comment = createComment({
+      ticketId: "ticket-1",
+      organizationId: "org-1",
+      authorId: "user-1",
+      content: "original",
+    });
+
+    const updated = updateCommentContent(comment, "updated");
+
+    expect(updated.id).toBe(comment.id);
+    expect(updated.content).toBe("updated");
+    expect(updated.createdAt).toEqual(comment.createdAt);
+    expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      comment.updatedAt.getTime(),
+    );
+  });
+
+  it("前後の空白は削除される", () => {
+    const comment = createComment({
+      ticketId: "ticket-1",
+      organizationId: "org-1",
+      authorId: "user-1",
+      content: "original",
+    });
+
+    const updated = updateCommentContent(comment, "  updated  ");
+
+    expect(updated.content).toBe("updated");
+  });
+
+  it.each([
+    ["空文字", ""],
+    ["空白のみ", "   "],
+    ["10001文字", "a".repeat(10001)],
+  ])("%s の content は拒否される", (_label, content) => {
+    const comment = createComment({
+      ticketId: "ticket-1",
+      organizationId: "org-1",
+      authorId: "user-1",
+      content: "original",
+    });
+
+    expect(() => updateCommentContent(comment, content)).toThrow(
+      CommentValidationError,
+    );
   });
 });
 
