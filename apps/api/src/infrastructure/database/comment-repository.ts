@@ -107,12 +107,20 @@ export async function findCommentsWithAuthorByTicketId(
   return rows.map(toCommentWithAuthor);
 }
 
+export type FindCommentWithAuthorByIdInput = Readonly<{
+  commentId: string;
+  organizationId: string;
+}>;
+
 export async function findCommentWithAuthorById(
-  commentId: string,
+  input: FindCommentWithAuthorByIdInput,
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<CommentWithAuthor | null> {
   const row = await db.comment.findUnique({
-    where: { id: commentId },
+    where: {
+      id: input.commentId,
+      organizationId: input.organizationId,
+    },
     include: {
       author: {
         select: { id: true, name: true, email: true },

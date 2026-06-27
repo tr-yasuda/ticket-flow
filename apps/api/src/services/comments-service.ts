@@ -93,7 +93,7 @@ export async function createComment(
 
       const savedComment = await saveComment(comment, tx);
       const commentWithAuthor = await findCommentWithAuthorById(
-        savedComment.id,
+        { commentId: savedComment.id, organizationId: comment.organizationId },
         tx,
       );
       if (commentWithAuthor === null) {

@@ -283,7 +283,10 @@ describe("comment-repository 統合テスト", () => {
     });
     await saveComment(comment);
 
-    const result = await findCommentWithAuthorById(comment.id);
+    const result = await findCommentWithAuthorById({
+      commentId: comment.id,
+      organizationId,
+    });
 
     expect(result).not.toBeNull();
     expect(result?.id).toBe(comment.id);
@@ -293,7 +296,33 @@ describe("comment-repository 統合テスト", () => {
   });
 
   it("存在しないコメントIDを指定すると null を返す", async () => {
-    const result = await findCommentWithAuthorById(randomUUID());
+    const { organizationId } = await seedOrganizationWithTicket();
+    const result = await findCommentWithAuthorById({
+      commentId: randomUUID(),
+      organizationId,
+    });
+    expect(result).toBeNull();
+  });
+
+  it("他組織のコメントIDを指定すると null を返す", async () => {
+    const first = await seedOrganizationWithTicket();
+    const second = await seedOrganizationWithTicket();
+
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId: first.ticketId,
+      organizationId: first.organizationId,
+      authorId: first.ownerId,
+      content: "first organization comment",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveComment(comment);
+
+    const result = await findCommentWithAuthorById({
+      commentId: comment.id,
+      organizationId: second.organizationId,
+    });
     expect(result).toBeNull();
   });
 

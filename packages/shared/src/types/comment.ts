@@ -1,8 +1,8 @@
 /**
  * コメントの作者情報。
  *
- * 現状の User スキーマに name フィールドがないため、表示用の name は
- * email にフォールバックして扱う（`author.name ?? author.email`）。
+ * `name` は optional なため null の場合があり、表示用の name は
+ * `author.name ?? author.email` でフォールバックして扱う。
  */
 export type CommentAuthor = Readonly<{
   id: string;
