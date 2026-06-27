@@ -801,6 +801,7 @@ describe("tickets-controller", () => {
         error: { type: "validation-error", message: "invalid input" },
       });
       const c = createTestContext({
+        query: { page: 1, perPage: 20 },
         userId: "user-id",
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
       });
@@ -822,6 +823,7 @@ describe("tickets-controller", () => {
         error: { type: "unknown-error", message: "something went wrong" },
       });
       const c = createTestContext({
+        query: { page: 1, perPage: 20 },
         userId: "user-id",
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
       });
