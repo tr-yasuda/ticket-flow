@@ -8,6 +8,7 @@ import {
   findCommentWithAuthorById,
   findCommentsWithAuthorByTicketId,
   saveComment,
+  updateComment,
 } from "../../../../src/infrastructure/database/comment-repository.js";
 import { prisma } from "../../../../src/lib/prisma.js";
 import { cleanAll } from "../../helpers/organization-test-helpers.js";
@@ -101,6 +102,66 @@ describe("comment-repository 統合テスト", () => {
     expect(stored?.organizationId).toBe(organizationId);
     expect(stored?.authorId).toBe(ownerId);
     expect(stored?.content).toBe("対応しました");
+  });
+
+  it("コメントの内容を更新できる", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "original",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveComment(comment);
+
+    const updated = await updateComment({
+      commentId: comment.id,
+      organizationId,
+      content: "updated",
+    });
+
+    expect(updated.id).toBe(comment.id);
+    expect(updated.content).toBe("updated");
+    expect(updated.author.id).toBe(ownerId);
+    expect(updated.isEdited).toBe(true);
+
+    const stored = await prisma.comment.findUnique({
+      where: { id: comment.id },
+    });
+    expect(stored).not.toBeNull();
+    expect(stored?.content).toBe("updated");
+    expect(stored?.updatedAt.getTime()).toBeGreaterThan(
+      comment.updatedAt.getTime(),
+    );
+  });
+
+  it("作成直後のコメントは isEdited が false", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "original",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    await saveComment(comment);
+
+    const found = await findCommentWithAuthorById({
+      commentId: comment.id,
+      organizationId,
+    });
+
+    expect(found).not.toBeNull();
+    expect(found?.isEdited).toBe(false);
   });
 
   it("チケットのコメントを作成日時降順で取得できる", async () => {

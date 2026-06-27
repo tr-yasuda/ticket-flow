@@ -7,6 +7,7 @@ import { registerUser } from "../../../src/services/auth-service.js";
 import {
   createComment,
   listCommentsByTicketId,
+  updateComment,
   type CreateCommentServiceInput,
 } from "../../../src/services/comments-service.js";
 import { createOrganization } from "../../../src/services/organizations-service.js";
@@ -269,5 +270,271 @@ describe("comments-service 統合テスト", () => {
       expect(result.data.comments).toHaveLength(1);
       expect(result.data.total).toBe(2);
     }
+  });
+
+  it("自分のコメントを更新できる", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: ownerId,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.comment.content).toBe("updated");
+      expect(result.data.comment.author.id).toBe(ownerId);
+    }
+  });
+
+  it("他のユーザーのコメントは更新できない", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const otherUserResult = await registerUser({
+      email: uniqueEmail("other"),
+      password: "password123",
+    });
+    expect(otherUserResult.success).toBe(true);
+    if (!otherUserResult.success) {
+      throw new Error("Failed to register user");
+    }
+    await prisma.organizationMember.create({
+      data: {
+        id: randomUUID(),
+        organizationId,
+        userId: otherUserResult.data.user.id,
+        role: "member",
+      },
+    });
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: otherUserResult.data.user.id,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe("not-comment-author");
+    }
+  });
+
+  it("同じ内容の更新は監査ログを残さず冪等に成功する", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const beforeCount = await prisma.auditLog.count({
+      where: {
+        organizationId,
+        entityType: "comment",
+        entityId: created.data.comment.id,
+        action: "update",
+      },
+    });
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: ownerId,
+      content: "original",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.comment.content).toBe("original");
+    }
+    const afterCount = await prisma.auditLog.count({
+      where: {
+        organizationId,
+        entityType: "comment",
+        entityId: created.data.comment.id,
+        action: "update",
+      },
+    });
+    expect(afterCount).toBe(beforeCount);
+  });
+
+  it("組織メンバーでないユーザーは更新できない", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const outsiderResult = await registerUser({
+      email: uniqueEmail("outsider"),
+      password: "password123",
+    });
+    expect(outsiderResult.success).toBe(true);
+    if (!outsiderResult.success) {
+      throw new Error("Failed to register user");
+    }
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: outsiderResult.data.user.id,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe("author-not-member");
+    }
+  });
+
+  it("存在しないコメントは更新できない", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: "550e8400-e29b-41d4-a716-446655440000",
+      actorId: ownerId,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe("comment-not-found");
+    }
+  });
+
+  it("別のチケットのコメントは更新できない", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const otherTicket = await prisma.ticket.create({
+      data: {
+        id: randomUUID(),
+        organizationId,
+        title: "other ticket",
+        createdBy: ownerId,
+      },
+    });
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId: otherTicket.id,
+      commentId: created.data.comment.id,
+      actorId: ownerId,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe("comment-not-found");
+    }
+  });
+
+  it("空の content は拒否される", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: ownerId,
+      content: "   ",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe("validation-error");
+    }
+  });
+
+  it("更新成功時に監査ログが記録される", async () => {
+    const { organizationId, ownerId, ticketId } = await seedOrganization();
+    const created = await createComment({
+      organizationId,
+      ticketId,
+      authorId: ownerId,
+      content: "original",
+    });
+    expect(created.success).toBe(true);
+    if (!created.success) {
+      return;
+    }
+
+    const result = await updateComment({
+      organizationId,
+      ticketId,
+      commentId: created.data.comment.id,
+      actorId: ownerId,
+      content: "updated",
+    });
+
+    expect(result.success).toBe(true);
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        organizationId,
+        entityType: "comment",
+        entityId: created.data.comment.id,
+        action: "update",
+      },
+    });
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]?.actorId).toBe(ownerId);
+    expect(auditLogs[0]?.oldValues).toMatchObject({ content: "original" });
+    expect(auditLogs[0]?.newValues).toMatchObject({ content: "updated" });
   });
 });
