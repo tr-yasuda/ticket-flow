@@ -21,9 +21,11 @@ export type AuditLogActor = Readonly<{
   name: string | null;
 }>;
 
-export type AuditLogWithActor = AuditLog & {
-  actor: AuditLogActor | null;
-};
+export type AuditLogWithActor = Readonly<
+  AuditLog & {
+    actor: AuditLogActor | null;
+  }
+>;
 
 export const AUDIT_LOG_ENTITY_TYPE_TICKET = "ticket";
 
