@@ -863,6 +863,278 @@ describe("ticket-repository 統合テスト", () => {
     expect(total).toBe(1);
   });
 
+  it("findTicketsByOrganizationId は assigneeId で絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-unassigned",
+        organizationId,
+        title: "unassigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      assigneeId: ownerId,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-assigned");
+  });
+
+  it("findTicketsByOrganizationId は assigneeId=null で未アサインを絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-unassigned",
+        organizationId,
+        title: "unassigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      assigneeId: null,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-unassigned");
+  });
+
+  it("findTicketsByOrganizationId は非メンバーの assigneeId で空結果を返す", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+    const nonMemberId = await createUser("non-member@example.com");
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      assigneeId: nonMemberId,
+    });
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("findTicketsByOrganizationId は assigneeId と search を組み合わせられる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-match",
+        organizationId,
+        title: "billing assigned",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-other-assignee",
+        organizationId,
+        title: "billing other",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-unrelated",
+        organizationId,
+        title: "ui bug",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      assigneeId: ownerId,
+      search: "billing",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-match");
+  });
+
+  it("findTicketsByOrganizationId は大文字の assigneeId を小文字に正規化する", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      assigneeId: ownerId.toUpperCase(),
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-assigned");
+  });
+
+  it("countTicketsByOrganizationId は assigneeId で件数を絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-unassigned",
+        organizationId,
+        title: "unassigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const total = await countTicketsByOrganizationId({
+      organizationId,
+      assigneeId: ownerId,
+    });
+
+    expect(total).toBe(1);
+  });
+
+  it("countTicketsByOrganizationId は assigneeId=null で未アサイン件数を絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-assigned",
+        organizationId,
+        title: "assigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: ownerId,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-unassigned",
+        organizationId,
+        title: "unassigned ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const total = await countTicketsByOrganizationId({
+      organizationId,
+      assigneeId: null,
+    });
+
+    expect(total).toBe(1);
+  });
+
   it("softDeleteTicket でチケットを論理削除できる", async () => {
     const { organizationId, ownerId } = await seedOrganization();
     const ticket = rehydrateTicket({

@@ -1035,6 +1035,125 @@ describe("ticket-service 統合テスト", () => {
       const data = expectSuccess(result);
       expect(data.tickets).toHaveLength(1);
     });
+
+    it("assigneeId で担当者のチケットだけを取得できる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "member ticket",
+        priority: "medium",
+        assigneeId: memberId,
+        createdBy: ownerId,
+      });
+      await createTicket({
+        organizationId,
+        title: "unassigned ticket",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        assigneeId: memberId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(1);
+      expect(data.tickets[0]?.title).toBe("member ticket");
+      expect(data.total).toBe(1);
+    });
+
+    it("assigneeId=null で未アサインのチケットだけを取得できる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "member ticket",
+        priority: "medium",
+        assigneeId: memberId,
+        createdBy: ownerId,
+      });
+      await createTicket({
+        organizationId,
+        title: "unassigned ticket",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        assigneeId: null,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(1);
+      expect(data.tickets[0]?.title).toBe("unassigned ticket");
+      expect(data.total).toBe(1);
+    });
+
+    it("非メンバーの assigneeId を指定すると空結果を返す", async () => {
+      const { organizationId, ownerId, nonMemberId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "ticket",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        assigneeId: nonMemberId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(0);
+      expect(data.total).toBe(0);
+    });
+
+    it("assigneeId と search を組み合わせられる", async () => {
+      const { organizationId, ownerId, memberId } = await seedOrganization();
+
+      await createTicket({
+        organizationId,
+        title: "billing member",
+        description: "description",
+        priority: "medium",
+        assigneeId: memberId,
+        createdBy: ownerId,
+      });
+      await createTicket({
+        organizationId,
+        title: "billing unassigned",
+        description: "description",
+        priority: "medium",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+      await createTicket({
+        organizationId,
+        title: "ui member",
+        description: "description",
+        priority: "medium",
+        assigneeId: memberId,
+        createdBy: ownerId,
+      });
+
+      const result = await listTickets({
+        organizationId,
+        assigneeId: memberId,
+        search: "billing",
+      });
+
+      const data = expectSuccess(result);
+      expect(data.tickets).toHaveLength(1);
+      expect(data.tickets[0]?.title).toBe("billing member");
+      expect(data.total).toBe(1);
+    });
   });
 });
 

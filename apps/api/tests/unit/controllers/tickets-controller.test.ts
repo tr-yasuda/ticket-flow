@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   deleteTicketController,
+  listTicketsController,
   updateTicketAssigneeController,
   updateTicketController,
   updateTicketPriorityController,
@@ -12,11 +13,13 @@ import * as ticketService from "../../../src/services/ticket-service.js";
 
 function createTestContext({
   body,
+  query,
   userId,
   organizationId,
   organizationRole,
 }: {
   body?: unknown;
+  query?: Record<string, unknown>;
   userId?: string;
   organizationId?: string;
   organizationRole?: "owner" | "admin" | "member" | "viewer";
@@ -27,6 +30,9 @@ function createTestContext({
       valid: vi.fn().mockImplementation((target: string) => {
         if (target === "json") {
           return body;
+        }
+        if (target === "query") {
+          return query ?? {};
         }
         if (target === "param") {
           return { ticketId: "550e8400-e29b-41d4-a716-446655440000" };
@@ -698,85 +704,202 @@ describe("tickets-controller", () => {
       );
     });
   });
-});
 
-describe("deleteTicketController", () => {
-  it("削除成功時に 204 を返す", async () => {
-    vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
-      success: true,
-      data: {
-        ticket: {
-          id: "550e8400-e29b-41d4-a716-446655440000",
+  describe("listTicketsController", () => {
+    it("一覧取得成功時に 200 とページネーションを返す", async () => {
+      const ticket = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        title: "task",
+        status: "open",
+        priority: "medium",
+        assignee: null,
+        createdBy: "user-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        commentCount: 0,
+      };
+      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+        success: true,
+        data: { tickets: [ticket], total: 1 },
+      });
+      const c = createTestContext({
+        query: { page: 1, perPage: 20 },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(ticketService.listTickets).toHaveBeenCalledWith(
+        expect.objectContaining({
           organizationId: "550e8400-e29b-41d4-a716-446655440001",
-          title: "deleted",
-          description: null,
-          status: "open",
-          priority: "medium",
-          assigneeId: null,
-          createdBy: "user-id",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: new Date(),
+          skip: 0,
+          take: 20,
+          assigneeId: undefined,
+        }),
+      );
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            tickets: [expect.objectContaining({ id: ticket.id })],
+          }),
+          meta: expect.objectContaining({
+            page: 1,
+            perPage: 20,
+            total: 1,
+            totalPages: 1,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("assignee クエリを assigneeId としてサービスに渡す", async () => {
+      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+        success: true,
+        data: { tickets: [], total: 0 },
+      });
+      const c = createTestContext({
+        query: { assignee: "550e8400-e29b-41d4-a716-446655440002" },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(ticketService.listTickets).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assigneeId: "550e8400-e29b-41d4-a716-446655440002",
+        }),
+      );
+    });
+
+    it("バリデーションエラーの場合は 400 を返す", async () => {
+      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+        success: false,
+        error: { type: "validation-error", message: "invalid input" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "VALIDATION_ERROR" }),
+        }),
+        400,
+      );
+    });
+
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+        success: false,
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+  });
+
+  describe("deleteTicketController", () => {
+    it("削除成功時に 204 を返す", async () => {
+      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
+        success: true,
+        data: {
+          ticket: {
+            id: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440001",
+            title: "deleted",
+            description: null,
+            status: "open",
+            priority: "medium",
+            assigneeId: null,
+            createdBy: "user-id",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: new Date(),
+          },
         },
-      },
-    });
-    const c = createTestContext({
-      userId: "user-id",
-      organizationId: "550e8400-e29b-41d4-a716-446655440001",
-      organizationRole: "owner",
-    });
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        organizationRole: "owner",
+      });
 
-    await deleteTicketController(c);
+      await deleteTicketController(c);
 
-    expect(c.body).toHaveBeenCalledWith(null, 204);
-    expect(ticketService.deleteTicket).toHaveBeenCalledWith({
-      organizationId: "550e8400-e29b-41d4-a716-446655440001",
-      ticketId: "550e8400-e29b-41d4-a716-446655440000",
-      deletedBy: "user-id",
-    });
-  });
-
-  it("チケットが存在しない場合は 404 を返す", async () => {
-    vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
-      success: false,
-      error: { type: "ticket-not-found", message: "チケットが見つかりません" },
-    });
-    const c = createTestContext({
-      userId: "user-id",
-      organizationId: "550e8400-e29b-41d4-a716-446655440001",
-      organizationRole: "admin",
+      expect(c.body).toHaveBeenCalledWith(null, 204);
+      expect(ticketService.deleteTicket).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        deletedBy: "user-id",
+      });
     });
 
-    await deleteTicketController(c);
-
-    expect(c.json).toHaveBeenCalledWith(
-      expect.objectContaining({
+    it("チケットが存在しない場合は 404 を返す", async () => {
+      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
         success: false,
-        error: expect.objectContaining({ code: "NOT_FOUND" }),
-      }),
-      404,
-    );
-  });
+        error: {
+          type: "ticket-not-found",
+          message: "チケットが見つかりません",
+        },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        organizationRole: "admin",
+      });
 
-  it("不明なエラーの場合は 500 を返す", async () => {
-    vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
-      success: false,
-      error: { type: "unknown-error", message: "something went wrong" },
+      await deleteTicketController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
     });
-    const c = createTestContext({
-      userId: "user-id",
-      organizationId: "550e8400-e29b-41d4-a716-446655440001",
-      organizationRole: "owner",
-    });
 
-    await deleteTicketController(c);
-
-    expect(c.json).toHaveBeenCalledWith(
-      expect.objectContaining({
+    it("不明なエラーの場合は 500 を返す", async () => {
+      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
         success: false,
-        error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
-      }),
-      500,
-    );
+        error: { type: "unknown-error", message: "something went wrong" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+        organizationRole: "owner",
+      });
+
+      await deleteTicketController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
   });
 });
