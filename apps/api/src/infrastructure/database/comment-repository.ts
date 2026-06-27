@@ -80,6 +80,7 @@ export async function findCommentById(
     where: {
       id: input.commentId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
   });
 
@@ -104,6 +105,7 @@ export async function updateComment(
     where: {
       id: input.commentId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
     data: {
       content: input.content,
@@ -131,6 +133,7 @@ export async function countCommentsByTicketId(
     where: {
       organizationId: input.organizationId,
       ticketId: input.ticketId,
+      deletedAt: null,
     },
   });
 }
@@ -149,6 +152,7 @@ export async function findCommentsWithAuthorByTicketId(
     where: {
       organizationId: input.organizationId,
       ticketId: input.ticketId,
+      deletedAt: null,
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     include: {
@@ -176,6 +180,7 @@ export async function findCommentWithAuthorById(
     where: {
       id: input.commentId,
       organizationId: input.organizationId,
+      deletedAt: null,
     },
     include: {
       author: {
@@ -189,4 +194,44 @@ export async function findCommentWithAuthorById(
   }
 
   return toCommentWithAuthor(row);
+}
+
+export type SoftDeleteCommentInput = Readonly<{
+  commentId: string;
+  organizationId: string;
+}>;
+
+/**
+ * コメントを論理削除する。
+ *
+ * `deleted_at IS NULL` の行のみを対象とし、削除日時を返す。
+ */
+export async function softDeleteComment(
+  input: SoftDeleteCommentInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<Date | null> {
+  const deletedAt = new Date();
+
+  try {
+    await db.comment.update({
+      where: {
+        id: input.commentId,
+        organizationId: input.organizationId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return null;
+    }
+    throw error;
+  }
+
+  return deletedAt;
 }

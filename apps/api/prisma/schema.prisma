@@ -142,6 +142,7 @@ model Comment {
   content        String       @map("content")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
   // 組織削除時にコメント履歴が失われないよう、明示的な削除・アーカイブを促す
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   ticket         Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
@@ -150,7 +151,7 @@ model Comment {
 
   @@map("comments")
   @@index([organizationId, ticketId, createdAt])
-  @@index([organizationId, createdAt])
+  @@index([organizationId, ticketId, deletedAt, createdAt])
   @@index([ticketId])
   @@index([authorId])
 }

@@ -25,6 +25,10 @@ export const updateCommentParamsSchema = ticketIdParamSchema.extend({
 
 export type UpdateCommentParams = z.infer<typeof updateCommentParamsSchema>;
 
+export const deleteCommentParamsSchema = updateCommentParamsSchema;
+
+export type DeleteCommentParams = z.infer<typeof deleteCommentParamsSchema>;
+
 export const listCommentsQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).max(10000).default(1),
