@@ -149,7 +149,7 @@ describe("マイグレーションコマンド", () => {
       expect(commentIndexNames).toContain(
         "comments_organization_id_ticket_id_deleted_at_created_at_idx",
       );
-      expect(commentIndexNames).toContain(
+      expect(commentIndexNames).not.toContain(
         "comments_organization_id_created_at_idx",
       );
       expect(commentIndexNames).toContain("comments_ticket_id_idx");
