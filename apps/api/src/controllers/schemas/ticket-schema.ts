@@ -67,6 +67,20 @@ export const listTicketsQuerySchema = z
 
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;
 
+export const listTicketHistoryQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).max(10000).default(1),
+    perPage: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
+    message: "ページ範囲が大きすぎます",
+    path: ["page"],
+  });
+
+export type ListTicketHistoryQuery = z.infer<
+  typeof listTicketHistoryQuerySchema
+>;
+
 export const ticketIdParamSchema = z.object({
   ticketId: z
     .string()

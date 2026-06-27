@@ -16,6 +16,17 @@ export type AuditLog = Readonly<{
 
 export type AuditLogValues = Record<string, unknown>;
 
+export type AuditLogActor = Readonly<{
+  id: string;
+  name: string | null;
+}>;
+
+export type AuditLogWithActor = AuditLog & {
+  actor: AuditLogActor | null;
+};
+
+export const AUDIT_LOG_ENTITY_TYPE_TICKET = "ticket";
+
 export class AuditLogValidationError extends Error {
   constructor(message: string) {
     super(message);

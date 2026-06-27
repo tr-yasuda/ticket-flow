@@ -38,6 +38,7 @@ import {
 } from "../controllers/schemas/organization-member-schema.js";
 import {
   createTicketBodySchema,
+  listTicketHistoryQuerySchema,
   listTicketsQuerySchema,
   ticketIdParamSchema,
   updateTicketAssigneeBodySchema,
@@ -49,6 +50,7 @@ import {
   createTicketController,
   deleteTicketController,
   getTicketController,
+  getTicketHistoryController,
   listTicketsController,
   updateTicketAssigneeController,
   updateTicketController,
@@ -376,6 +378,15 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         organizationScopeMiddleware,
         sValidator("param", ticketIdParamSchema, validationHook),
         getTicketController,
+      )
+      .get(
+        "/:organizationId/tickets/:ticketId/history",
+        organizationScopeMiddleware,
+        listTicketsRateLimitByOrganization,
+        listTicketsRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("query", listTicketHistoryQuerySchema, validationHook),
+        getTicketHistoryController,
       )
       .patch(
         "/:organizationId/tickets/:ticketId",
