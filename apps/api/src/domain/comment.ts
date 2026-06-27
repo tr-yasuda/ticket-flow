@@ -23,6 +23,7 @@ export type Comment = Readonly<{
 export const COMMENT_AUDIT_ENTITY_TYPE = "comment";
 export const COMMENT_AUDIT_ACTION_CREATE = "create";
 export const COMMENT_AUDIT_ACTION_UPDATE = "update";
+export const COMMENT_AUDIT_ACTION_DELETE = "delete";
 
 export class CommentValidationError extends Error {
   constructor(message: string) {

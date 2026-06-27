@@ -5,9 +5,11 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { rehydrateComment } from "../../../../src/domain/comment.js";
 import {
+  countCommentsByTicketId,
   findCommentWithAuthorById,
   findCommentsWithAuthorByTicketId,
   saveComment,
+  softDeleteComment,
   updateComment,
 } from "../../../../src/infrastructure/database/comment-repository.js";
 import { prisma } from "../../../../src/lib/prisma.js";
@@ -556,6 +558,132 @@ describe("comment-repository 統合テスト", () => {
     expect(result[0]?.author.id).toBe(ownerId);
     expect(result[0]?.author.email).toBe(owner?.email);
     expect(result[0]?.author.name).toBeNull();
+  });
+
+  it("チケットの未削除コメント数を取得できる", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+
+    const first = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "first",
+      createdAt: new Date("2026-06-19T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+    });
+    const second = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "second",
+      createdAt: new Date("2026-06-19T00:00:01.000Z"),
+      updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+    });
+    await saveComment(first);
+    await saveComment(second);
+    await softDeleteComment({ commentId: first.id, organizationId });
+
+    const count = await countCommentsByTicketId({ organizationId, ticketId });
+
+    expect(count).toBe(1);
+  });
+
+  it("論理削除できる", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "to delete",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveComment(comment);
+
+    const deletedAt = await softDeleteComment({
+      commentId: comment.id,
+      organizationId,
+    });
+
+    expect(deletedAt).not.toBeNull();
+    const stored = await prisma.comment.findUnique({
+      where: { id: comment.id },
+    });
+    expect(stored?.deletedAt).not.toBeNull();
+  });
+
+  it("削除済みのコメントを再削除しようとすると null を返す", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "already deleted",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveComment(comment);
+    await softDeleteComment({ commentId: comment.id, organizationId });
+
+    const deletedAt = await softDeleteComment({
+      commentId: comment.id,
+      organizationId,
+    });
+
+    expect(deletedAt).toBeNull();
+  });
+
+  it("削除済みコメントは ID 取得から除外される", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "deleted",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveComment(comment);
+    await softDeleteComment({ commentId: comment.id, organizationId });
+
+    const found = await findCommentWithAuthorById({
+      commentId: comment.id,
+      organizationId,
+    });
+
+    expect(found).toBeNull();
+  });
+
+  it("削除済みコメントはチケット一覧から除外される", async () => {
+    const { organizationId, ownerId, ticketId } =
+      await seedOrganizationWithTicket();
+    const comment = rehydrateComment({
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId: ownerId,
+      content: "deleted",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveComment(comment);
+    await softDeleteComment({ commentId: comment.id, organizationId });
+
+    const result = await findCommentsWithAuthorByTicketId({
+      organizationId,
+      ticketId,
+    });
+
+    expect(result).toHaveLength(0);
   });
 });
 

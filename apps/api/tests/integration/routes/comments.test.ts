@@ -72,6 +72,24 @@ async function updateCommentRequest(
   );
 }
 
+async function deleteCommentRequest(
+  app: ReturnType<typeof createApp>,
+  accessToken: string,
+  organizationId: string,
+  ticketId: string,
+  commentId: string,
+): Promise<Response> {
+  return app.request(
+    `/api/organizations/${organizationId}/tickets/${ticketId}/comments/${commentId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+}
+
 async function setupOrganizationWithTicket(
   app: ReturnType<typeof createApp>,
   memberRole?: "admin" | "member" | "viewer",
@@ -1272,5 +1290,437 @@ describe("PATCH /api/organizations/:organizationId/tickets/:ticketId/comments/:c
     expect((auditLog!.newValues as { content?: string }).content).toBe(
       "updated",
     );
+  });
+});
+
+describe("DELETE /api/organizations/:organizationId/tickets/:ticketId/comments/:commentId (comment.delete)", () => {
+  let app: ReturnType<typeof createApp>;
+
+  beforeEach(async () => {
+    await cleanAll();
+    app = createApp();
+  });
+  afterAll(async () => {
+    await cleanAll();
+  });
+
+  it("Member が自分のコメントを削除できる", async () => {
+    const { memberToken, memberUserId, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "delete me" },
+    );
+    const createBody = await createResponse.json();
+    const commentId = createBody.data.id;
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      commentId,
+    );
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+
+    const stored = await prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+    expect(stored).not.toBeNull();
+    expect(stored?.authorId).toBe(memberUserId);
+    expect(stored?.deletedAt).not.toBeNull();
+  });
+
+  it("Owner が他ユーザーのコメントを削除できる", async () => {
+    const { ownerToken, memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "delete by owner" },
+    );
+    const createBody = await createResponse.json();
+
+    const response = await deleteCommentRequest(
+      app,
+      ownerToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    expect(response.status).toBe(204);
+  });
+
+  it("Admin が他ユーザーのコメントを削除できる", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const { accessToken: adminToken, userId: adminUserId } = await registerUser(
+      app,
+      uniqueEmail("admin"),
+      "password123",
+    );
+    await addMember(organizationId, adminUserId, "admin");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "delete by admin" },
+    );
+    const createBody = await createResponse.json();
+
+    const response = await deleteCommentRequest(
+      app,
+      adminToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    expect(response.status).toBe(204);
+  });
+
+  it("他のユーザーのコメントは Member では削除できず 403 Forbidden", async () => {
+    const { ownerToken, memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      ownerToken,
+      organizationId,
+      ticketId,
+      { content: "owner comment" },
+    );
+    const createBody = await createResponse.json();
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_FORBIDDEN");
+
+    const stored = await prisma.comment.findUnique({
+      where: { id: createBody.data.id },
+    });
+    expect(stored?.deletedAt).toBeNull();
+  });
+
+  it("存在しないコメントは 404 Not Found", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("別のチケットのコメントは 404 Not Found", async () => {
+    const { ownerToken, memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const otherTicketResponse = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      { title: "other ticket" },
+    );
+    const otherTicketBody = await otherTicketResponse.json();
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "comment on first ticket" },
+    );
+    const createBody = await createResponse.json();
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      otherTicketBody.data.id,
+      createBody.data.id,
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("他組織のコメントは 404 Not Found", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const {
+      ownerToken: otherOwnerToken,
+      organizationId: otherOrganizationId,
+      ticketId: otherTicketId,
+    } = await setupOrganizationWithTicket(app);
+    const createResponse = await createCommentRequest(
+      app,
+      otherOwnerToken,
+      otherOrganizationId,
+      otherTicketId,
+      { content: "comment in other org" },
+    );
+    const createBody = await createResponse.json();
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("無効なコメント ID 形式は 400 Bad Request", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      "not-a-uuid",
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "commentId" })]),
+    );
+  });
+
+  it("無効なチケット ID 形式は 400 Bad Request", async () => {
+    const { memberToken, organizationId } = await setupOrganizationWithTicket(
+      app,
+      "member",
+    );
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      "not-a-uuid",
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "ticketId" })]),
+    );
+  });
+
+  it("Viewer ロールからの実行は 403 Forbidden", async () => {
+    const {
+      memberToken: viewerToken,
+      organizationId,
+      ticketId,
+    } = await setupOrganizationWithTicket(app, "viewer");
+
+    const response = await deleteCommentRequest(
+      app,
+      viewerToken,
+      organizationId,
+      ticketId,
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("未認証の場合は 401 Unauthorized", async () => {
+    const response = await app.request(
+      "/api/organizations/550e8400-e29b-41d4-a716-446655440000/tickets/550e8400-e29b-41d4-a716-446655440000/comments/550e8400-e29b-41d4-a716-446655440000",
+      {
+        method: "DELETE",
+      },
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  it("コメント削除時に監査ログが保存される", async () => {
+    const { memberToken, memberUserId, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "to be deleted" },
+    );
+    const createBody = await createResponse.json();
+    const commentId = createBody.data.id;
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      commentId,
+    );
+
+    expect(response.status).toBe(204);
+    const auditLog = await prisma.auditLog.findFirst({
+      where: {
+        organizationId,
+        actorId: memberUserId,
+        entityType: "comment",
+        entityId: commentId,
+        action: "delete",
+      },
+    });
+    expect(auditLog).not.toBeNull();
+    expect((auditLog!.oldValues as { content?: string }).content).toBe(
+      "to be deleted",
+    );
+    expect(
+      (auditLog!.newValues as { deletedAt?: string }).deletedAt,
+    ).toBeDefined();
+  });
+
+  it("削除済みのコメントを再削除すると 404 Not Found", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "already deleted" },
+    );
+    const createBody = await createResponse.json();
+    const commentId = createBody.data.id;
+
+    await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      commentId,
+    );
+
+    const response = await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      commentId,
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("削除後のコメントは一覧に含まれず total が減少する", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "will be hidden" },
+    );
+    const createBody = await createResponse.json();
+
+    await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    const response = await listCommentsRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.comments).toHaveLength(0);
+    expect(body.meta.total).toBe(0);
+  });
+
+  it("削除済みのコメントを更新しようとすると 404 Not Found", async () => {
+    const { memberToken, organizationId, ticketId } =
+      await setupOrganizationWithTicket(app, "member");
+    const createResponse = await createCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      { content: "original" },
+    );
+    const createBody = await createResponse.json();
+
+    await deleteCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+    );
+
+    const response = await updateCommentRequest(
+      app,
+      memberToken,
+      organizationId,
+      ticketId,
+      createBody.data.id,
+      { content: "updated after delete" },
+    );
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
   });
 });

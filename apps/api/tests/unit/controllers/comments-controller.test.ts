@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createCommentController,
+  deleteCommentController,
   listCommentsController,
   updateCommentController,
 } from "../../../src/controllers/comments-controller.js";
@@ -12,10 +13,12 @@ function createTestContext({
   body,
   userId,
   organizationId,
+  organizationRole,
 }: {
   body?: unknown;
   userId?: string;
   organizationId?: string;
+  organizationRole?: string;
 } = {}): Context {
   const json = vi.fn();
   const c = {
@@ -45,6 +48,9 @@ function createTestContext({
       }
       if (key === "organizationId") {
         return organizationId;
+      }
+      if (key === "organizationRole") {
+        return organizationRole;
       }
       return undefined;
     }),
@@ -512,6 +518,123 @@ describe("comments-controller", () => {
       const c = createTestContext();
 
       await expect(listCommentsController(c)).rejects.toThrow();
+    });
+  });
+
+  describe("deleteCommentController", () => {
+    it("削除成功時に 204 No Content を返す", async () => {
+      vi.spyOn(commentsService, "deleteComment").mockResolvedValue({
+        success: true,
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        organizationRole: "member",
+      });
+
+      await deleteCommentController(c);
+
+      expect(commentsService.deleteComment).toHaveBeenCalledWith({
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        ticketId: "550e8400-e29b-41d4-a716-446655440000",
+        commentId: "550e8400-e29b-41d4-a716-446655440001",
+        actorId: "user-id",
+      });
+      expect(c.body).toHaveBeenCalledWith(null, 204);
+    });
+
+    it("存在しないコメントの場合は 404 を返す", async () => {
+      vi.spyOn(commentsService, "deleteComment").mockResolvedValue({
+        success: false,
+        error: { type: "comment-not-found", message: "not found" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        organizationRole: "member",
+      });
+
+      await deleteCommentController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "NOT_FOUND" }),
+        }),
+        404,
+      );
+    });
+
+    it("削除権限がない場合は 403 を返す", async () => {
+      vi.spyOn(commentsService, "deleteComment").mockResolvedValue({
+        success: false,
+        error: { type: "not-comment-author", message: "forbidden" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        organizationRole: "member",
+      });
+
+      await deleteCommentController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "AUTH_FORBIDDEN" }),
+        }),
+        403,
+      );
+    });
+
+    it("組織メンバーでない場合は 403 を返す", async () => {
+      vi.spyOn(commentsService, "deleteComment").mockResolvedValue({
+        success: false,
+        error: { type: "author-not-member", message: "not member" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        organizationRole: "member",
+      });
+
+      await deleteCommentController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "AUTH_FORBIDDEN" }),
+        }),
+        403,
+      );
+    });
+
+    it("監査ログエラーの場合は 500 を返す", async () => {
+      vi.spyOn(commentsService, "deleteComment").mockResolvedValue({
+        success: false,
+        error: { type: "audit-log-error", message: "audit failed" },
+      });
+      const c = createTestContext({
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440002",
+        organizationRole: "member",
+      });
+
+      await deleteCommentController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: "INTERNAL_ERROR" }),
+        }),
+        500,
+      );
+    });
+
+    it("コンテキスト値が欠落している場合は HTTPException を投げる", async () => {
+      const c = createTestContext();
+
+      await expect(deleteCommentController(c)).rejects.toThrow();
     });
   });
 });

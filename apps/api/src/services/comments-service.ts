@@ -3,6 +3,7 @@ import { type CommentWithAuthor } from "@ticket-flow/shared";
 
 import {
   COMMENT_AUDIT_ACTION_CREATE,
+  COMMENT_AUDIT_ACTION_DELETE,
   COMMENT_AUDIT_ACTION_UPDATE,
   COMMENT_AUDIT_ENTITY_TYPE,
   CommentForbiddenError,
@@ -11,6 +12,10 @@ import {
   createComment as createCommentEntity,
   updateCommentContent,
 } from "../domain/comment.js";
+import {
+  getRoleLevel,
+  type OrganizationMemberRole,
+} from "../domain/organization-member.js";
 import { TicketNotFoundError } from "../domain/ticket.js";
 import {
   countCommentsByTicketId,
@@ -18,6 +23,7 @@ import {
   findCommentWithAuthorById,
   findCommentsWithAuthorByTicketId,
   saveComment,
+  softDeleteComment,
   updateComment as updateCommentInRepository,
 } from "../infrastructure/database/comment-repository.js";
 import { type Pagination } from "../infrastructure/database/pagination.js";
@@ -198,8 +204,8 @@ export async function updateComment(
           tx,
         );
         if (unchanged === null) {
-          throw new Error(
-            `更新したコメント ${input.commentId} の取得に失敗しました`,
+          throw new CommentNotFoundError(
+            `コメント ${input.commentId} が見つかりません`,
           );
         }
         return unchanged;
@@ -236,6 +242,108 @@ export async function updateComment(
     });
 
     return { success: true, data: { comment: updated } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
+export type DeleteCommentServiceInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  commentId: string;
+  actorId: string;
+}>;
+
+export type DeleteCommentResult =
+  | { success: true }
+  | { success: false; error: CommentServiceError };
+
+function canDeleteComment(
+  commentAuthorId: string,
+  actorId: string,
+  actorRole: OrganizationMemberRole,
+): boolean {
+  if (commentAuthorId === actorId) {
+    return true;
+  }
+
+  return getRoleLevel(actorRole) >= getRoleLevel("admin");
+}
+
+export async function deleteComment(
+  input: DeleteCommentServiceInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<DeleteCommentResult> {
+  try {
+    await runInTransaction(db, async (tx) => {
+      const [membership, existing] = await Promise.all([
+        tx.organizationMember.findUnique({
+          where: {
+            organizationId_userId: {
+              organizationId: input.organizationId,
+              userId: input.actorId,
+            },
+          },
+        }),
+        findCommentById(
+          {
+            commentId: input.commentId,
+            organizationId: input.organizationId,
+          },
+          tx,
+        ),
+      ]);
+      if (membership === null) {
+        throw new CommentAuthorNotMemberError(
+          `ユーザー ${input.actorId} は組織 ${input.organizationId} のメンバーではありません`,
+        );
+      }
+
+      if (existing === null || existing.ticketId !== input.ticketId) {
+        throw new CommentNotFoundError(
+          `コメント ${input.commentId} が見つかりません`,
+        );
+      }
+
+      if (
+        !canDeleteComment(existing.authorId, input.actorId, membership.role)
+      ) {
+        throw new CommentForbiddenError(
+          `コメント ${input.commentId} は投稿者本人または Owner/Admin のみ削除できます`,
+        );
+      }
+
+      const deletedAt = await softDeleteComment(
+        {
+          commentId: input.commentId,
+          organizationId: input.organizationId,
+        },
+        tx,
+      );
+      if (deletedAt === null) {
+        throw new CommentNotFoundError(
+          `コメント ${input.commentId} が見つかりません`,
+        );
+      }
+
+      const auditResult = await saveAuditLog(
+        {
+          organizationId: input.organizationId,
+          actorId: input.actorId,
+          entityType: COMMENT_AUDIT_ENTITY_TYPE,
+          entityId: input.commentId,
+          action: COMMENT_AUDIT_ACTION_DELETE,
+          oldValues: { content: existing.content },
+          newValues: { deletedAt: deletedAt.toISOString() },
+        },
+        tx,
+      );
+      if (!auditResult.success) {
+        throw new AuditLogError(auditResult.error.message);
+      }
+    });
+
+    return { success: true };
   } catch (error) {
     return mapServiceError(error);
   }
