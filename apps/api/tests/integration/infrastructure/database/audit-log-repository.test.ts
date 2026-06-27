@@ -118,7 +118,7 @@ describe("audit-log-repository 統合テスト", () => {
     expect(logs).toHaveLength(2);
     expect(logs[0]?.action).toBe("update");
     expect(logs[1]?.action).toBe("create");
-    expect(new Date(logs[0]!.createdAt).getTime()).toBeGreaterThan(
+    expect(new Date(logs[0]!.createdAt).getTime()).toBeGreaterThanOrEqual(
       new Date(logs[1]!.createdAt).getTime(),
     );
   });

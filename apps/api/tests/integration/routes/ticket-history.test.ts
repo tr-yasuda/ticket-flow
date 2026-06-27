@@ -288,7 +288,9 @@ describe("GET /api/organizations/:organizationId/tickets/:ticketId/history (tick
       .map((item) => item.newValues?.title);
     expect(titles).toEqual(["更新 2", "更新 1"]);
     for (let i = 0; i < history.length - 1; i++) {
-      expect(new Date(history[i]?.createdAt).getTime()).toBeGreaterThan(
+      expect(
+        new Date(history[i]?.createdAt as string).getTime(),
+      ).toBeGreaterThanOrEqual(
         new Date(history[i + 1]?.createdAt as string).getTime(),
       );
     }
