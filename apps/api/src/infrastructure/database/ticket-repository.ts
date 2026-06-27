@@ -78,9 +78,12 @@ function hasStatusFilter(
 }
 
 function buildStatusFilter(status: TicketStatus[] | undefined): Prisma.Sql {
-  return hasStatusFilter(status)
-    ? Prisma.sql`AND status IN (${Prisma.join(status)})`
-    : Prisma.empty;
+  if (!hasStatusFilter(status)) {
+    return Prisma.empty;
+  }
+
+  const uniqueStatuses = [...new Set(status)];
+  return Prisma.sql`AND status IN (${Prisma.join(uniqueStatuses)})`;
 }
 
 function toTicketListItem(
