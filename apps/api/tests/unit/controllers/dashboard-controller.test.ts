@@ -77,6 +77,11 @@ describe("dashboard-controller", () => {
 
     await getOrganizationDashboardController(c);
 
+    expect(dashboardService.getOrganizationDashboard).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      userId: "user-1",
+      skipMembershipCheck: true,
+    });
     expect(c.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,

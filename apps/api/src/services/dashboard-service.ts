@@ -74,6 +74,11 @@ export type GetOrganizationDashboardResult =
 export type GetOrganizationDashboardInput = Readonly<{
   organizationId: string;
   userId: string;
+  /**
+   * 組織メンバーシップチェックをスキップする。
+   * 呼び出し元で既にメンバーシップを確認している場合（例: organizationScopeMiddleware 経由）に true を指定する。
+   */
+  skipMembershipCheck?: boolean;
 }>;
 
 export async function getOrganizationDashboard(
@@ -81,30 +86,36 @@ export async function getOrganizationDashboard(
   db: PrismaClient = prisma,
 ): Promise<GetOrganizationDashboardResult> {
   try {
-    const membership = await db.organizationMember.findUnique({
-      where: {
-        organizationId_userId: {
-          organizationId: input.organizationId,
-          userId: input.userId,
+    if (input.skipMembershipCheck !== true) {
+      const membership = await db.organizationMember.findUnique({
+        select: { organizationId: true },
+        where: {
+          organizationId_userId: {
+            organizationId: input.organizationId,
+            userId: input.userId,
+          },
         },
-      },
-    });
+      });
 
-    if (membership === null) {
-      return {
-        success: false,
-        error: {
-          type: "NOT_MEMBER",
-          message: "組織のメンバーではありません",
-        },
-      };
+      if (membership === null) {
+        return {
+          success: false,
+          error: {
+            type: "NOT_MEMBER",
+            message: "組織のメンバーではありません",
+          },
+        };
+      }
     }
 
     const aggregation = await db.$transaction(async (tx) => {
-      const statusCounts = await countTicketsByStatus(input, tx);
-      const priorityCounts = await countTicketsByPriority(input, tx);
-      const assignedUndone = await countAssignedUndoneTickets(input, tx);
-      const recentActivity = await findRecentDashboardActivity(input, tx);
+      const [statusCounts, priorityCounts, assignedUndone, recentActivity] =
+        await Promise.all([
+          countTicketsByStatus(input, tx),
+          countTicketsByPriority(input, tx),
+          countAssignedUndoneTickets(input, tx),
+          findRecentDashboardActivity(input, tx),
+        ]);
 
       return {
         statusCounts,

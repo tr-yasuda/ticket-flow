@@ -17,6 +17,8 @@ export async function getOrganizationDashboardController(c: Context) {
   const result = await getOrganizationDashboard({
     organizationId,
     userId,
+    // organizationScopeMiddleware で既にメンバーシップを確認済みのため service 側のチェックをスキップする
+    skipMembershipCheck: true,
   });
 
   if (!result.success) {
