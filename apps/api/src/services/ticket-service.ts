@@ -221,10 +221,7 @@ export async function getTicketHistory(
 ): Promise<GetTicketHistoryResult> {
   try {
     const ticket = await findTicketById(
-      {
-        organizationId: input.organizationId,
-        ticketId: input.ticketId,
-      },
+      { organizationId: input.organizationId, ticketId: input.ticketId },
       db,
     );
     if (ticket === null) {
