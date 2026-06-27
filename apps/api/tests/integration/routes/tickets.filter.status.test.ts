@@ -13,9 +13,18 @@ async function filterTicketsRequest(
   app: ReturnType<typeof createApp>,
   accessToken: string,
   organizationId: string,
-  query: Record<string, string> = {},
+  query: Record<string, string | string[]> = {},
 ): Promise<Response> {
-  const params = new URLSearchParams(query);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        params.append(key, item);
+      }
+    } else {
+      params.set(key, value);
+    }
+  }
   const url = `/api/organizations/${organizationId}/tickets?${params.toString()}`;
   return app.request(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -516,5 +525,75 @@ describe("GET /api/organizations/:organizationId/tickets?status=... (tickets.fil
       total: 2,
       totalPages: 2,
     });
+  });
+
+  it("繰り返しクエリパラメータで複数ステータスを指定できる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+    await createTicketRequest(app, ownerToken, organizationId, {
+      title: "open ticket",
+    });
+    const inProgressTicket = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "in progress ticket",
+      },
+    );
+    const inProgressBody = await inProgressTicket.json();
+    await updateTicketStatusRequest(
+      app,
+      ownerToken,
+      organizationId,
+      inProgressBody.data.id,
+      "in-progress",
+    );
+    const closedTicket = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "closed ticket",
+      },
+    );
+    const closedBody = await closedTicket.json();
+    await updateTicketStatusRequest(
+      app,
+      ownerToken,
+      organizationId,
+      closedBody.data.id,
+      "closed",
+    );
+
+    const response = await filterTicketsRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        status: ["open", "in-progress"],
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tickets).toHaveLength(2);
+    const titles = body.data.tickets.map(
+      (ticket: { title: string }) => ticket.title,
+    );
+    expect(titles).toContain("open ticket");
+    expect(titles).toContain("in progress ticket");
+    expect(titles).not.toContain("closed ticket");
+    expect(body.meta.total).toBe(2);
   });
 });
