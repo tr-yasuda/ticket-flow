@@ -360,34 +360,30 @@ describe("GET /api/organizations/:organizationId/dashboard", () => {
       title: "org b ticket",
     });
 
-    const response = await getDashboardRequest(ownerAToken, organizationAId);
+    const aResponse = await getDashboardRequest(ownerAToken, organizationAId);
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.data.ticketSummary).toEqual({
+    expect(aResponse.status).toBe(200);
+    const aBody = await aResponse.json();
+    expect(aBody.success).toBe(true);
+    expect(aBody.data.ticketSummary).toEqual({
       total: 1,
       open: 1,
       inProgress: 0,
       closed: 0,
       undone: 1,
     });
-    expect(body.data.recentActivity).toHaveLength(1);
-    expect(body.data.recentActivity[0].entityId).toBe(
-      body.data.recentActivity[0].entityId,
-    );
+    expect(aBody.data.recentActivity).toHaveLength(1);
+    const aActivityId = aBody.data.recentActivity[0].entityId;
 
     const bResponse = await getDashboardRequest(ownerBToken, organizationBId);
+
+    expect(bResponse.status).toBe(200);
     const bBody = await bResponse.json();
+    expect(bBody.success).toBe(true);
     expect(bBody.data.recentActivity).toHaveLength(1);
-    expect(
-      bBody.data.recentActivity.every(
-        (a: { entityId: string }) =>
-          !body.data.recentActivity.some(
-            (aa: { entityId: string }) => aa.entityId === a.entityId,
-          ),
-      ),
-    ).toBe(true);
+    const bActivityId = bBody.data.recentActivity[0].entityId;
+
+    expect(aActivityId).not.toBe(bActivityId);
   });
 
   it("最近の活動を監査ログから返す", async () => {
