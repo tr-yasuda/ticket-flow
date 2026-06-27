@@ -762,7 +762,11 @@ describe("tickets-controller", () => {
         data: { tickets: [], total: 0 },
       });
       const c = createTestContext({
-        query: { assignee: "550e8400-e29b-41d4-a716-446655440002" },
+        query: {
+          page: 1,
+          perPage: 20,
+          assignee: "550e8400-e29b-41d4-a716-446655440002",
+        },
         userId: "user-id",
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
       });
@@ -771,8 +775,23 @@ describe("tickets-controller", () => {
 
       expect(ticketService.listTickets).toHaveBeenCalledWith(
         expect.objectContaining({
+          organizationId: "550e8400-e29b-41d4-a716-446655440001",
+          skip: 0,
+          take: 20,
           assigneeId: "550e8400-e29b-41d4-a716-446655440002",
         }),
+      );
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          meta: expect.objectContaining({
+            page: 1,
+            perPage: 20,
+            total: 0,
+            totalPages: 1,
+          }),
+        }),
+        200,
       );
     });
 
