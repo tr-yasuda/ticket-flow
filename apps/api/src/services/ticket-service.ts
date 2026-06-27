@@ -220,7 +220,10 @@ export async function getTicketHistory(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<GetTicketHistoryResult> {
   try {
-    const ticket = await findTicketById(input, db);
+    const ticket = await findTicketById(
+      { organizationId: input.organizationId, ticketId: input.ticketId },
+      db,
+    );
     if (ticket === null) {
       return {
         success: false,
