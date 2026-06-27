@@ -59,6 +59,18 @@ export const listTicketsQuerySchema = z
       .union([z.string(), z.array(z.string())])
       .optional()
       .transform(parseStatusQuery),
+    assignee: z
+      .preprocess(
+        (value) =>
+          typeof value === "string" ? value.trim().toLowerCase() : value,
+        z
+          .union([
+            z.literal("none"),
+            z.string().uuid({ message: "担当者IDの形式が正しくありません" }),
+          ])
+          .optional(),
+      )
+      .transform((value) => (value === "none" ? null : value)),
   })
   .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
     message: "ページ範囲が大きすぎます",

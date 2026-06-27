@@ -137,10 +137,32 @@ export async function listTickets(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<ListTicketsResult> {
   try {
+    const normalizedInput: FindTicketsInput = {
+      ...input,
+      assigneeId:
+        input.assigneeId === undefined || input.assigneeId === null
+          ? input.assigneeId
+          : input.assigneeId.toLowerCase(),
+    };
+
     const result = await runInTransaction(db, async (tx) => {
+      if (
+        normalizedInput.assigneeId !== undefined &&
+        normalizedInput.assigneeId !== null
+      ) {
+        const isMember = await isUserOrganizationMember(
+          tx,
+          normalizedInput.organizationId,
+          normalizedInput.assigneeId,
+        );
+        if (!isMember) {
+          return { tickets: [], total: 0 };
+        }
+      }
+
       const [tickets, total] = await Promise.all([
-        findTicketsByOrganizationId(input, tx),
-        countTicketsByOrganizationId(input, tx),
+        findTicketsByOrganizationId(normalizedInput, tx),
+        countTicketsByOrganizationId(normalizedInput, tx),
       ]);
       return { tickets, total };
     });
@@ -619,11 +641,11 @@ export async function deleteTicket(
   }
 }
 
-async function assertUserIsOrganizationMember(
+async function isUserOrganizationMember(
   db: PrismaClient | Prisma.TransactionClient,
   organizationId: string,
   userId: string,
-): Promise<void> {
+): Promise<boolean> {
   const membership = await db.organizationMember.findUnique({
     where: {
       organizationId_userId: {
@@ -633,7 +655,17 @@ async function assertUserIsOrganizationMember(
     },
   });
 
-  if (membership === null) {
+  return membership !== null;
+}
+
+async function assertUserIsOrganizationMember(
+  db: PrismaClient | Prisma.TransactionClient,
+  organizationId: string,
+  userId: string,
+): Promise<void> {
+  const isMember = await isUserOrganizationMember(db, organizationId, userId);
+
+  if (!isMember) {
     throw new UserNotOrganizationMemberError(
       `ユーザー ${userId} は組織 ${organizationId} のメンバーではありません`,
     );

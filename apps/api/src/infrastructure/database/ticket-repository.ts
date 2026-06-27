@@ -52,6 +52,7 @@ export type FindTicketsInput = Readonly<{
   organizationId: string;
   search?: string;
   status?: TicketStatus[];
+  assigneeId?: string | null;
 }> &
   Pagination;
 
@@ -61,6 +62,16 @@ function normalizeSearch(search: string | undefined): string | undefined {
     return undefined;
   }
   return trimmed;
+}
+
+function normalizeAssigneeId(
+  assigneeId: string | null | undefined,
+): string | null | undefined {
+  if (assigneeId === undefined || assigneeId === null) {
+    return assigneeId;
+  }
+
+  return assigneeId.toLowerCase();
 }
 
 export function escapeLikePattern(value: string): string {
@@ -84,6 +95,20 @@ function buildStatusFilter(status: TicketStatus[] | undefined): Prisma.Sql {
 
   const uniqueStatuses = [...new Set(status)];
   return Prisma.sql`AND status IN (${Prisma.join(uniqueStatuses)})`;
+}
+
+function buildAssigneeFilter(
+  assigneeId: string | null | undefined,
+): Prisma.Sql {
+  if (assigneeId === undefined) {
+    return Prisma.empty;
+  }
+
+  if (assigneeId === null) {
+    return Prisma.sql`AND assignee_id IS NULL`;
+  }
+
+  return Prisma.sql`AND assignee_id = ${assigneeId}`;
 }
 
 function toTicketListItem(
@@ -120,6 +145,7 @@ export async function countTicketsByOrganizationId(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<number> {
   const search = normalizeSearch(input.search);
+  const assigneeId = normalizeAssigneeId(input.assigneeId);
 
   if (search === undefined) {
     return db.ticket.count({
@@ -127,18 +153,21 @@ export async function countTicketsByOrganizationId(
         organizationId: input.organizationId,
         deletedAt: null,
         ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
+        ...(assigneeId !== undefined && { assigneeId }),
       },
     });
   }
 
   const pattern = buildSearchPattern(search);
   const statusFilter = buildStatusFilter(input.status);
+  const assigneeFilter = buildAssigneeFilter(assigneeId);
   const rows = await db.$queryRaw<Array<{ count: number }>>`
     SELECT COUNT(*) AS count
     FROM tickets
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
       ${statusFilter}
+      ${assigneeFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
@@ -158,6 +187,7 @@ export async function findTicketsByOrganizationId(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<TicketListItem[]> {
   const search = normalizeSearch(input.search);
+  const assigneeId = normalizeAssigneeId(input.assigneeId);
   const take = resolveTake(input.take);
   const skip = resolveSkip(input.skip);
 
@@ -167,6 +197,7 @@ export async function findTicketsByOrganizationId(
         organizationId: input.organizationId,
         deletedAt: null,
         ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
+        ...(assigneeId !== undefined && { assigneeId }),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take,
@@ -194,6 +225,7 @@ export async function findTicketsByOrganizationId(
 
   const pattern = buildSearchPattern(search);
   const statusFilter = buildStatusFilter(input.status);
+  const assigneeFilter = buildAssigneeFilter(assigneeId);
 
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
   // LOWER() で大文字小文字を区別せず、PRAGMA 等の設定差分に依存しません。
@@ -233,6 +265,7 @@ export async function findTicketsByOrganizationId(
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
       ${statusFilter}
+      ${assigneeFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
         OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
