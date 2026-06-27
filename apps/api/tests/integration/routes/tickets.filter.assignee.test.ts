@@ -17,7 +17,16 @@ async function filterTicketsRequest(
   organizationId: string,
   query: Record<string, string | string[]> = {},
 ): Promise<Response> {
-  const params = new URLSearchParams(query);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        params.append(key, item);
+      }
+    } else {
+      params.append(key, value);
+    }
+  }
   const url = `/api/organizations/${organizationId}/tickets?${params.toString()}`;
   return app.request(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
