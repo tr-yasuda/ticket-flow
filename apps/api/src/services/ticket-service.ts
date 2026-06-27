@@ -1,6 +1,11 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
-import { createAuditLog, type AuditLogValues } from "../domain/audit-log.js";
+import {
+  AUDIT_LOG_ENTITY_TYPE_TICKET,
+  createAuditLog,
+  type AuditLogValues,
+  type AuditLogWithActor,
+} from "../domain/audit-log.js";
 import {
   createTicket as createTicketEntity,
   type CreateTicketInput as DomainCreateTicketInput,
@@ -18,7 +23,10 @@ import {
   updateTicketStatus as updateTicketStatusEntity,
   UserNotOrganizationMemberError,
 } from "../domain/ticket.js";
-import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
+import {
+  findAuditLogsByEntityWithActor,
+  saveAuditLog,
+} from "../infrastructure/database/audit-log-repository.js";
 import {
   countTicketsByOrganizationId,
   findTicketById,
@@ -191,6 +199,53 @@ export async function getTicket(
     }
 
     return { success: true, data: { ticket } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
+export type GetTicketHistoryInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  take?: number;
+  skip?: number;
+}>;
+
+export type GetTicketHistoryResult =
+  | { success: true; data: { history: readonly AuditLogWithActor[] } }
+  | { success: false; error: TicketServiceError };
+
+export async function getTicketHistory(
+  input: GetTicketHistoryInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<GetTicketHistoryResult> {
+  try {
+    const ticket = await findTicketById(
+      { organizationId: input.organizationId, ticketId: input.ticketId },
+      db,
+    );
+    if (ticket === null) {
+      return {
+        success: false,
+        error: {
+          type: "ticket-not-found",
+          message: "チケットが見つかりません",
+        },
+      };
+    }
+
+    const history = await findAuditLogsByEntityWithActor(
+      {
+        organizationId: input.organizationId,
+        entityType: AUDIT_LOG_ENTITY_TYPE_TICKET,
+        entityId: ticket.id,
+        take: input.take,
+        skip: input.skip,
+      },
+      db,
+    );
+
+    return { success: true, data: { history } };
   } catch (error) {
     return mapServiceError(error);
   }

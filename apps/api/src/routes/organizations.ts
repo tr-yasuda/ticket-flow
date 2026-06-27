@@ -40,6 +40,7 @@ import {
 } from "../controllers/schemas/organization-member-schema.js";
 import {
   createTicketBodySchema,
+  listTicketHistoryQuerySchema,
   listTicketsQuerySchema,
   ticketIdParamSchema,
   updateTicketAssigneeBodySchema,
@@ -51,6 +52,7 @@ import {
   createTicketController,
   deleteTicketController,
   getTicketController,
+  getTicketHistoryController,
   listTicketsController,
   updateTicketAssigneeController,
   updateTicketController,
@@ -180,6 +182,20 @@ const listTicketsRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 300,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:list`,
   message: "チケット一覧取得は時間あたりの上限に達しました",
+});
+
+const listTicketHistoryRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 3000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:tickets:history`,
+  message: "この組織でのチケット変更履歴取得は時間あたりの上限に達しました",
+});
+
+const listTicketHistoryRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 300,
+  keyGenerator: (c) => `user:${c.get("userId")}:tickets:history`,
+  message: "チケット変更履歴取得は時間あたりの上限に達しました",
 });
 
 const listCommentsRateLimitByOrganization = createRateLimitMiddleware({
@@ -401,6 +417,15 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         organizationScopeMiddleware,
         sValidator("param", ticketIdParamSchema, validationHook),
         getTicketController,
+      )
+      .get(
+        "/:organizationId/tickets/:ticketId/history",
+        organizationScopeMiddleware,
+        listTicketHistoryRateLimitByOrganization,
+        listTicketHistoryRateLimitByUser,
+        sValidator("param", ticketIdParamSchema, validationHook),
+        sValidator("query", listTicketHistoryQuerySchema, validationHook),
+        getTicketHistoryController,
       )
       .patch(
         "/:organizationId/tickets/:ticketId",

@@ -6,9 +6,16 @@ import {
 } from "@ticket-flow/shared";
 import type { Context } from "hono";
 
-import { createAuditLog } from "../domain/audit-log.js";
+import {
+  AUDIT_LOG_ENTITY_TYPE_TICKET,
+  createAuditLog,
+  type AuditLogWithActor,
+} from "../domain/audit-log.js";
 import type { Ticket, TicketListItem } from "../domain/ticket.js";
-import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
+import {
+  countAuditLogsByEntity,
+  saveAuditLog,
+} from "../infrastructure/database/audit-log-repository.js";
 import { countCommentsByTicketId } from "../infrastructure/database/comment-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { getValidatedJson } from "../lib/validated-json.js";
@@ -16,6 +23,7 @@ import {
   createTicket,
   deleteTicket,
   getTicket,
+  getTicketHistory,
   listTickets,
   updateTicket,
   updateTicketAssignee,
@@ -27,6 +35,7 @@ import { getRequiredContextValue } from "./context-helpers.js";
 import { type ErrorMapping } from "./error-mapping.js";
 import {
   type CreateTicketBody,
+  type ListTicketHistoryQuery,
   type ListTicketsQuery,
   type TicketIdParamSchema,
   type UpdateTicketAssigneeBody,
@@ -63,6 +72,17 @@ function serializeTicketListItem(ticket: TicketListItem, commentCount: number) {
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
     commentCount,
+  };
+}
+
+function serializeAuditLog(log: AuditLogWithActor) {
+  return {
+    id: log.id,
+    actor: log.actor,
+    action: log.action,
+    oldValues: log.oldValues,
+    newValues: log.newValues,
+    createdAt: log.createdAt.toISOString(),
   };
 }
 
@@ -292,6 +312,48 @@ export async function getTicketController(c: Context) {
 
   return c.json(
     createApiSuccessResponse(serializeTicket(result.data.ticket, commentCount)),
+    HttpStatus.OK,
+  );
+}
+
+export async function getTicketHistoryController(c: Context) {
+  const organizationId = getRequiredContextValue(c, "organizationId");
+  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const { page, perPage } = c.req.valid(
+    "query" as never,
+  ) as ListTicketHistoryQuery;
+
+  const skip = (page - 1) * perPage;
+
+  const result = await getTicketHistory({
+    organizationId,
+    ticketId,
+    take: perPage,
+    skip,
+  });
+
+  if (!result.success) {
+    const { code, status, message } = mapGetTicketError(result.error);
+    return c.json(createApiErrorResponse(code, message), status);
+  }
+
+  const total = await countAuditLogsByEntity({
+    organizationId,
+    entityType: AUDIT_LOG_ENTITY_TYPE_TICKET,
+    entityId: ticketId,
+  });
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  return c.json(
+    createApiPaginatedSuccessResponse(
+      { history: result.data.history.map(serializeAuditLog) },
+      {
+        page,
+        perPage,
+        total,
+        totalPages,
+      },
+    ),
     HttpStatus.OK,
   );
 }
