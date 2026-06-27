@@ -22,6 +22,7 @@ export type CommentWithAuthor = Readonly<{
   organizationId: string;
   content: string;
   author: CommentAuthor;
+  isEdited: boolean;
   createdAt: string;
   updatedAt: string;
 }>;

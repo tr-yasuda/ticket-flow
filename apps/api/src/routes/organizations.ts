@@ -11,6 +11,7 @@ import { createRequireRoleMiddleware } from "../controllers/authorization-middle
 import {
   createCommentController,
   listCommentsController,
+  updateCommentController,
 } from "../controllers/comments-controller.js";
 import { createOrganizationInvitationController } from "../controllers/organization-invitations-controller.js";
 import {
@@ -27,6 +28,8 @@ import {
 import {
   createCommentBodySchema,
   listCommentsQuerySchema,
+  updateCommentBodySchema,
+  updateCommentParamsSchema,
 } from "../controllers/schemas/comment-schema.js";
 import {
   deleteOrganizationMemberParamsSchema,
@@ -204,6 +207,20 @@ const createCommentRateLimitByUser = createRateLimitMiddleware({
   message: "コメント投稿は時間あたりの上限に達しました",
 });
 
+const updateCommentRateLimitByOrganization = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 1000,
+  keyGenerator: (c) => `org:${c.get("organizationId")}:comments:update`,
+  message: "この組織でのコメント編集は時間あたりの上限に達しました",
+});
+
+const updateCommentRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 100,
+  keyGenerator: (c) => `user:${c.get("userId")}:comments:update`,
+  message: "コメント編集は時間あたりの上限に達しました",
+});
+
 const updateMemberRoleRateLimitByOrganization = createRateLimitMiddleware({
   windowMs: 60 * 60 * 1000,
   maxRequests: 100,
@@ -328,6 +345,16 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         sValidator("param", ticketIdParamSchema, validationHook),
         sValidator("json", createCommentBodySchema, validationHook),
         createCommentController,
+      )
+      .patch(
+        "/:organizationId/tickets/:ticketId/comments/:commentId",
+        organizationScopeMiddleware,
+        requireMemberMiddleware,
+        updateCommentRateLimitByOrganization,
+        updateCommentRateLimitByUser,
+        sValidator("param", updateCommentParamsSchema, validationHook),
+        sValidator("json", updateCommentBodySchema, validationHook),
+        updateCommentController,
       )
       .get(
         "/:organizationId/tickets/:ticketId",
