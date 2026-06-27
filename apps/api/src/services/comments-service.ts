@@ -3,16 +3,22 @@ import { type CommentWithAuthor } from "@ticket-flow/shared";
 
 import {
   COMMENT_AUDIT_ACTION_CREATE,
+  COMMENT_AUDIT_ACTION_UPDATE,
   COMMENT_AUDIT_ENTITY_TYPE,
+  CommentForbiddenError,
+  CommentNotFoundError,
   CommentValidationError,
   createComment as createCommentEntity,
+  updateCommentContent,
 } from "../domain/comment.js";
 import { TicketNotFoundError } from "../domain/ticket.js";
 import {
   countCommentsByTicketId,
+  findCommentById,
   findCommentWithAuthorById,
   findCommentsWithAuthorByTicketId,
   saveComment,
+  updateComment as updateCommentInRepository,
 } from "../infrastructure/database/comment-repository.js";
 import { type Pagination } from "../infrastructure/database/pagination.js";
 import { findTicketById } from "../infrastructure/database/ticket-repository.js";
@@ -42,7 +48,9 @@ export class CommentAuthorNotMemberError extends Error {
 
 export type CommentServiceError = Readonly<
   | { type: "ticket-not-found"; message: string }
+  | { type: "comment-not-found"; message: string }
   | { type: "author-not-member"; message: string }
+  | { type: "not-comment-author"; message: string }
   | { type: "validation-error"; message: string }
   | { type: "audit-log-error"; message: string }
   | { type: "unknown-error"; message: string }
@@ -129,6 +137,110 @@ export async function createComment(
   }
 }
 
+export type UpdateCommentServiceInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  commentId: string;
+  actorId: string;
+  content: string;
+}>;
+
+export type UpdateCommentResult =
+  | { success: true; data: { comment: CommentWithAuthor } }
+  | { success: false; error: CommentServiceError };
+
+export async function updateComment(
+  input: UpdateCommentServiceInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<UpdateCommentResult> {
+  try {
+    const updated = await runInTransaction(db, async (tx) => {
+      const membership = await tx.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: input.organizationId,
+            userId: input.actorId,
+          },
+        },
+      });
+      if (membership === null) {
+        throw new CommentAuthorNotMemberError(
+          `ユーザー ${input.actorId} は組織 ${input.organizationId} のメンバーではありません`,
+        );
+      }
+
+      const existing = await findCommentById(
+        {
+          commentId: input.commentId,
+          organizationId: input.organizationId,
+        },
+        tx,
+      );
+      if (existing === null || existing.ticketId !== input.ticketId) {
+        throw new CommentNotFoundError(
+          `コメント ${input.commentId} が見つかりません`,
+        );
+      }
+
+      if (existing.authorId !== input.actorId) {
+        throw new CommentForbiddenError(
+          `コメント ${input.commentId} は投稿者のみ編集できます`,
+        );
+      }
+
+      const updatedEntity = updateCommentContent(existing, input.content);
+      if (updatedEntity.content === existing.content) {
+        const unchanged = await findCommentWithAuthorById(
+          {
+            commentId: input.commentId,
+            organizationId: input.organizationId,
+          },
+          tx,
+        );
+        if (unchanged === null) {
+          throw new Error(
+            `更新したコメント ${input.commentId} の取得に失敗しました`,
+          );
+        }
+        return unchanged;
+      }
+
+      const commentWithAuthor = await updateCommentInRepository(
+        {
+          commentId: input.commentId,
+          organizationId: input.organizationId,
+          content: updatedEntity.content,
+        },
+        tx,
+      );
+
+      // NOTE: 監査ログに旧/新 content 全文を記録する。機密情報が含まれる可能性があるため、
+      // 監査ログ閲覧権限と保持期間は別途厳格に管理すること。
+      const auditResult = await saveAuditLog(
+        {
+          organizationId: input.organizationId,
+          actorId: input.actorId,
+          entityType: COMMENT_AUDIT_ENTITY_TYPE,
+          entityId: input.commentId,
+          action: COMMENT_AUDIT_ACTION_UPDATE,
+          oldValues: { content: existing.content },
+          newValues: { content: commentWithAuthor.content },
+        },
+        tx,
+      );
+      if (!auditResult.success) {
+        throw new AuditLogError(auditResult.error.message);
+      }
+
+      return commentWithAuthor;
+    });
+
+    return { success: true, data: { comment: updated } };
+  } catch (error) {
+    return mapServiceError(error);
+  }
+}
+
 class AuditLogError extends Error {
   constructor(message: string) {
     super(message);
@@ -193,6 +305,20 @@ function mapServiceError(error: unknown): {
     };
   }
 
+  if (error instanceof CommentNotFoundError) {
+    return {
+      success: false,
+      error: { type: "comment-not-found", message: error.message },
+    };
+  }
+
+  if (error instanceof CommentForbiddenError) {
+    return {
+      success: false,
+      error: { type: "not-comment-author", message: error.message },
+    };
+  }
+
   if (error instanceof CommentAuthorNotMemberError) {
     return {
       success: false,
@@ -216,6 +342,15 @@ function mapServiceError(error: unknown): {
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     console.error("Prisma error:", error);
+    if (error.code === "P2025") {
+      return {
+        success: false,
+        error: {
+          type: "comment-not-found",
+          message: "コメントが見つかりません",
+        },
+      };
+    }
     return {
       success: false,
       error: {

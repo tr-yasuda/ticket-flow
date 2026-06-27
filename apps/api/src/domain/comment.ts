@@ -22,11 +22,26 @@ export type Comment = Readonly<{
 
 export const COMMENT_AUDIT_ENTITY_TYPE = "comment";
 export const COMMENT_AUDIT_ACTION_CREATE = "create";
+export const COMMENT_AUDIT_ACTION_UPDATE = "update";
 
 export class CommentValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "CommentValidationError";
+  }
+}
+
+export class CommentNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CommentNotFoundError";
+  }
+}
+
+export class CommentForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CommentForbiddenError";
   }
 }
 
@@ -75,6 +90,23 @@ export function createComment(input: CreateCommentInput): Comment {
     content: parsed.content,
     createdAt: now,
     updatedAt: now,
+  });
+}
+
+export function validateCommentContent(content: string): string {
+  return parseWith(commentContentSchema, content);
+}
+
+export function updateCommentContent(
+  comment: Comment,
+  content: string,
+): Comment {
+  const parsedContent = validateCommentContent(content);
+
+  return parseWith(commentSchema, {
+    ...comment,
+    content: parsedContent,
+    updatedAt: new Date(),
   });
 }
 
