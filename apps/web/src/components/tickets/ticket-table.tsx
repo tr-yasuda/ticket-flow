@@ -41,7 +41,9 @@ export function TicketTable({
 
   if (error !== null) {
     const message =
-      error instanceof ApiError ? error.message : getApiErrorMessage(error);
+      error instanceof ApiError && error.source === "server"
+        ? error.message
+        : getApiErrorMessage(error);
 
     return (
       <ErrorState

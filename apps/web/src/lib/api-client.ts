@@ -17,6 +17,8 @@ export type ApiErrorDetail = Readonly<{
   message: string;
 }>;
 
+export type ApiErrorSource = "client" | "server";
+
 function isApiErrorDetail(value: unknown): value is ApiErrorDetail {
   return (
     typeof value === "object" &&
@@ -41,6 +43,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly details?: ReadonlyArray<ApiErrorDetail>,
+    public readonly source: ApiErrorSource = "client",
   ) {
     super(message);
     this.name = "ApiError";
@@ -115,7 +118,7 @@ async function performRefresh(): Promise<
 > {
   const token = getRefreshToken();
   if (token === null) {
-    throw new ApiError("Refresh token is missing", 401);
+    throw new ApiError("Refresh token is missing", 401, undefined, "client");
   }
 
   if (refreshingPromise !== null) {
@@ -130,19 +133,34 @@ async function performRefresh(): Promise<
       });
 
       if (!response.ok) {
-        throw new ApiError("Refresh failed", response.status);
+        throw new ApiError(
+          "Refresh failed",
+          response.status,
+          undefined,
+          "client",
+        );
       }
 
       let body: unknown;
       try {
         body = await response.json();
       } catch {
-        throw new ApiError("Invalid refresh response", 500);
+        throw new ApiError(
+          "Invalid refresh response",
+          500,
+          undefined,
+          "client",
+        );
       }
 
       const { accessToken, refreshToken } = extractTokens(body);
       if (accessToken === undefined || accessToken === "") {
-        throw new ApiError("Invalid refresh response", 500);
+        throw new ApiError(
+          "Invalid refresh response",
+          500,
+          undefined,
+          "client",
+        );
       }
       return {
         accessToken,
@@ -202,6 +220,7 @@ const handleErrorResponse: AfterResponseHook = async (
         body.error.message,
         response.status,
         parseDetails(body.error.details),
+        "server",
       );
     }
     const legacyBody = body as { error?: unknown; details?: unknown };
@@ -213,12 +232,13 @@ const handleErrorResponse: AfterResponseHook = async (
       message,
       response.status,
       parseDetails(legacyBody.details),
+      "server",
     );
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError("Request failed", response.status);
+    throw new ApiError("Request failed", response.status, undefined, "client");
   }
 };
 
