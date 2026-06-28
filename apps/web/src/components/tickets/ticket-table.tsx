@@ -34,6 +34,11 @@ export function TicketTable({
   getRowHref,
   emptyAction,
 }: TicketTableProps): ReactElement {
+  const columns = useMemo(
+    () => createTicketTableColumns(getRowHref),
+    [getRowHref],
+  );
+
   if (isLoading) {
     return <LoadingSpinner message="チケットを読み込んでいます…" />;
   }
@@ -59,11 +64,6 @@ export function TicketTable({
       </EmptyState>
     );
   }
-
-  const columns = useMemo(
-    () => createTicketTableColumns(getRowHref),
-    [getRowHref],
-  );
 
   return (
     <div className="rounded-md border">
