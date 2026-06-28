@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, type ReactElement } from "react";
+import { useCallback, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
@@ -82,12 +82,15 @@ export function OrganizationTicketsPage({
     currentPage * itemsPerPage,
   );
 
-  const handleRowClick = (ticket: TicketListItem) => {
-    void navigate({
-      to: "/app/$organizationId/tickets/$ticketId",
-      params: { organizationId, ticketId: ticket.id },
-    });
-  };
+  const handleRowClick = useCallback(
+    (ticket: TicketListItem) => {
+      void navigate({
+        to: "/app/$organizationId/tickets/$ticketId",
+        params: { organizationId, ticketId: ticket.id },
+      });
+    },
+    [navigate, organizationId],
+  );
 
   return (
     <OrganizationTicketsPageView
