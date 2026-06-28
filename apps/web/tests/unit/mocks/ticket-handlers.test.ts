@@ -58,6 +58,44 @@ describe("ticket mock handlers", () => {
     });
   });
 
+  it("無効な page クエリは 400", async () => {
+    await expect(
+      apiClient.get("organizations/demo-org-001/tickets?page=abc").json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "page" }),
+      ]),
+    });
+  });
+
+  it("無効な perPage クエリは 400", async () => {
+    await expect(
+      apiClient.get("organizations/demo-org-001/tickets?perPage=999").json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "perPage" }),
+      ]),
+    });
+  });
+
+  it("ページ範囲が skip 上限を超える場合は 400", async () => {
+    await expect(
+      apiClient
+        .get("organizations/demo-org-001/tickets?page=1002&perPage=10")
+        .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "page" }),
+      ]),
+    });
+  });
+
   it("特定のチケットを取得できる", async () => {
     const response = await apiClient
       .get("organizations/demo-org-001/tickets/demo-ticket-001")

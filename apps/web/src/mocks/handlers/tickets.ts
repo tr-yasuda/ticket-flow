@@ -70,42 +70,95 @@ const demoTicketListItems = demoTickets.map(toTicketListItem);
 const MIN_PAGE = 1;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;
+const MAX_SKIP = 10000;
 
-function normalizePage(value: number): number {
-  return Math.max(MIN_PAGE, Math.floor(value));
-}
+type PaginationParseResult =
+  | { ok: true; page: number; perPage: number }
+  | { ok: false; details: ApiValidationErrorDetail[] };
 
-function normalizePerPage(value: number): number {
-  return Math.min(MAX_PER_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
-}
-
-function parsePaginationQuery(url: URL): {
-  page: number;
-  perPage: number;
-} {
-  const rawPage = Number(url.searchParams.get("page") ?? String(MIN_PAGE));
-  const rawPerPage = Number(
-    url.searchParams.get("perPage") ?? String(DEFAULT_PER_PAGE),
-  );
-
-  if (!Number.isFinite(rawPage) || !Number.isFinite(rawPerPage)) {
-    return {
-      page: MIN_PAGE,
-      perPage: DEFAULT_PER_PAGE,
-    };
+function parseIntQueryParam(
+  value: string | null,
+  options: Readonly<{ defaultValue: number; min: number; max: number }>,
+): { ok: true; value: number } | { ok: false } {
+  if (value === null) {
+    return { ok: true, value: options.defaultValue };
   }
 
-  return {
-    page: normalizePage(rawPage),
-    perPage: normalizePerPage(rawPerPage),
-  };
+  const parsed = Number(value);
+  if (
+    !Number.isFinite(parsed) ||
+    !Number.isInteger(parsed) ||
+    parsed < options.min ||
+    parsed > options.max
+  ) {
+    return { ok: false };
+  }
+
+  return { ok: true, value: parsed };
+}
+
+function parsePaginationQuery(url: URL): PaginationParseResult {
+  const pageParam = url.searchParams.get("page");
+  const perPageParam = url.searchParams.get("perPage");
+
+  const pageResult = parseIntQueryParam(pageParam, {
+    defaultValue: MIN_PAGE,
+    min: MIN_PAGE,
+    max: 10000,
+  });
+  const perPageResult = parseIntQueryParam(perPageParam, {
+    defaultValue: DEFAULT_PER_PAGE,
+    min: MIN_PAGE,
+    max: MAX_PER_PAGE,
+  });
+
+  const details: ApiValidationErrorDetail[] = [];
+  if (!pageResult.ok) {
+    details.push({
+      field: "page",
+      message: "ページ番号は1以上の整数を指定してください",
+    });
+  }
+  if (!perPageResult.ok) {
+    details.push({
+      field: "perPage",
+      message: "1ページあたり件数は1以上100以下の整数を指定してください",
+    });
+  }
+  if (!pageResult.ok || !perPageResult.ok) {
+    return { ok: false, details };
+  }
+
+  const page = pageResult.value;
+  const perPage = perPageResult.value;
+  if ((page - 1) * perPage > MAX_SKIP) {
+    details.push({
+      field: "page",
+      message: "ページ範囲が大きすぎます",
+    });
+    return { ok: false, details };
+  }
+
+  return { ok: true, page, perPage };
 }
 
 export const ticketHandlers = [
   http.get("/api/organizations/:id/tickets", ({ request, params }) => {
     const id = normalizePathParam(params.id);
     const url = new URL(request.url);
-    const { page, perPage } = parsePaginationQuery(url);
+    const parsed = parsePaginationQuery(url);
+    if (!parsed.ok) {
+      return HttpResponse.json(
+        createApiErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          "入力内容を確認してください",
+          parsed.details,
+        ),
+        { status: 400 },
+      );
+    }
+
+    const { page, perPage } = parsed;
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
