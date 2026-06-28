@@ -53,10 +53,16 @@ function isNonNegativeInteger(value: unknown): value is number {
 }
 
 function normalizePage(value: number): number {
+  if (!Number.isFinite(value)) {
+    return MIN_PAGE;
+  }
   return Math.max(MIN_PAGE, Math.floor(value));
 }
 
 function normalizePerPage(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PER_PAGE;
+  }
   return Math.min(MAX_PER_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
 }
 
