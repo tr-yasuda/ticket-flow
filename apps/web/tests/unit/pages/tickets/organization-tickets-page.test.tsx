@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { AuthProvider } from "@/contexts/auth-context";
 import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
-import { OrganizationTicketsPageView } from "@/pages/organization-tickets-page";
+import { OrganizationTicketsPageView } from "@/pages/tickets/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
 
 beforeEach(() => {
@@ -230,7 +230,7 @@ describe("OrganizationTicketsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("タイトルリンククリックで詳細 URL へ遷移する", async () => {
+  it("タイトルリンククリックで詳細 skeleton へ遷移する", async () => {
     const router = renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
@@ -244,6 +244,12 @@ describe("OrganizationTicketsPage", () => {
       expect(router.state.location.pathname).toBe(
         "/app/demo-org-001/tickets/demo-ticket-001",
       );
+      expect(screen.getByTestId("ticket-detail-ticket-id")).toHaveTextContent(
+        "demo-ticket-001",
+      );
+      expect(
+        screen.getByText("チケット詳細画面は準備中です。"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -82,7 +82,6 @@ export function OrganizationTicketsPage({
 
   const getRowHref = useCallback(
     (ticket: TicketListItem) => {
-      // TODO: チケット詳細画面実装時に正しいルートへ遷移させる
       return `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`;
     },
     [organizationId],
