@@ -14,7 +14,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value !== "";
+  return typeof value === "string" && value.trim() !== "";
 }
 
 function extractTokens(
