@@ -1,5 +1,7 @@
 import {
   createMemoryHistory,
+  createRootRoute,
+  createRoute,
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
@@ -16,7 +18,10 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
 import { server } from "@/mocks/server.js";
-import { OrganizationTicketsPageView } from "@/pages/tickets/organization-tickets-page";
+import {
+  OrganizationTicketsPage,
+  OrganizationTicketsPageView,
+} from "@/pages/tickets/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
 
 beforeEach(() => {
@@ -49,6 +54,41 @@ function renderRoute(initialRoute: string, authenticated = false) {
 
   const router = createRouter({
     routeTree,
+    history: createMemoryHistory({ initialEntries: [initialRoute] }),
+    defaultPendingMinMs: 0,
+  });
+
+  render(
+    <AuthProvider>
+      <OrganizationMembershipProvider>
+        <RouterProvider router={router} />
+      </OrganizationMembershipProvider>
+    </AuthProvider>,
+  );
+
+  return router;
+}
+
+function renderPageWithPerPage(
+  initialRoute: string,
+  { organizationId, perPage }: { organizationId: string; perPage: number },
+) {
+  setTokens("mock-access-token", "mock-refresh-token");
+
+  const rootRoute = createRootRoute();
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/app/$organizationId/tickets",
+    component: () => (
+      <OrganizationTicketsPage
+        organizationId={organizationId}
+        perPage={perPage}
+      />
+    ),
+  });
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([pageRoute]),
     history: createMemoryHistory({ initialEntries: [initialRoute] }),
     defaultPendingMinMs: 0,
   });
@@ -162,7 +202,10 @@ describe("OrganizationTicketsPage", () => {
   });
 
   it("ページ切り替えで表示チケットが変わる", async () => {
-    renderRoute("/app/demo-org-001/tickets", true);
+    renderPageWithPerPage("/app/demo-org-001/tickets", {
+      organizationId: "demo-org-001",
+      perPage: 2,
+    });
     await waitFor(() => {
       expect(screen.getByText("ログイン画面の UI 改善")).toBeInTheDocument();
     });

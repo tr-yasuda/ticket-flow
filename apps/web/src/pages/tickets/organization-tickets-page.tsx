@@ -63,16 +63,16 @@ export function OrganizationTicketsPageView({
   );
 }
 
-type OrganizationTicketsPageProps = {
-  organizationId: string;
-};
+const DEFAULT_ITEMS_PER_PAGE = 20;
 
-// テストでページ切り替えを確認しやすくするため小さく設定。
-// ユーザーが変更できるようにする際は、この定数を設定 UI へ置き換える。
-const itemsPerPage = 2;
+export type OrganizationTicketsPageProps = {
+  organizationId: string;
+  perPage?: number;
+};
 
 export function OrganizationTicketsPage({
   organizationId,
+  perPage = DEFAULT_ITEMS_PER_PAGE,
 }: OrganizationTicketsPageProps): ReactElement {
   const navigate = useNavigate();
   const [requestedPage, setRequestedPage] = useState(1);
@@ -80,7 +80,7 @@ export function OrganizationTicketsPage({
     useTickets({
       organizationId,
       page: requestedPage,
-      perPage: itemsPerPage,
+      perPage,
       enabled: organizationId !== "",
     });
 
