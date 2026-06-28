@@ -4,7 +4,6 @@ import {
   createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
 } from "@ticket-flow/shared";
-import type { Context } from "hono";
 
 import {
   AUDIT_LOG_ENTITY_TYPE_TICKET,
@@ -18,7 +17,13 @@ import {
 } from "../infrastructure/database/audit-log-repository.js";
 import { countCommentsByTicketId } from "../infrastructure/database/comment-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson, getValidatedQuery } from "../lib/validated-json.js";
+import {
+  type CombinedInput,
+  type JsonInput,
+  type ParamInput,
+  type QueryInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   createTicket,
   deleteTicket,
@@ -43,6 +48,50 @@ import {
   type UpdateTicketPriorityBody,
   type UpdateTicketStatusBody,
 } from "./schemas/ticket-schema.js";
+
+type CreateTicketControllerContext = ValidatedContext<
+  JsonInput<CreateTicketBody>
+>;
+
+type ListTicketsControllerContext = ValidatedContext<
+  QueryInput<ListTicketsQuery>
+>;
+
+type TicketIdParamControllerContext = ValidatedContext<
+  ParamInput<TicketIdParamSchema>
+>;
+
+type UpdateTicketControllerContext = ValidatedContext<
+  CombinedInput<ParamInput<TicketIdParamSchema>, JsonInput<UpdateTicketBody>>
+>;
+
+type UpdateTicketStatusControllerContext = ValidatedContext<
+  CombinedInput<
+    ParamInput<TicketIdParamSchema>,
+    JsonInput<UpdateTicketStatusBody>
+  >
+>;
+
+type UpdateTicketPriorityControllerContext = ValidatedContext<
+  CombinedInput<
+    ParamInput<TicketIdParamSchema>,
+    JsonInput<UpdateTicketPriorityBody>
+  >
+>;
+
+type UpdateTicketAssigneeControllerContext = ValidatedContext<
+  CombinedInput<
+    ParamInput<TicketIdParamSchema>,
+    JsonInput<UpdateTicketAssigneeBody>
+  >
+>;
+
+type GetTicketHistoryControllerContext = ValidatedContext<
+  CombinedInput<
+    ParamInput<TicketIdParamSchema>,
+    QueryInput<ListTicketHistoryQuery>
+  >
+>;
 
 function serializeTicket(ticket: Ticket, commentCount: number) {
   return {
@@ -178,10 +227,10 @@ async function recordTicketCreationAuditLog(
   }
 }
 
-export async function createTicketController(c: Context) {
+export async function createTicketController(c: CreateTicketControllerContext) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const createdBy = getRequiredContextValue(c, "userId");
-  const data = getValidatedJson<CreateTicketBody>(c);
+  const data = c.req.valid("json");
 
   const result = await createTicket({
     organizationId,
@@ -209,10 +258,10 @@ export async function createTicketController(c: Context) {
   );
 }
 
-export async function listTicketsController(c: Context) {
+export async function listTicketsController(c: ListTicketsControllerContext) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const { page, perPage, search, status, priority, assignee } =
-    getValidatedQuery<ListTicketsQuery>(c);
+    c.req.valid("query");
 
   const skip = (page - 1) * perPage;
 
@@ -294,9 +343,9 @@ function mapGetTicketError(error: TicketServiceError): {
   }
 }
 
-export async function getTicketController(c: Context) {
+export async function getTicketController(c: TicketIdParamControllerContext) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const { ticketId } = c.req.valid("param");
 
   const result = await getTicket({ organizationId, ticketId });
 
@@ -316,12 +365,12 @@ export async function getTicketController(c: Context) {
   );
 }
 
-export async function getTicketHistoryController(c: Context) {
+export async function getTicketHistoryController(
+  c: GetTicketHistoryControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const { page, perPage } = c.req.valid(
-    "query" as never,
-  ) as ListTicketHistoryQuery;
+  const { ticketId } = c.req.valid("param");
+  const { page, perPage } = c.req.valid("query");
 
   const skip = (page - 1) * perPage;
 
@@ -382,11 +431,11 @@ function mapUpdateTicketError(error: TicketServiceError): ErrorMapping {
   }
 }
 
-export async function updateTicketController(c: Context) {
+export async function updateTicketController(c: UpdateTicketControllerContext) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const data = getValidatedJson<UpdateTicketBody>(c);
+  const { ticketId } = c.req.valid("param");
+  const data = c.req.valid("json");
 
   const result = await updateTicket({
     organizationId,
@@ -451,11 +500,13 @@ function mapUpdateTicketStatusError(error: TicketServiceError): ErrorMapping {
   }
 }
 
-export async function updateTicketStatusController(c: Context) {
+export async function updateTicketStatusController(
+  c: UpdateTicketStatusControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const data = getValidatedJson<UpdateTicketStatusBody>(c);
+  const { ticketId } = c.req.valid("param");
+  const data = c.req.valid("json");
 
   const result = await updateTicketStatus({
     organizationId,
@@ -519,11 +570,13 @@ function mapUpdateTicketPriorityError(error: TicketServiceError): ErrorMapping {
   }
 }
 
-export async function updateTicketPriorityController(c: Context) {
+export async function updateTicketPriorityController(
+  c: UpdateTicketPriorityControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const data = getValidatedJson<UpdateTicketPriorityBody>(c);
+  const { ticketId } = c.req.valid("param");
+  const data = c.req.valid("json");
 
   const result = await updateTicketPriority({
     organizationId,
@@ -589,11 +642,13 @@ function mapUpdateTicketAssigneeError(error: TicketServiceError): ErrorMapping {
   }
 }
 
-export async function updateTicketAssigneeController(c: Context) {
+export async function updateTicketAssigneeController(
+  c: UpdateTicketAssigneeControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const updatedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const data = getValidatedJson<UpdateTicketAssigneeBody>(c);
+  const { ticketId } = c.req.valid("param");
+  const data = c.req.valid("json");
 
   const result = await updateTicketAssignee({
     organizationId,
@@ -639,10 +694,12 @@ function mapDeleteTicketError(error: TicketServiceError): ErrorMapping {
   }
 }
 
-export async function deleteTicketController(c: Context) {
+export async function deleteTicketController(
+  c: TicketIdParamControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const deletedBy = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
+  const { ticketId } = c.req.valid("param");
 
   const result = await deleteTicket({
     organizationId,
