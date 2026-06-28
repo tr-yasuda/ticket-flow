@@ -4,10 +4,14 @@ import {
   createApiSuccessResponse,
   type UpdateOrganizationMemberRoleInput,
 } from "@ticket-flow/shared";
-import type { Context } from "hono";
 
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import {
+  type CombinedInput,
+  type JsonInput,
+  type ParamInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   deleteOrganizationMember,
   updateOrganizationMemberRole,
@@ -33,6 +37,17 @@ type ErrorMapping = Readonly<{
   status: UpdateRoleErrorStatus;
 }>;
 
+type UpdateOrganizationMemberRoleControllerContext = ValidatedContext<
+  CombinedInput<
+    ParamInput<UpdateOrganizationMemberRoleParams>,
+    JsonInput<UpdateOrganizationMemberRoleInput>
+  >
+>;
+
+type DeleteOrganizationMemberControllerContext = ValidatedContext<
+  ParamInput<DeleteOrganizationMemberParams>
+>;
+
 function mapUpdateRoleErrorToResponse(
   error: UpdateOrganizationMemberRoleError,
 ): ErrorMapping {
@@ -48,14 +63,13 @@ function mapUpdateRoleErrorToResponse(
   }
 }
 
-export async function updateOrganizationMemberRoleController(c: Context) {
+export async function updateOrganizationMemberRoleController(
+  c: UpdateOrganizationMemberRoleControllerContext,
+) {
   const organizationId = c.get("organizationId") as string;
   const actorUserId = c.get("userId") as string;
-  const { userId: targetUserId } = c.req.valid(
-    "param" as never,
-  ) as UpdateOrganizationMemberRoleParams;
-  const { role: newRole } =
-    getValidatedJson<UpdateOrganizationMemberRoleInput>(c);
+  const { userId: targetUserId } = c.req.valid("param");
+  const { role: newRole } = c.req.valid("json");
 
   const result = await updateOrganizationMemberRole({
     organizationId,
@@ -113,12 +127,12 @@ function mapDeleteOrganizationMemberErrorToResponse(
   }
 }
 
-export async function deleteOrganizationMemberController(c: Context) {
+export async function deleteOrganizationMemberController(
+  c: DeleteOrganizationMemberControllerContext,
+) {
   const organizationId = c.get("organizationId") as string;
   const actorUserId = c.get("userId") as string;
-  const { userId: targetUserId } = c.req.valid(
-    "param" as never,
-  ) as DeleteOrganizationMemberParams;
+  const { userId: targetUserId } = c.req.valid("param");
 
   const result = await deleteOrganizationMember({
     organizationId,

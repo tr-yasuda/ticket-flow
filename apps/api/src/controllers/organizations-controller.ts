@@ -9,14 +9,28 @@ import type { Context } from "hono";
 
 import type { OrganizationMemberRole } from "../domain/organization-member.js";
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import {
+  type JsonInput,
+  type QueryInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   createOrganization,
   getOrganizationMembers,
   getOrganizationsByUserId,
 } from "../services/organizations-service.js";
 
-export async function createOrganizationController(c: Context) {
+type CreateOrganizationControllerContext = ValidatedContext<
+  JsonInput<CreateOrganizationInput>
+>;
+
+type ListOrganizationMembersControllerContext = ValidatedContext<
+  QueryInput<{ page: number; perPage: number }>
+>;
+
+export async function createOrganizationController(
+  c: CreateOrganizationControllerContext,
+) {
   const userId = c.get("userId");
   if (userId === undefined) {
     return c.json(
@@ -25,7 +39,7 @@ export async function createOrganizationController(c: Context) {
     );
   }
 
-  const data = getValidatedJson<CreateOrganizationInput>(c);
+  const data = c.req.valid("json");
   const result = await createOrganization({
     name: data.name,
     slug: data.slug,
@@ -83,12 +97,11 @@ export async function getOrganizationController(c: Context) {
   );
 }
 
-export async function getOrganizationMembersController(c: Context) {
+export async function getOrganizationMembersController(
+  c: ListOrganizationMembersControllerContext,
+) {
   const organizationId = c.get("organizationId") as string;
-  const { page, perPage } = c.req.valid("query" as never) as {
-    page: number;
-    perPage: number;
-  };
+  const { page, perPage } = c.req.valid("query");
 
   const result = await getOrganizationMembers({
     organizationId,
