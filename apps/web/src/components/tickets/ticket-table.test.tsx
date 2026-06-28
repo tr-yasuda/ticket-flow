@@ -140,6 +140,23 @@ describe("TicketTable", () => {
     expect(link).toHaveAttribute("href", "/");
   });
 
+  it("同一オリジンでも pathname が // で始まる絶対 URL は / にフォールバックする", async () => {
+    const unsafeOriginUrl = `${window.location.origin}//evil.com`;
+    renderWithRouter(
+      <TicketTable
+        tickets={sampleTickets}
+        getRowHref={() => unsafeOriginUrl}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
+      ).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: /ログイン画面の UI 改善/i });
+    expect(link).toHaveAttribute("href", "/");
+  });
+
   it("行は button ロールにならない", async () => {
     renderWithRouter(
       <TicketTable

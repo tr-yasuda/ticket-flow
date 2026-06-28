@@ -47,7 +47,14 @@ function toSafeHref(raw: string): string {
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin === window.location.origin) {
-      return `${url.pathname}${url.search}${url.hash}`;
+      let pathname = url.pathname;
+      if (!pathname.startsWith("/")) {
+        pathname = `/${pathname}`;
+      }
+      if (pathname.startsWith("//")) {
+        return "/";
+      }
+      return `${pathname}${url.search}${url.hash}`;
     }
   } catch {
     // 無効な URL はフォールバック
