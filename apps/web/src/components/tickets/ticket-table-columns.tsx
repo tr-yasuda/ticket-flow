@@ -36,6 +36,10 @@ function AssigneeCell({ assignee }: { assignee: TicketAssignee | null }) {
 }
 
 function toSafeHref(raw: string): string {
+  if (raw === "") {
+    return "/";
+  }
+
   if (raw.startsWith("/") && !raw.startsWith("//")) {
     return raw;
   }
@@ -43,7 +47,7 @@ function toSafeHref(raw: string): string {
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin === window.location.origin) {
-      return raw;
+      return `${url.pathname}${url.search}${url.hash}`;
     }
   } catch {
     // 無効な URL はフォールバック

@@ -124,7 +124,7 @@ describe("TicketTable", () => {
     expect(screen.getByText("ログイン画面の UI 改善")).toBeInTheDocument();
   });
 
-  it("安全でない getRowHref の結果は # にフォールバックする", async () => {
+  it("安全でない getRowHref の結果は / にフォールバックする", async () => {
     renderWithRouter(
       <TicketTable
         tickets={sampleTickets}
