@@ -4,11 +4,14 @@ import {
   AuditLog,
   AuditLogValidationError,
   AuditLogValues,
+  AuditLogWithActor,
   createAuditLog,
 } from "../domain/audit-log.js";
 import {
+  countAuditLogsByOrganizationId as countAuditLogsByOrganizationIdInRepository,
   findAuditLogsByEntity as findAuditLogsByEntityInRepository,
   findAuditLogsByOrganizationId as findAuditLogsByOrganizationIdInRepository,
+  findAuditLogsByOrganizationIdWithActor as findAuditLogsByOrganizationIdWithActorInRepository,
   saveAuditLog as saveAuditLogInRepository,
   type FindByEntityInput as RepositoryFindByEntityInput,
   type FindByOrganizationInput as RepositoryFindByOrganizationInput,
@@ -150,4 +153,39 @@ export async function findAuditLogsByEntity(
   };
   const logs = await findAuditLogsByEntityInRepository(repositoryInput, db);
   return { success: true, data: logs };
+}
+
+export type ListOrganizationAuditLogsInput = Readonly<
+  {
+    organizationId: string;
+  } & Pagination
+>;
+
+export type ListOrganizationAuditLogsResult = Readonly<{
+  logs: AuditLogWithActor[];
+  total: number;
+}>;
+
+export async function listOrganizationAuditLogs(
+  input: ListOrganizationAuditLogsInput,
+  db: PrismaClient = prisma,
+): Promise<ListOrganizationAuditLogsResult> {
+  const [logs, total] = await db.$transaction(async (transactionClient) => {
+    return Promise.all([
+      findAuditLogsByOrganizationIdWithActorInRepository(
+        {
+          organizationId: input.organizationId,
+          take: input.take,
+          skip: input.skip,
+        },
+        transactionClient,
+      ),
+      countAuditLogsByOrganizationIdInRepository(
+        { organizationId: input.organizationId },
+        transactionClient,
+      ),
+    ]);
+  });
+
+  return { logs, total };
 }

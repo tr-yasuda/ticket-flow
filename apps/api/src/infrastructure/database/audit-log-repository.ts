@@ -132,25 +132,57 @@ export async function countAuditLogsByEntity(
   });
 }
 
-export async function findAuditLogsByEntityWithActor(
-  input: FindByEntityInput,
+export async function countAuditLogsByOrganizationId(
+  input: Omit<FindByOrganizationInput, keyof Pagination>,
   db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<number> {
+  return db.auditLog.count({
+    where: { organizationId: input.organizationId },
+  });
+}
+
+async function findAuditLogsWithActor(
+  where: Prisma.AuditLogWhereInput,
+  pagination: Pagination,
+  db: PrismaClient | Prisma.TransactionClient,
 ): Promise<AuditLogWithActor[]> {
   const rows = await db.auditLog.findMany({
-    where: {
-      organizationId: input.organizationId,
-      entityType: input.entityType,
-      entityId: input.entityId,
-    },
+    where,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     include: {
       actor: {
         select: { id: true, name: true },
       },
     },
-    take: resolveTake(input.take),
-    skip: resolveSkip(input.skip),
+    take: resolveTake(pagination.take),
+    skip: resolveSkip(pagination.skip),
   });
 
   return rows.map(toAuditLogWithActor);
+}
+
+export async function findAuditLogsByOrganizationIdWithActor(
+  input: FindByOrganizationInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<AuditLogWithActor[]> {
+  return findAuditLogsWithActor(
+    { organizationId: input.organizationId },
+    { take: input.take, skip: input.skip },
+    db,
+  );
+}
+
+export async function findAuditLogsByEntityWithActor(
+  input: FindByEntityInput,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<AuditLogWithActor[]> {
+  return findAuditLogsWithActor(
+    {
+      organizationId: input.organizationId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+    },
+    { take: input.take, skip: input.skip },
+    db,
+  );
 }
