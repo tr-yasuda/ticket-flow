@@ -9,7 +9,10 @@ import type { Context } from "hono";
 
 import { extractBearerToken } from "../lib/extract-bearer-token.js";
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import {
+  type JsonInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   loginUser,
   logoutUser,
@@ -17,8 +20,11 @@ import {
   registerUser,
 } from "../services/auth-service.js";
 
-export async function registerController(c: Context) {
-  const data = getValidatedJson<RegisterInput>(c);
+type RegisterControllerContext = ValidatedContext<JsonInput<RegisterInput>>;
+type LoginControllerContext = ValidatedContext<JsonInput<LoginInput>>;
+
+export async function registerController(c: RegisterControllerContext) {
+  const data = c.req.valid("json");
   const result = await registerUser(data);
 
   if (!result.success) {
@@ -36,8 +42,8 @@ export async function registerController(c: Context) {
   return c.json(createApiSuccessResponse(result.data), HttpStatus.CREATED);
 }
 
-export async function loginController(c: Context) {
-  const data = getValidatedJson<LoginInput>(c);
+export async function loginController(c: LoginControllerContext) {
+  const data = c.req.valid("json");
   const result = await loginUser(data);
 
   if (!result.success) {

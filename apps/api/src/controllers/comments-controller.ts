@@ -4,10 +4,15 @@ import {
   createApiPaginatedSuccessResponse,
   createApiSuccessResponse,
 } from "@ticket-flow/shared";
-import type { Context } from "hono";
 
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import {
+  type CombinedInput,
+  type JsonInput,
+  type ParamInput,
+  type QueryInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   createComment,
   deleteComment,
@@ -25,6 +30,22 @@ import {
   type UpdateCommentParams,
 } from "./schemas/comment-schema.js";
 import { type TicketIdParamSchema } from "./schemas/ticket-schema.js";
+
+type CreateCommentControllerContext = ValidatedContext<
+  CombinedInput<ParamInput<TicketIdParamSchema>, JsonInput<CreateCommentBody>>
+>;
+
+type UpdateCommentControllerContext = ValidatedContext<
+  CombinedInput<ParamInput<UpdateCommentParams>, JsonInput<UpdateCommentBody>>
+>;
+
+type DeleteCommentControllerContext = ValidatedContext<
+  ParamInput<DeleteCommentParams>
+>;
+
+type ListCommentsControllerContext = ValidatedContext<
+  CombinedInput<ParamInput<TicketIdParamSchema>, QueryInput<ListCommentsQuery>>
+>;
 
 function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
   switch (error.type) {
@@ -62,11 +83,13 @@ function mapCreateCommentError(error: CommentServiceError): ErrorMapping {
   }
 }
 
-export async function createCommentController(c: Context) {
+export async function createCommentController(
+  c: CreateCommentControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const authorId = getRequiredContextValue(c, "userId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const data = getValidatedJson<CreateCommentBody>(c);
+  const { ticketId } = c.req.valid("param");
+  const data = c.req.valid("json");
 
   const result = await createComment({
     organizationId,
@@ -134,13 +157,13 @@ function mapUpdateCommentError(error: CommentServiceError): ErrorMapping {
   }
 }
 
-export async function updateCommentController(c: Context) {
+export async function updateCommentController(
+  c: UpdateCommentControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const actorId = getRequiredContextValue(c, "userId");
-  const { ticketId, commentId } = c.req.valid(
-    "param" as never,
-  ) as UpdateCommentParams;
-  const { content } = getValidatedJson<UpdateCommentBody>(c);
+  const { ticketId, commentId } = c.req.valid("param");
+  const { content } = c.req.valid("json");
 
   const result = await updateComment({
     organizationId,
@@ -201,12 +224,12 @@ function mapDeleteCommentError(error: CommentServiceError): ErrorMapping {
   }
 }
 
-export async function deleteCommentController(c: Context) {
+export async function deleteCommentController(
+  c: DeleteCommentControllerContext,
+) {
   const organizationId = getRequiredContextValue(c, "organizationId");
   const actorId = getRequiredContextValue(c, "userId");
-  const { ticketId, commentId } = c.req.valid(
-    "param" as never,
-  ) as DeleteCommentParams;
+  const { ticketId, commentId } = c.req.valid("param");
 
   const result = await deleteComment({
     organizationId,
@@ -241,10 +264,10 @@ function mapListCommentsError(error: CommentServiceError): ErrorMapping {
   }
 }
 
-export async function listCommentsController(c: Context) {
+export async function listCommentsController(c: ListCommentsControllerContext) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { ticketId } = c.req.valid("param" as never) as TicketIdParamSchema;
-  const { page, perPage } = c.req.valid("query" as never) as ListCommentsQuery;
+  const { ticketId } = c.req.valid("param");
+  const { page, perPage } = c.req.valid("query");
 
   const skip = (page - 1) * perPage;
 
