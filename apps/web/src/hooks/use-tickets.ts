@@ -7,7 +7,7 @@ import {
   type TicketListItem,
 } from "@/lib/tickets-api";
 
-export type UseTicketsInput = ListTicketsInput &
+export type UseTicketsInput = Omit<ListTicketsInput, "signal"> &
   Readonly<{
     enabled?: boolean;
   }>;
