@@ -9,7 +9,12 @@ export const Route = createFileRoute("/app/$organizationId/tickets/$ticketId")({
 });
 
 function TicketDetailRoute(): ReactElement {
-  const { organizationId, ticketId } = Route.useParams();
+  const organizationId = Route.useParams({
+    select: (params) => params.organizationId,
+  });
+  const ticketId = Route.useParams({
+    select: (params) => params.ticketId,
+  });
 
   return (
     <TicketDetailPage organizationId={organizationId} ticketId={ticketId} />
