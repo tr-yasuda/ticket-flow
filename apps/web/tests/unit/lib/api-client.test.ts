@@ -256,4 +256,31 @@ describe("apiClient", () => {
       ]);
     }
   });
+
+  it("POST で一時的なネットワークエラー時に retry しない", async () => {
+    setTokens("access-token", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Network error"));
+    mockFetch(fetchMock);
+
+    await expect(
+      apiClient.post("protected", { json: { name: "test" } }),
+    ).rejects.toThrow(TypeError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["put", "patch", "delete"] as const)(
+    "%s で一時的なネットワークエラー時に retry しない",
+    async (method) => {
+      setTokens("access-token", "refresh-token");
+      const fetchMock = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Network error"));
+      mockFetch(fetchMock);
+
+      await expect(apiClient[method]("protected")).rejects.toThrow(TypeError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
 });
