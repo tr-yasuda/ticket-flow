@@ -83,9 +83,9 @@ export function OrganizationTicketsPage({
   );
 
   const handleRowClick = (ticket: TicketListItem) => {
-    // TODO: チケット詳細画面実装時に正しいルートへ遷移させる
     void navigate({
-      to: `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`,
+      to: "/app/$organizationId/tickets/$ticketId",
+      params: { organizationId, ticketId: ticket.id },
     });
   };
 
