@@ -21,23 +21,30 @@ export type ParamInput<T> = {
   out: { param: T };
 };
 
+type OverlappingOutKeys<A extends Input, B extends Input> = keyof A["out"] &
+  keyof B["out"];
+
 /**
  * 異なる validation target（例: param + json, param + query）を組み合わせる。
  *
- * 同じ target（例: json + json）を組み合わせると出力型が交差型になり、
- * 意図しない結果になるため、異なる target の組み合わせ専用とする。
+ * 同じ target（例: json + json）を組み合わせると `out` のキーが重複し、
+ * 意図しない交差型になるため、型レベルで `never` にして誤用を防ぐ。
  */
-export type CombinedInput<A extends Input, B extends Input> = A & B;
+export type CombinedInput<A extends Input, B extends Input> = [
+  OverlappingOutKeys<A, B>,
+] extends [never]
+  ? A & B
+  : never;
 
 /**
  * 検証済み入力を持つ controller 用の context 型。
  *
- * `E` はプロジェクト固有の Hono Env を注入するための拡張ポイント。
- * 現状では route handler との互換性を保つため、デフォルトを Hono の
- * `Env` にしている。
+ * `E` はプロジェクト固有の Hono Env、`P` はルートのパス文字列リテラル型を
+ * 注入するための拡張ポイント。現状では route handler との互換性を保つため、
+ * デフォルトを `Env` / `string` にしている。
  */
-export type ValidatedContext<I extends Input, E extends Env = Env> = Context<
-  E,
-  string,
-  I
->;
+export type ValidatedContext<
+  I extends Input,
+  E extends Env = Env,
+  P extends string = string,
+> = Context<E, P, I>;

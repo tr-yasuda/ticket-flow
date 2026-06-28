@@ -1,4 +1,4 @@
-import type { Context } from "hono";
+import type { Context, Env } from "hono";
 import { describe, expectTypeOf, it } from "vitest";
 
 import {
@@ -84,5 +84,22 @@ describe("validated-input types", () => {
     >;
     // @ts-expect-error json target は ParamInput では宣言されていない
     c.req.valid("json");
+  });
+
+  it("CombinedInput で同一 target を組み合わせると never になる", () => {
+    type Overlapped = CombinedInput<
+      JsonInput<{ a: string }>,
+      JsonInput<{ b: number }>
+    >;
+    expectTypeOf<Overlapped>().toBeNever();
+  });
+
+  it("ValidatedContext はルートのパス文字列リテラル型を受け入れられる", () => {
+    type WithPath = ValidatedContext<
+      ParamInput<TestParam>,
+      Env,
+      "/organizations/:organizationId/tickets/:ticketId"
+    >;
+    expectTypeOf<WithPath>().toMatchTypeOf<Context>();
   });
 });
