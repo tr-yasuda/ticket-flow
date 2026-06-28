@@ -12,6 +12,7 @@ import {
   type Ticket,
   type TicketListItem,
   TicketConflictError,
+  TicketInvalidStateError,
   TicketNotFoundError,
   TicketPriority,
   TicketStatus,
@@ -714,6 +715,17 @@ function mapServiceError(error: unknown): {
       error: {
         type: "unknown-error",
         message: "データベースエラーが発生しました",
+      },
+    };
+  }
+
+  if (error instanceof TicketInvalidStateError) {
+    console.error("Ticket data integrity error:", error);
+    return {
+      success: false,
+      error: {
+        type: "unknown-error",
+        message: "データの整合性に問題が発生しました",
       },
     };
   }
