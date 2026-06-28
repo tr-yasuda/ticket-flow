@@ -1,6 +1,8 @@
 import { type ApiErrorResponse } from "@ticket-flow/shared";
 import { type AfterResponseHook } from "ky";
 
+export type ApiErrorSource = "client" | "server";
+
 export type ApiErrorDetail = Readonly<{
   field: string;
   message: string;
@@ -30,6 +32,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly details?: ReadonlyArray<ApiErrorDetail>,
+    public readonly source: ApiErrorSource = "client",
   ) {
     super(message);
     this.name = "ApiError";
@@ -73,6 +76,7 @@ export const handleApiErrorResponse: AfterResponseHook = async (
         body.error.message,
         response.status,
         parseDetails(body.error.details),
+        "server",
       );
     }
     const legacyBody = body as { error?: unknown; details?: unknown };
@@ -84,11 +88,12 @@ export const handleApiErrorResponse: AfterResponseHook = async (
       message,
       response.status,
       parseDetails(legacyBody.details),
+      "server",
     );
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError("Request failed", response.status);
+    throw new ApiError("Request failed", response.status, undefined, "client");
   }
 };

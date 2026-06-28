@@ -4,11 +4,11 @@ import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import { demoTickets } from "@/mocks/data/tickets";
+import { useTickets } from "@/hooks/use-tickets";
 
 export type OrganizationTicketsPageViewProps = {
   organizationId: string;
-  tickets: TicketListItem[];
+  tickets: readonly TicketListItem[];
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -62,23 +62,25 @@ export function OrganizationTicketsPageView({
   );
 }
 
-type OrganizationTicketsPageProps = {
-  organizationId: string;
-};
+const DEFAULT_ITEMS_PER_PAGE = 20;
 
-const itemsPerPage = 2;
+export type OrganizationTicketsPageProps = {
+  organizationId: string;
+  perPage?: number;
+};
 
 export function OrganizationTicketsPage({
   organizationId,
+  perPage = DEFAULT_ITEMS_PER_PAGE,
 }: OrganizationTicketsPageProps): ReactElement {
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // TODO: #48, #49 のデータ取得基盤が整備されたら内部 state + データ取得 hook に置き換える
-  const totalPages = Math.max(1, Math.ceil(demoTickets.length / itemsPerPage));
-  const paginatedTickets = demoTickets.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const [requestedPage, setRequestedPage] = useState(1);
+  const { tickets, isLoading, error, currentPage, totalPages, refetch } =
+    useTickets({
+      organizationId,
+      page: requestedPage,
+      perPage,
+      enabled: organizationId !== "",
+    });
 
   const getRowHref = useCallback(
     (ticket: TicketListItem) => {
@@ -90,11 +92,14 @@ export function OrganizationTicketsPage({
   return (
     <OrganizationTicketsPageView
       organizationId={organizationId}
-      tickets={paginatedTickets}
+      tickets={tickets}
+      isLoading={isLoading}
+      error={error}
+      onRetry={refetch}
       getRowHref={getRowHref}
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={setRequestedPage}
     />
   );
 }

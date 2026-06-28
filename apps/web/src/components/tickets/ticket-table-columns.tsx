@@ -1,22 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
 import type { ReactNode } from "react";
 
 import { TicketPriorityBadge } from "@/components/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/ticket-status-badge";
+import { type TicketAssignee, type TicketListItem } from "@/types/ticket";
 
-export type TicketAssignee = Readonly<{
-  id: string;
-  name: string | null;
-}>;
-
-export type TicketListItem = Readonly<{
-  id: string;
-  title: string;
-  status: TicketStatus;
-  priority: TicketPriority;
-  assignee: TicketAssignee | null;
-}>;
+export type { TicketAssignee, TicketListItem } from "@/types/ticket";
 
 export type TicketTableColumn = {
   key: string;

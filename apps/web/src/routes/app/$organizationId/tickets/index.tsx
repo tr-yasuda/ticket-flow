@@ -12,5 +12,10 @@ function OrganizationTicketsIndexRoute(): ReactElement {
     select: (params) => params.organizationId,
   });
 
-  return <OrganizationTicketsPage organizationId={organizationId} />;
+  return (
+    <OrganizationTicketsPage
+      key={organizationId}
+      organizationId={organizationId}
+    />
+  );
 }
