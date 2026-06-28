@@ -244,9 +244,9 @@ export async function findTicketsByOrganizationId(
   // 先頭ワイルドカードのためテーブルスキャンになり、チケット数が増えると
   // 応答が劣化します。
   //
-  // SQLite FTS5 導入も検討しましたが、Prisma schema で仮想テーブルを表現できず、
-  // かつ FTS5 は単語ベース検索のため既存の部分一致仕様（例: "50%" で "50% discount"
-  // にマッチ）を維持できないため、現時点では導入を見送っています。
+  // SQLite FTS5 導入も検討しましたが、Prisma Migrate によるスキーマ管理が困難
+  // （仮想テーブル未対応）であり、かつ FTS5 は単語ベース検索のため既存の部分一致仕様
+  // （例: "50%" で "50% discount" にマッチ）を維持できないため、現時点では導入を見送っています。
   // 大量データ対応が必要になった場合は、PostgreSQL 移行時の tsvector/pg_trgm、
   // または外部全文検索基盤の導入を検討してください。
   const rows = await db.$queryRaw<
