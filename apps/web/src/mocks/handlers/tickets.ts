@@ -8,13 +8,14 @@ import {
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 
-import { demoOrganization } from "../data/organizations.js";
+import { demoOrganization } from "@/mocks/data/organizations";
 import {
   demoTickets,
   type MockTicket,
   type MockTicketAssignee,
   type MockTicketListItem,
-} from "../data/tickets.js";
+} from "@/mocks/data/tickets";
+
 import { normalizePathParam } from "./utils.js";
 
 function mapZodIssuesToDetails(
