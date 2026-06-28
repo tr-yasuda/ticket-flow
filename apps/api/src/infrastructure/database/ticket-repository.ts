@@ -249,7 +249,7 @@ export async function findTicketsByOrganizationId(
   // SQLite FTS5 導入も検討しましたが、Prisma Migrate によるスキーマ管理が困難です。
   // 仮想テーブルが未対応であり、かつ FTS5 は単語ベース検索のため、
   // 既存の部分一致仕様を維持できません。
-  // 例: "50%" で "50% discount" にマッチする部分一致は維持できません。
+  // 例: "isc" で "discount" にマッチするような単語途中の部分一致は維持できません。
   // そのため現時点では FTS5 導入を見送っています。
   // 大量データ対応が必要になった場合は、PostgreSQL 移行時の tsvector/pg_trgm、
   // または外部全文検索基盤の導入を検討してください。
