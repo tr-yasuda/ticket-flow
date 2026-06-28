@@ -52,6 +52,7 @@ export type FindTicketsInput = Readonly<{
   organizationId: string;
   search?: string;
   status?: TicketStatus[];
+  priority?: TicketPriority[];
   assigneeId?: string | null;
 }> &
   Pagination;
@@ -82,19 +83,21 @@ function buildSearchPattern(search: string): string {
   return `%${escapeLikePattern(search)}%`;
 }
 
-function hasStatusFilter(
-  status: TicketStatus[] | undefined,
-): status is TicketStatus[] {
-  return status !== undefined && status.length > 0;
+function hasEnumFilter<T>(values: T[] | undefined): values is T[] {
+  return values !== undefined && values.length > 0;
 }
 
-function buildStatusFilter(status: TicketStatus[] | undefined): Prisma.Sql {
-  if (!hasStatusFilter(status)) {
+type FilterableTicketColumn = "status" | "priority";
+
+function buildEnumInFilter<T extends string>(
+  column: FilterableTicketColumn,
+  values: T[] | undefined,
+): Prisma.Sql {
+  if (!hasEnumFilter(values)) {
     return Prisma.empty;
   }
 
-  const uniqueStatuses = [...new Set(status)];
-  return Prisma.sql`AND status IN (${Prisma.join(uniqueStatuses)})`;
+  return Prisma.sql`AND ${Prisma.raw(column)} IN (${Prisma.join(values)})`;
 }
 
 function buildAssigneeFilter(
@@ -152,14 +155,18 @@ export async function countTicketsByOrganizationId(
       where: {
         organizationId: input.organizationId,
         deletedAt: null,
-        ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
+        ...(hasEnumFilter(input.status) && { status: { in: input.status } }),
+        ...(hasEnumFilter(input.priority) && {
+          priority: { in: input.priority },
+        }),
         ...(assigneeId !== undefined && { assigneeId }),
       },
     });
   }
 
   const pattern = buildSearchPattern(search);
-  const statusFilter = buildStatusFilter(input.status);
+  const statusFilter = buildEnumInFilter("status", input.status);
+  const priorityFilter = buildEnumInFilter("priority", input.priority);
   const assigneeFilter = buildAssigneeFilter(assigneeId);
   const rows = await db.$queryRaw<Array<{ count: number }>>`
     SELECT COUNT(*) AS count
@@ -167,6 +174,7 @@ export async function countTicketsByOrganizationId(
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
       ${statusFilter}
+      ${priorityFilter}
       ${assigneeFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
@@ -196,7 +204,10 @@ export async function findTicketsByOrganizationId(
       where: {
         organizationId: input.organizationId,
         deletedAt: null,
-        ...(hasStatusFilter(input.status) && { status: { in: input.status } }),
+        ...(hasEnumFilter(input.status) && { status: { in: input.status } }),
+        ...(hasEnumFilter(input.priority) && {
+          priority: { in: input.priority },
+        }),
         ...(assigneeId !== undefined && { assigneeId }),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -224,7 +235,8 @@ export async function findTicketsByOrganizationId(
   }
 
   const pattern = buildSearchPattern(search);
-  const statusFilter = buildStatusFilter(input.status);
+  const statusFilter = buildEnumInFilter("status", input.status);
+  const priorityFilter = buildEnumInFilter("priority", input.priority);
   const assigneeFilter = buildAssigneeFilter(assigneeId);
 
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
@@ -265,6 +277,7 @@ export async function findTicketsByOrganizationId(
     WHERE organization_id = ${input.organizationId}
       AND deleted_at IS NULL
       ${statusFilter}
+      ${priorityFilter}
       ${assigneeFilter}
       AND (
         LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'

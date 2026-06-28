@@ -18,7 +18,7 @@ import {
 } from "../infrastructure/database/audit-log-repository.js";
 import { countCommentsByTicketId } from "../infrastructure/database/comment-repository.js";
 import { HttpStatus } from "../lib/http-status.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import { getValidatedJson, getValidatedQuery } from "../lib/validated-json.js";
 import {
   createTicket,
   deleteTicket,
@@ -211,9 +211,8 @@ export async function createTicketController(c: Context) {
 
 export async function listTicketsController(c: Context) {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { page, perPage, search, status, assignee } = c.req.valid(
-    "query" as never,
-  ) as ListTicketsQuery;
+  const { page, perPage, search, status, priority, assignee } =
+    getValidatedQuery<ListTicketsQuery>(c);
 
   const skip = (page - 1) * perPage;
 
@@ -223,6 +222,7 @@ export async function listTicketsController(c: Context) {
     take: perPage,
     search,
     status,
+    priority,
     assigneeId: assignee,
   });
 

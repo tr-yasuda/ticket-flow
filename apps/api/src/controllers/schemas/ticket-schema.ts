@@ -1,6 +1,7 @@
 import {
   ticketDescriptionSchema,
   ticketPrioritySchema,
+  ticketStatusSchema,
   ticketTitleSchema,
   updateTicketAssigneeInputSchema,
   updateTicketPriorityInputSchema,
@@ -8,10 +9,11 @@ import {
 } from "@ticket-flow/shared";
 import { z } from "zod";
 
-import { TicketStatus } from "../../domain/ticket.js";
 import { MAX_SKIP } from "../../infrastructure/database/pagination.js";
 
 export const MAX_TICKET_SEARCH_LENGTH = 100;
+const MAX_FILTER_STRING_LENGTH = 100;
+const MAX_FILTER_ARRAY_LENGTH = 10;
 
 export const createTicketBodySchema = z.object({
   title: ticketTitleSchema,
@@ -26,23 +28,25 @@ export const createTicketBodySchema = z.object({
 
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>;
 
-const ticketStatusValues: readonly TicketStatus[] = Object.values(TicketStatus);
-
-function parseStatusQuery(
+function parseEnumQuery<T extends string>(
+  allowedValues: readonly T[],
   value: string | string[] | undefined,
-): TicketStatus[] | undefined {
+): T[] | undefined {
   if (value === undefined) {
     return undefined;
   }
 
   const rawValues = Array.isArray(value) ? value : value.split(",");
-  const statuses = rawValues
+  const validValues = rawValues
     .map((item) => item.trim())
-    .filter((item): item is TicketStatus =>
-      ticketStatusValues.includes(item as TicketStatus),
-    );
+    .filter((item) => item.length > 0)
+    .filter((item): item is T => allowedValues.includes(item as T));
 
-  return statuses.length > 0 ? statuses : undefined;
+  if (validValues.length === 0) {
+    return undefined;
+  }
+
+  return [...new Set(validValues)];
 }
 
 export const listTicketsQuerySchema = z
@@ -55,10 +59,28 @@ export const listTicketsQuerySchema = z
         message: `検索キーワードは${MAX_TICKET_SEARCH_LENGTH}文字以内で入力してください`,
       })
       .optional(),
+    // NOTE: status / priority はドメイン enum と同じ小文字値で一致させ、
+    // 大文字・無効値は無視する。無効値のみの場合はフィルタが解除される。
     status: z
-      .union([z.string(), z.array(z.string())])
+      .union([
+        z.string().max(MAX_FILTER_STRING_LENGTH),
+        z
+          .array(z.string().max(MAX_FILTER_STRING_LENGTH))
+          .max(MAX_FILTER_ARRAY_LENGTH),
+      ])
       .optional()
-      .transform(parseStatusQuery),
+      .transform((value) => parseEnumQuery(ticketStatusSchema.options, value)),
+    priority: z
+      .union([
+        z.string().max(MAX_FILTER_STRING_LENGTH),
+        z
+          .array(z.string().max(MAX_FILTER_STRING_LENGTH))
+          .max(MAX_FILTER_ARRAY_LENGTH),
+      ])
+      .optional()
+      .transform((value) =>
+        parseEnumQuery(ticketPrioritySchema.options, value),
+      ),
     assignee: z
       .preprocess(
         (value) =>
