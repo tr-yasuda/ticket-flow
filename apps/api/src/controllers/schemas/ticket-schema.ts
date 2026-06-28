@@ -11,6 +11,9 @@ import { z } from "zod";
 
 import { MAX_SKIP } from "../../infrastructure/database/pagination.js";
 
+// 検索キーワードの最大長。
+// 長大な入力を防ぎ、検索処理の比較コストを抑えるため上限を設けている。
+// 検索方式の詳細と性能制約については ticket-repository.ts のコメントを参照。
 export const MAX_TICKET_SEARCH_LENGTH = 100;
 const MAX_FILTER_STRING_LENGTH = 100;
 const MAX_FILTER_ARRAY_LENGTH = 10;
