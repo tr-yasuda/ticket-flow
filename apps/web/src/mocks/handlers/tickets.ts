@@ -67,7 +67,7 @@ function toTicketListItem(ticket: MockTicket): MockTicketListItem {
 const demoTicketListItems = demoTickets.map(toTicketListItem);
 
 export const ticketHandlers = [
-  http.get("/api/organizations/:id/tickets", ({ params }) => {
+  http.get("/api/organizations/:id/tickets", ({ params, request }) => {
     const id = normalizePathParam(params.id);
 
     if (id !== demoOrganization.id) {
@@ -80,14 +80,24 @@ export const ticketHandlers = [
       );
     }
 
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get("page") ?? "1");
+    const perPage = Number(url.searchParams.get("perPage") ?? "20");
+    const start = (page - 1) * perPage;
+    const tickets = demoTicketListItems.slice(start, start + perPage);
+    const totalPages = Math.max(
+      1,
+      Math.ceil(demoTicketListItems.length / perPage),
+    );
+
     return HttpResponse.json(
       createApiPaginatedSuccessResponse(
-        { tickets: demoTicketListItems },
+        { tickets },
         {
-          page: 1,
-          perPage: 20,
+          page,
+          perPage,
           total: demoTicketListItems.length,
-          totalPages: 1,
+          totalPages,
         },
       ),
       { status: 200 },

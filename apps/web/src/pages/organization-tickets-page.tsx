@@ -1,11 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import { demoTickets } from "@/mocks/data/tickets";
+import { listTickets } from "@/lib/tickets-api";
 
 export type OrganizationTicketsPageViewProps = {
   organizationId: string;
@@ -75,12 +75,36 @@ export function OrganizationTicketsPage({
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
 
-  // TODO: #48, #49 のデータ取得基盤が整備されたら内部 state + データ取得 hook に置き換える
-  const totalPages = Math.max(1, Math.ceil(demoTickets.length / itemsPerPage));
-  const paginatedTickets = demoTickets.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const [tickets, setTickets] = useState<TicketListItem[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTickets = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await listTickets({
+        organizationId,
+        page: currentPage,
+        perPage: itemsPerPage,
+      });
+      setTickets([...result.tickets]);
+      setTotalPages(result.meta.totalPages);
+    } catch (fetchError) {
+      setError(
+        fetchError instanceof Error
+          ? fetchError
+          : new Error("チケット一覧の取得に失敗しました"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchTickets();
+  }, [organizationId, currentPage]);
 
   const handleRowClick = (ticket: TicketListItem) => {
     // TODO: チケット詳細画面実装時に正しいルートへ遷移させる
@@ -92,7 +116,10 @@ export function OrganizationTicketsPage({
   return (
     <OrganizationTicketsPageView
       organizationId={organizationId}
-      tickets={paginatedTickets}
+      tickets={tickets}
+      isLoading={isLoading}
+      error={error}
+      onRetry={fetchTickets}
       onRowClick={handleRowClick}
       currentPage={currentPage}
       totalPages={totalPages}

@@ -146,7 +146,9 @@ describe("OrganizationTicketsPage", () => {
     expect(screen.getByTestId("organization-id")).toHaveTextContent(
       "demo-org-001",
     );
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("table")).toBeInTheDocument();
+    });
   });
 
   it("ページ切り替えで表示チケットが変わる", async () => {
