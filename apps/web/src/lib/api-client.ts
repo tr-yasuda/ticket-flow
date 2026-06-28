@@ -1,9 +1,5 @@
 import { type ApiErrorResponse } from "@ticket-flow/shared";
-import ky, {
-  type AfterResponseHook,
-  type BeforeRequestHook,
-  type BeforeRetryHook,
-} from "ky";
+import ky, { type AfterResponseHook, type BeforeRequestHook } from "ky";
 
 import {
   clearTokens,
@@ -157,32 +153,84 @@ async function performRefresh(): Promise<
 }
 
 const addAuthHeader: BeforeRequestHook = (request) => {
+  const headers = new Headers(request.headers);
   const token = getAccessToken();
   if (token === null) {
+    if (headers.has("Authorization")) {
+      return new Request(request, { headers });
+    }
     return;
   }
-  const headers = new Headers(request.headers);
   if (!headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
-    return new Request(request, { headers });
   }
+  return new Request(request, { headers });
 };
 
-const refreshAccessToken: BeforeRetryHook = async ({ request, retryCount }) => {
-  if (retryCount !== 1) {
-    return;
+function isRefreshRequest(request: Request): boolean {
+  return (
+    new URL(request.url).pathname ===
+    new URL(buildApiUrl("/auth/refresh"), "http://localhost").pathname
+  );
+}
+
+function hasRefreshBeenAttempted(options: Record<string, unknown>): boolean {
+  return options.authRefreshAttempted === true;
+}
+
+const handleUnauthorizedResponse: AfterResponseHook = async (
+  request,
+  options,
+  response,
+) => {
+  if (response.status !== 401) {
+    return response;
   }
 
+  if (isRefreshRequest(request)) {
+    clearTokens();
+    return response;
+  }
+
+  if (hasRefreshBeenAttempted(options.context)) {
+    return response;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (refreshToken === null || refreshToken.trim() === "") {
+    clearTokens();
+    return response;
+  }
+
+  options.context.authRefreshAttempted = true;
+
+  let accessToken: string;
+  let newRefreshToken: string;
   try {
-    const { accessToken, refreshToken } = await performRefresh();
-    setTokens(accessToken, refreshToken);
-    const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${accessToken}`);
-    return new Request(request, { headers });
+    const tokens = await performRefresh();
+    accessToken = tokens.accessToken;
+    newRefreshToken = tokens.refreshToken;
   } catch (error) {
     clearTokens();
     throw error;
   }
+
+  setTokens(accessToken, newRefreshToken);
+
+  const headers = new Headers(request.headers);
+  // 古い Authorization を削除し、addAuthHeader 経由で新しいトークンを付与する。
+  // これにより、テスト環境の Headers 実装で Authorization が重複するのを防ぐ。
+  headers.delete("Authorization");
+
+  // 元の Request を再構築し、再送時に ky のデフォルト hooks を適用する。
+  // options に含まれる headers / body は新しい Request に統合済みのため除外する。
+  const { headers: _headers, body: _body, ...retryOptions } = options;
+
+  return ky(new Request(request, { headers }), {
+    ...retryOptions,
+    hooks: defaultHooks,
+    retry: { limit: 0 },
+  });
 };
 
 const handleErrorResponse: AfterResponseHook = async (
@@ -222,24 +270,28 @@ const handleErrorResponse: AfterResponseHook = async (
   }
 };
 
+const defaultHooks = {
+  beforeRequest: [addAuthHeader],
+  afterResponse: [handleUnauthorizedResponse, handleErrorResponse],
+};
+
+const RETRYABLE_HTTP_STATUSES = [408, 429, 500, 502, 503, 504] as const;
+
 export const apiClient = ky.create({
   prefixUrl: getApiBaseUrl(),
-  hooks: {
-    beforeRequest: [addAuthHeader],
-    beforeRetry: [refreshAccessToken],
-    afterResponse: [handleErrorResponse],
-  },
+  hooks: defaultHooks,
   retry: {
     limit: 1,
-    methods: ["get", "post", "put", "patch", "delete"],
-    shouldRetry: ({ error, retryCount }) => {
-      if (retryCount > 1) {
-        return false;
+    methods: ["get"],
+    shouldRetry: ({ error }) => {
+      if (error instanceof TypeError) {
+        return true;
       }
       return (
         error instanceof ApiError &&
-        error.status === 401 &&
-        getRefreshToken() !== null
+        RETRYABLE_HTTP_STATUSES.includes(
+          error.status as (typeof RETRYABLE_HTTP_STATUSES)[number],
+        )
       );
     },
   },

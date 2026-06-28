@@ -343,4 +343,80 @@ describe("apiClient", () => {
     await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("GET で 503 応答時に 1 回 retry する", async () => {
+    setTokens("access-token", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Service Unavailable" }), {
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const result = await apiClient.get("protected").json<{ ok: boolean }>();
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("呼び出し側の Authorization ヘッダーがあっても refresh 後は新しいトークンを使う", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "new-access" }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    await apiClient.get("protected", {
+      headers: { Authorization: "Bearer caller-token" },
+    });
+
+    const [retryRequest] = fetchMock.mock.calls[2] as [Request];
+    expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+  });
+
+  it("refresh token が空文字の場合は 401 時に refresh しない", async () => {
+    setTokens("expired-access", "   ");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "AUTH_UNAUTHORIZED",
+            message: "認証が必要です",
+          },
+        }),
+        { status: 401 },
+      ),
+    );
+    mockFetch(fetchMock);
+
+    await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
+  });
 });
