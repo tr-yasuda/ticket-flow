@@ -31,6 +31,51 @@ export const TicketPriority = {
 export type TicketPriority =
   (typeof TicketPriority)[keyof typeof TicketPriority];
 
+/**
+ * 永続化済みデータの状態がドメインルールに反している場合に投げられる。
+ * 通常は発生しないはずのデータ不整合を検知したときに使用する。
+ */
+export class TicketInvalidStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TicketInvalidStateError";
+  }
+}
+
+const ticketStatusValues = new Set<TicketStatus>(Object.values(TicketStatus));
+const ticketPriorityValues = new Set<TicketPriority>(
+  Object.values(TicketPriority),
+);
+
+function isEnumValue<T extends string>(
+  allowed: ReadonlySet<T>,
+  value: string,
+): value is T {
+  return (allowed as ReadonlySet<string>).has(value);
+}
+
+/**
+ * 文字列を TicketStatus として検証する。
+ * 許可されていない値の場合は TicketInvalidStateError を投げる。
+ */
+export function parseTicketStatus(value: string): TicketStatus {
+  if (!isEnumValue(ticketStatusValues, value)) {
+    throw new TicketInvalidStateError(`無効なステータス値です: ${value}`);
+  }
+  return value;
+}
+
+/**
+ * 文字列を TicketPriority として検証する。
+ * 許可されていない値の場合は TicketInvalidStateError を投げる。
+ */
+export function parseTicketPriority(value: string): TicketPriority {
+  if (!isEnumValue(ticketPriorityValues, value)) {
+    throw new TicketInvalidStateError(`無効な優先度値です: ${value}`);
+  }
+  return value;
+}
+
 export type Ticket = Readonly<{
   id: TicketId;
   organizationId: string;

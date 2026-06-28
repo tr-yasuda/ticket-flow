@@ -1,15 +1,18 @@
 import {
   createMemoryHistory,
+  createRootRoute,
+  createRoute,
   createRouter,
+  Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
-import { OrganizationTicketsPageView } from "@/pages/organization-tickets-page";
+import { OrganizationTicketsPageView } from "@/pages/tickets/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
 
 beforeEach(() => {
@@ -102,6 +105,9 @@ describe("OrganizationTicketsPageView", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("organization-id")).toHaveTextContent("org-1");
     expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /ログイン画面の UI 改善/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("ページネーションを表示する", () => {
@@ -118,20 +124,74 @@ describe("OrganizationTicketsPageView", () => {
     expect(screen.getByRole("button", { name: "次へ" })).toBeInTheDocument();
   });
 
-  it("行クリックで onRowClick を呼ぶ", () => {
-    const handleRowClick = vi.fn();
-    render(
-      <OrganizationTicketsPageView
-        organizationId="org-1"
-        tickets={sampleTickets}
-        onRowClick={handleRowClick}
-      />,
-    );
-    const row = screen.getByRole("button", {
-      name: "ログイン画面の UI 改善",
+  it("getRowHref があるときタイトルが詳細リンクになる", async () => {
+    const rootRoute = createRootRoute({ component: () => <Outlet /> });
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => (
+        <OrganizationTicketsPageView
+          organizationId="org-1"
+          tickets={sampleTickets}
+          getRowHref={(ticket) => `/app/org-1/tickets/${ticket.id}`}
+        />
+      ),
     });
-    fireEvent.click(row);
-    expect(handleRowClick).toHaveBeenCalledWith(sampleTickets[0]);
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([testRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      defaultPendingMinMs: 0,
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
+      ).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", {
+      name: /ログイン画面の UI 改善/i,
+    });
+    expect(link).toHaveAttribute("href", "/app/org-1/tickets/ticket-1");
+  });
+
+  it("特殊文字を含む ticket ID を正しくエンコードする", async () => {
+    const rootRoute = createRootRoute({ component: () => <Outlet /> });
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => (
+        <OrganizationTicketsPageView
+          organizationId="org-1"
+          tickets={[
+            {
+              id: "ticket#1/2",
+              title: "特殊文字 ID",
+              status: "open" as const,
+              priority: "medium" as const,
+              assignee: null,
+            },
+          ]}
+          getRowHref={(ticket) =>
+            `/app/org-1/tickets/${encodeURIComponent(ticket.id)}`
+          }
+        />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([testRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      defaultPendingMinMs: 0,
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /特殊文字 ID/i }),
+      ).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: /特殊文字 ID/i });
+    expect(link).toHaveAttribute("href", "/app/org-1/tickets/ticket%231%2F2");
   });
 });
 
@@ -170,20 +230,26 @@ describe("OrganizationTicketsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("行クリックで詳細 URL へ遷移する", async () => {
+  it("タイトルリンククリックで詳細 skeleton へ遷移する", async () => {
     const router = renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
+        screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
       ).toBeInTheDocument();
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
+      screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
     );
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
         "/app/demo-org-001/tickets/demo-ticket-001",
       );
+      expect(screen.getByTestId("ticket-detail-ticket-id")).toHaveTextContent(
+        "demo-ticket-001",
+      );
+      expect(
+        screen.getByText("チケット詳細画面は準備中です。"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -5,6 +5,8 @@ import {
   type TicketListItem,
   type TicketPriority,
   type TicketStatus,
+  parseTicketPriority,
+  parseTicketStatus,
   rehydrateTicket,
 } from "../../domain/ticket.js";
 import { prisma } from "../../lib/prisma.js";
@@ -132,8 +134,8 @@ function toTicketListItem(
     id: row.id,
     organizationId: row.organizationId,
     title: row.title,
-    status: row.status as TicketStatus,
-    priority: row.priority as TicketPriority,
+    status: parseTicketStatus(row.status),
+    priority: parseTicketPriority(row.priority),
     assignee:
       row.assigneeId !== null ? { id: row.assigneeId, name: null } : null,
     createdBy: row.createdBy,
