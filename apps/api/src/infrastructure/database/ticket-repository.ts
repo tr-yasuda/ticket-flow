@@ -242,8 +242,13 @@ export async function findTicketsByOrganizationId(
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
   // LOWER() で大文字小文字を区別せず、PRAGMA 等の設定差分に依存しません。
   // 先頭ワイルドカードのためテーブルスキャンになり、チケット数が増えると
-  // 応答が劣化します。スケール時は SQLite FTS 等の全文検索インデックス導入を
-  // 検討してください。
+  // 応答が劣化します。
+  //
+  // SQLite FTS5 導入も検討しましたが、Prisma schema で仮想テーブルを表現できず、
+  // かつ FTS5 は単語ベース検索のため既存の部分一致仕様（例: "50%" で "50% discount"
+  // にマッチ）を維持できないため、現時点では導入を見送っています。
+  // 大量データ対応が必要になった場合は、PostgreSQL 移行時の tsvector/pg_trgm、
+  // または外部全文検索基盤の導入を検討してください。
   const rows = await db.$queryRaw<
     Array<{
       id: string;
