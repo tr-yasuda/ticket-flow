@@ -10,5 +10,10 @@ export const Route = createFileRoute("/app/$organizationId/tickets/")({
 function OrganizationTicketsRoute(): ReactElement {
   const { organizationId } = Route.useParams();
 
-  return <OrganizationTicketsPage organizationId={organizationId} />;
+  return (
+    <OrganizationTicketsPage
+      key={organizationId}
+      organizationId={organizationId}
+    />
+  );
 }

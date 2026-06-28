@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
@@ -83,10 +83,6 @@ export function OrganizationTicketsPage({
       perPage: itemsPerPage,
       enabled: organizationId !== "",
     });
-
-  useEffect(() => {
-    setRequestedPage(1);
-  }, [organizationId]);
 
   const handleRowClick = (ticket: TicketListItem) => {
     void navigate({
