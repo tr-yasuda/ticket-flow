@@ -1,8 +1,36 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { TicketListItem } from "./ticket-table-columns.js";
 import { TicketTable } from "./ticket-table.js";
+
+function renderWithRouter(element: ReactElement) {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  });
+  const testRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => element,
+  });
+  const routeTree = rootRoute.addChildren([testRoute]);
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+    defaultPendingMinMs: 0,
+  });
+  render(<RouterProvider router={router} />);
+  return router;
+}
 
 const sampleTickets: TicketListItem[] = [
   {
@@ -68,23 +96,66 @@ describe("TicketTable", () => {
     expect(screen.getByText("（ID: user-3）")).toBeInTheDocument();
   });
 
-  it("行クリックで onRowClick を呼ぶ", () => {
-    const handleRowClick = vi.fn();
-    render(<TicketTable tickets={sampleTickets} onRowClick={handleRowClick} />);
-    const row = screen.getByRole("button", { name: /ログイン画面の UI 改善/i });
-    fireEvent.click(row);
-    expect(handleRowClick).toHaveBeenCalledTimes(1);
-    expect(handleRowClick).toHaveBeenCalledWith(sampleTickets[0]);
+  it("getRowHref があるときタイトルが詳細リンクになる", async () => {
+    renderWithRouter(
+      <TicketTable
+        tickets={sampleTickets}
+        getRowHref={(ticket) => `/tickets/${ticket.id}`}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
+      ).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: /ログイン画面の UI 改善/i });
+    expect(link).toHaveAttribute("href", "/tickets/ticket-1");
+    expect(link).toHaveAttribute(
+      "aria-label",
+      "ログイン画面の UI 改善の詳細を開く",
+    );
   });
 
-  it("Enter / Space キーで onRowClick を呼ぶ", () => {
-    const handleRowClick = vi.fn();
-    render(<TicketTable tickets={sampleTickets} onRowClick={handleRowClick} />);
-    const row = screen.getByRole("button", { name: /ログイン画面の UI 改善/i });
-    fireEvent.keyDown(row, { key: "Enter" });
-    expect(handleRowClick).toHaveBeenCalledTimes(1);
-    fireEvent.keyDown(row, { key: " " });
-    expect(handleRowClick).toHaveBeenCalledTimes(2);
+  it("getRowHref がないときタイトルは通常のテキストになる", () => {
+    render(<TicketTable tickets={sampleTickets} />);
+    expect(
+      screen.queryByRole("link", { name: /ログイン画面の UI 改善/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("ログイン画面の UI 改善")).toBeInTheDocument();
+  });
+
+  it("安全でない getRowHref の結果は # にフォールバックする", async () => {
+    renderWithRouter(
+      <TicketTable
+        tickets={sampleTickets}
+        getRowHref={() => "javascript:alert(1)"}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /ログイン画面の UI 改善/i }),
+      ).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: /ログイン画面の UI 改善/i });
+    expect(link).toHaveAttribute("href", "/");
+  });
+
+  it("行は button ロールにならない", async () => {
+    renderWithRouter(
+      <TicketTable
+        tickets={sampleTickets}
+        getRowHref={(ticket) => `/tickets/${ticket.id}`}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("row", { name: /ログイン画面の UI 改善/i }),
+      ).toBeInTheDocument();
+    });
+    const row = screen.getByRole("row", {
+      name: /ログイン画面の UI 改善/i,
+    });
+    expect(within(row).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("各行に ticket id の data 属性を持つ", () => {
