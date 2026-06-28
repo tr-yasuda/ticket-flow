@@ -7,6 +7,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { listOrganizationAuditLogsController } from "../controllers/audit-logs-controller.js";
 import { createRequireRoleMiddleware } from "../controllers/authorization-middleware.js";
 import {
   createCommentController,
@@ -27,6 +28,7 @@ import {
   getOrganizationMembersController,
   getOrganizationsController,
 } from "../controllers/organizations-controller.js";
+import { listOrganizationAuditLogsQuerySchema } from "../controllers/schemas/audit-log-schema.js";
 import {
   createCommentBodySchema,
   deleteCommentParamsSchema,
@@ -196,6 +198,21 @@ const listTicketHistoryRateLimitByUser = createRateLimitMiddleware({
   maxRequests: 300,
   keyGenerator: (c) => `user:${c.get("userId")}:tickets:history`,
   message: "チケット変更履歴取得は時間あたりの上限に達しました",
+});
+
+const listOrganizationAuditLogsRateLimitByOrganization =
+  createRateLimitMiddleware({
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 3000,
+    keyGenerator: (c) => `org:${c.get("organizationId")}:audit-logs:list`,
+    message: "この組織での監査ログ一覧取得は時間あたりの上限に達しました",
+  });
+
+const listOrganizationAuditLogsRateLimitByUser = createRateLimitMiddleware({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 300,
+  keyGenerator: (c) => `user:${c.get("userId")}:audit-logs:list`,
+  message: "監査ログ一覧取得は時間あたりの上限に達しました",
 });
 
 const listCommentsRateLimitByOrganization = createRateLimitMiddleware({
@@ -482,6 +499,19 @@ export function configureOrganizationRoutes(routes: Hono = new Hono()): Hono {
         dashboardRateLimitByOrganization,
         dashboardRateLimitByUser,
         getOrganizationDashboardController,
+      )
+      .get(
+        "/:organizationId/audit-logs",
+        organizationScopeMiddleware,
+        listOrganizationAuditLogsRateLimitByOrganization,
+        listOrganizationAuditLogsRateLimitByUser,
+        requireAdminMiddleware,
+        sValidator(
+          "query",
+          listOrganizationAuditLogsQuerySchema,
+          validationHook,
+        ),
+        listOrganizationAuditLogsController,
       )
       .get(
         "/:organizationId",
