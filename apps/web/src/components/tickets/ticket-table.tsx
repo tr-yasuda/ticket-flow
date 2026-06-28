@@ -10,6 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ApiError } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 import {
   ticketTableColumns,
@@ -17,7 +19,7 @@ import {
 } from "./ticket-table-columns.js";
 
 export type TicketTableProps = {
-  tickets?: TicketListItem[];
+  tickets?: readonly TicketListItem[];
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -38,10 +40,13 @@ export function TicketTable({
   }
 
   if (error !== null) {
+    const message =
+      error instanceof ApiError ? error.message : getApiErrorMessage(error);
+
     return (
       <ErrorState
         title="チケットの取得に失敗しました"
-        message="接続を確認して、もう一度お試しください。"
+        message={message}
         onRetry={onRetry}
       />
     );

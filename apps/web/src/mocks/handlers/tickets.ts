@@ -66,28 +66,69 @@ function toTicketListItem(ticket: MockTicket): MockTicketListItem {
 
 const demoTicketListItems = demoTickets.map(toTicketListItem);
 
+const MIN_PAGE = 1;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 100;
+
+function normalizePage(value: number): number {
+  return Math.max(MIN_PAGE, Math.floor(value));
+}
+
+function normalizePerPage(value: number): number {
+  return Math.min(MAX_PER_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
+}
+
+function parsePaginationQuery(url: URL): {
+  page: number;
+  perPage: number;
+} {
+  const rawPage = Number(url.searchParams.get("page") ?? String(MIN_PAGE));
+  const rawPerPage = Number(
+    url.searchParams.get("perPage") ?? String(DEFAULT_PER_PAGE),
+  );
+
+  if (!Number.isFinite(rawPage) || !Number.isFinite(rawPerPage)) {
+    return {
+      page: MIN_PAGE,
+      perPage: DEFAULT_PER_PAGE,
+    };
+  }
+
+  return {
+    page: normalizePage(rawPage),
+    perPage: normalizePerPage(rawPerPage),
+  };
+}
+
 export const ticketHandlers = [
-  http.get("/api/organizations/:id/tickets", ({ params }) => {
+  http.get("/api/organizations/:id/tickets", ({ request, params }) => {
     const id = normalizePathParam(params.id);
+    const url = new URL(request.url);
+    const { page, perPage } = parsePaginationQuery(url);
 
     if (id !== demoOrganization.id) {
       return HttpResponse.json(
-        createApiPaginatedSuccessResponse(
-          { tickets: [] },
-          { page: 1, perPage: 20, total: 0, totalPages: 1 },
+        createApiErrorResponse(
+          ApiErrorCode.AUTH_FORBIDDEN,
+          "この組織にアクセスする権限がありません",
         ),
-        { status: 200 },
+        { status: 403 },
       );
     }
 
+    const total = demoTicketListItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const start = (page - 1) * perPage;
+    const tickets = demoTicketListItems.slice(start, start + perPage);
+
     return HttpResponse.json(
       createApiPaginatedSuccessResponse(
-        { tickets: demoTicketListItems },
+        { tickets },
         {
-          page: 1,
-          perPage: 20,
-          total: demoTicketListItems.length,
-          totalPages: 1,
+          page,
+          perPage,
+          total,
+          totalPages,
         },
       ),
       { status: 200 },

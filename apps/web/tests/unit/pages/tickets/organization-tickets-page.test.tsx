@@ -4,11 +4,18 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  createApiPaginatedSuccessResponse,
+} from "@ticket-flow/shared";
+import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { OrganizationMembershipProvider } from "@/contexts/organization-membership-context";
 import { clearTokens, setTokens } from "@/lib/token-storage";
+import { server } from "@/mocks/server.js";
 import { OrganizationTicketsPageView } from "@/pages/tickets/organization-tickets-page";
 import { routeTree } from "@/routeTree.gen";
 
@@ -143,6 +150,11 @@ describe("OrganizationTicketsPage", () => {
         screen.getByRole("heading", { name: "チケット" }),
       ).toBeInTheDocument();
     });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
+      ).toBeInTheDocument();
+    });
     expect(screen.getByTestId("organization-id")).toHaveTextContent(
       "demo-org-001",
     );
@@ -191,5 +203,97 @@ describe("OrganizationTicketsPage", () => {
         screen.getByText("チケット詳細画面は準備中です。"),
       ).toBeInTheDocument();
     });
+  });
+
+  it("API エラー時にエラー状態を表示する", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", () =>
+        HttpResponse.json(
+          createApiErrorResponse(
+            ApiErrorCode.INTERNAL_ERROR,
+            "チケット一覧の取得に失敗しました",
+          ),
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderRoute("/app/demo-org-001/tickets", true);
+    await waitFor(() => {
+      expect(screen.getByTestId("error-state")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("チケット一覧の取得に失敗しました"),
+    ).toBeInTheDocument();
+  });
+
+  it("API から空配列が返ると空状態を表示する", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", () =>
+        HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [] },
+            { page: 1, perPage: 20, total: 0, totalPages: 1 },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    renderRoute("/app/demo-org-001/tickets", true);
+    await waitFor(() => {
+      expect(screen.getByTestId("empty-state")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("エラー時に再試行ボタンでデータを再取得する", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", () =>
+        HttpResponse.json(
+          createApiErrorResponse(
+            ApiErrorCode.INTERNAL_ERROR,
+            "チケット一覧の取得に失敗しました",
+          ),
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderRoute("/app/demo-org-001/tickets", true);
+    await waitFor(() => {
+      expect(screen.getByTestId("error-state")).toBeInTheDocument();
+    });
+
+    server.use(
+      http.get("/api/organizations/:id/tickets", () =>
+        HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            {
+              tickets: [
+                {
+                  id: "demo-ticket-001",
+                  title: "ログイン画面の UI 改善",
+                  status: "open",
+                  priority: "medium",
+                  assignee: { id: "demo-user-001", name: null },
+                },
+              ],
+            },
+            { page: 1, perPage: 20, total: 1, totalPages: 1 },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "再試行" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("table")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "ログイン画面の UI 改善" }),
+    ).toBeInTheDocument();
   });
 });

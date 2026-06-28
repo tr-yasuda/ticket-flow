@@ -1,15 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import { demoTickets } from "@/mocks/data/tickets";
+import { useTickets } from "@/hooks/use-tickets";
 
 export type OrganizationTicketsPageViewProps = {
   organizationId: string;
-  tickets: TicketListItem[];
+  tickets: readonly TicketListItem[];
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -67,20 +67,26 @@ type OrganizationTicketsPageProps = {
   organizationId: string;
 };
 
+// テストでページ切り替えを確認しやすくするため小さく設定。
+// ユーザーが変更できるようにする際は、この定数を設定 UI へ置き換える。
 const itemsPerPage = 2;
 
 export function OrganizationTicketsPage({
   organizationId,
 }: OrganizationTicketsPageProps): ReactElement {
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const { tickets, isLoading, error, currentPage, totalPages, refetch } =
+    useTickets({
+      organizationId,
+      page: requestedPage,
+      perPage: itemsPerPage,
+      enabled: organizationId !== "",
+    });
 
-  // TODO: #48, #49 のデータ取得基盤が整備されたら内部 state + データ取得 hook に置き換える
-  const totalPages = Math.max(1, Math.ceil(demoTickets.length / itemsPerPage));
-  const paginatedTickets = demoTickets.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  useEffect(() => {
+    setRequestedPage(1);
+  }, [organizationId]);
 
   const handleRowClick = (ticket: TicketListItem) => {
     void navigate({
@@ -92,11 +98,14 @@ export function OrganizationTicketsPage({
   return (
     <OrganizationTicketsPageView
       organizationId={organizationId}
-      tickets={paginatedTickets}
+      tickets={tickets}
+      isLoading={isLoading}
+      error={error}
+      onRetry={refetch}
       onRowClick={handleRowClick}
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={setRequestedPage}
     />
   );
 }

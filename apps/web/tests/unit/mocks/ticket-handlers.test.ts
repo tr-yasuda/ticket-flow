@@ -1,5 +1,4 @@
 import {
-  createApiPaginatedSuccessResponse,
   type ApiPaginatedSuccessResponse,
   type ApiSuccessResponse,
 } from "@ticket-flow/shared";
@@ -37,17 +36,26 @@ describe("ticket mock handlers", () => {
     });
   });
 
-  it("存在しない組織のチケット一覧は空配列", async () => {
-    const response = await apiClient
-      .get("organizations/other-org/tickets")
-      .json();
+  it("存在しない組織のチケット一覧は 403", async () => {
+    await expect(
+      apiClient.get("organizations/other-org/tickets").json(),
+    ).rejects.toMatchObject({ status: 403 });
+  });
 
-    expect(response).toEqual(
-      createApiPaginatedSuccessResponse(
-        { tickets: [] },
-        { page: 1, perPage: 20, total: 0, totalPages: 1 },
-      ),
-    );
+  it("page / perPage クエリでページネーションできる", async () => {
+    const response = await apiClient
+      .get("organizations/demo-org-001/tickets?page=2&perPage=2")
+      .json<ApiPaginatedSuccessResponse<{ tickets: MockTicketListItem[] }>>();
+
+    expect(response.success).toBe(true);
+    expect(response.data.tickets).toHaveLength(2);
+    expect(response.data.tickets[0]?.id).toBe("demo-ticket-003");
+    expect(response.meta).toEqual({
+      page: 2,
+      perPage: 2,
+      total: 4,
+      totalPages: 2,
+    });
   });
 
   it("特定のチケットを取得できる", async () => {
