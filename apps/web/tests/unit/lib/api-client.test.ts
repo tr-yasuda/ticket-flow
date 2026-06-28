@@ -93,6 +93,46 @@ describe("apiClient", () => {
     expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
   });
 
+  it("POST 401 応答時にリフレッシュして元リクエストをリトライする", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "new-access" }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const result = await apiClient
+      .post("protected", { json: { name: "test" } })
+      .json<{ ok: boolean }>();
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(getAccessToken()).toBe("new-access");
+    const [retryRequest] = fetchMock.mock.calls[2] as [Request];
+    expect(retryRequest).toBeInstanceOf(Request);
+    expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+    expect(retryRequest.method).toBe("POST");
+    expect(await retryRequest.clone().json()).toEqual({ name: "test" });
+  });
+
   it("リフレッシュに失敗した場合はトークンをクリアしてエラーを投げる", async () => {
     setTokens("expired-access", "refresh-token");
     const fetchMock = vi
