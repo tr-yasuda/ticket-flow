@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { listTicketsQuerySchema } from "../../../src/controllers/schemas/ticket-schema.js";
 import {
   deleteTicketController,
   listTicketsController,
@@ -32,7 +33,7 @@ function createTestContext({
           return body;
         }
         if (target === "query") {
-          return query ?? {};
+          return listTicketsQuerySchema.parse(query ?? {});
         }
         if (target === "param") {
           return { ticketId: "550e8400-e29b-41d4-a716-446655440000" };
@@ -779,6 +780,45 @@ describe("tickets-controller", () => {
           skip: 0,
           take: 20,
           assigneeId: "550e8400-e29b-41d4-a716-446655440002",
+        }),
+      );
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          meta: expect.objectContaining({
+            page: 1,
+            perPage: 20,
+            total: 0,
+            totalPages: 1,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("priority クエリを配列としてサービスに渡す", async () => {
+      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+        success: true,
+        data: { tickets: [], total: 0 },
+      });
+      const c = createTestContext({
+        query: {
+          page: 1,
+          perPage: 20,
+          priority: "high,urgent",
+        },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(ticketService.listTickets).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "550e8400-e29b-41d4-a716-446655440001",
+          skip: 0,
+          take: 20,
+          priority: ["high", "urgent"],
         }),
       );
       expect(c.json).toHaveBeenCalledWith(

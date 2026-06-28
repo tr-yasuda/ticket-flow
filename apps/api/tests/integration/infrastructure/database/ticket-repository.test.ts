@@ -1135,6 +1135,201 @@ describe("ticket-repository 統合テスト", () => {
     expect(total).toBe(1);
   });
 
+  it("findTicketsByOrganizationId は priority で絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-high",
+        organizationId,
+        title: "high priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.High,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-low",
+        organizationId,
+        title: "low priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Low,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      priority: [TicketPriority.High],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-high");
+  });
+
+  it("findTicketsByOrganizationId は複数 priority を OR 条件で絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-high",
+        organizationId,
+        title: "high priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.High,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-low",
+        organizationId,
+        title: "low priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Low,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-medium",
+        organizationId,
+        title: "medium priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Medium,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      priority: [TicketPriority.High, TicketPriority.Low],
+    });
+
+    expect(result).toHaveLength(2);
+    const ids = result.map((ticket) => ticket.id);
+    expect(ids).toContain("ticket-high");
+    expect(ids).toContain("ticket-low");
+    expect(ids).not.toContain("ticket-medium");
+  });
+
+  it("findTicketsByOrganizationId は search と priority を組み合わせられる", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-billing-high",
+        organizationId,
+        title: "billing high",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.High,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-billing-low",
+        organizationId,
+        title: "billing low",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Low,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-ui-high",
+        organizationId,
+        title: "ui high",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.High,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const result = await findTicketsByOrganizationId({
+      organizationId,
+      search: "billing",
+      priority: [TicketPriority.High],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("ticket-billing-high");
+  });
+
+  it("countTicketsByOrganizationId は priority で件数を絞り込める", async () => {
+    const { organizationId, ownerId } = await seedOrganization();
+
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-high",
+        organizationId,
+        title: "high priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.High,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+    await saveTicket(
+      rehydrateTicket({
+        id: "ticket-low",
+        organizationId,
+        title: "low priority ticket",
+        description: null,
+        status: TicketStatus.Open,
+        priority: TicketPriority.Low,
+        assigneeId: null,
+        createdBy: ownerId,
+        createdAt: new Date("2026-06-19T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+      }),
+    );
+
+    const total = await countTicketsByOrganizationId({
+      organizationId,
+      priority: [TicketPriority.High],
+    });
+
+    expect(total).toBe(1);
+  });
+
   it("softDeleteTicket でチケットを論理削除できる", async () => {
     const { organizationId, ownerId } = await seedOrganization();
     const ticket = rehydrateTicket({
