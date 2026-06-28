@@ -9,7 +9,7 @@ export const listOrganizationAuditLogsQuerySchema = z
   })
   .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
     message: "ページ範囲が大きすぎます",
-    path: [],
+    path: ["page"],
   });
 
 export type ListOrganizationAuditLogsQuery = z.infer<
