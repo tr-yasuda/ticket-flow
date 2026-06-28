@@ -21,19 +21,38 @@ export type UseTicketsResult = Readonly<{
   refetch: () => void;
 }>;
 
+type ResultEntry = Readonly<{
+  key: string;
+  data: ListTicketsResult;
+}>;
+
 const emptyTickets: readonly TicketListItem[] = [];
+
+function createRequestKey(
+  organizationId: string,
+  page: number,
+  perPage: number,
+  retryKey: number,
+): string {
+  return `${organizationId}:${page}:${perPage}:${retryKey}`;
+}
 
 export function useTickets(input: UseTicketsInput): UseTicketsResult {
   const { organizationId, page = 1, perPage = 20, enabled = true } = input;
 
-  const [result, setResult] = useState<ListTicketsResult | null>(null);
-  const [isLoading, setIsLoading] = useState(enabled);
+  const [result, setResult] = useState<ResultEntry | null>(null);
+  const [isFetching, setIsFetching] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
+  const requestKey = useMemo(
+    () => createRequestKey(organizationId, page, perPage, retryKey),
+    [organizationId, page, perPage, retryKey],
+  );
+
   useEffect(() => {
     if (!enabled) {
-      setIsLoading(false);
+      setIsFetching(false);
       setError(null);
       setResult(null);
       return;
@@ -42,9 +61,8 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
     let cancelled = false;
     const controller = new AbortController();
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
-    setResult(null);
 
     void listTickets({
       organizationId,
@@ -56,8 +74,8 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
         if (cancelled) {
           return;
         }
-        setResult(data);
-        setIsLoading(false);
+        setResult({ key: requestKey, data });
+        setIsFetching(false);
       })
       .catch((err: unknown) => {
         if (cancelled) {
@@ -65,28 +83,31 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
         }
         setResult(null);
         setError(err instanceof Error ? err : new Error(String(err)));
-        setIsLoading(false);
+        setIsFetching(false);
       });
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, organizationId, page, perPage, retryKey]);
+  }, [enabled, requestKey, organizationId, page, perPage]);
 
   const refetch = useCallback(() => {
     setRetryKey((previous) => previous + 1);
   }, []);
 
+  const isStale = result === null || result.key !== requestKey;
+  const currentResult = isStale ? null : result.data;
+
   return useMemo(
     () => ({
-      tickets: result?.tickets ?? emptyTickets,
-      isLoading,
+      tickets: currentResult?.tickets ?? emptyTickets,
+      isLoading: enabled && (isFetching || isStale) && error === null,
       error,
-      currentPage: result?.page ?? page,
-      totalPages: result?.totalPages ?? 1,
+      currentPage: currentResult?.page ?? page,
+      totalPages: currentResult?.totalPages ?? 1,
       refetch,
     }),
-    [result, isLoading, error, page, refetch],
+    [currentResult, enabled, isFetching, isStale, error, page, refetch],
   );
 }
