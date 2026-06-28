@@ -69,11 +69,11 @@ describe("OrganizationTicketsPage URL-safe navigation", () => {
     const router = renderRoute("/app/demo-org-001/tickets", true);
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "URL 非安全チケット" }),
+        screen.getByRole("link", { name: /URL 非安全チケット/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "URL 非安全チケット" }));
+    fireEvent.click(screen.getByRole("link", { name: /URL 非安全チケット/i }));
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(

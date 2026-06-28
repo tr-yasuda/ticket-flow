@@ -1,5 +1,6 @@
 import { Inbox } from "lucide-react";
-import type { KeyboardEvent, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useMemo } from "react";
 
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/feedback";
 import {
@@ -14,7 +15,7 @@ import { ApiError } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 import {
-  ticketTableColumns,
+  createTicketTableColumns,
   type TicketListItem,
 } from "./ticket-table-columns.js";
 
@@ -23,7 +24,7 @@ export type TicketTableProps = {
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
-  onRowClick?: (ticket: TicketListItem) => void;
+  getRowHref?: (ticket: TicketListItem) => string;
   emptyAction?: ReactNode;
 };
 
@@ -32,9 +33,14 @@ export function TicketTable({
   isLoading = false,
   error = null,
   onRetry,
-  onRowClick,
+  getRowHref,
   emptyAction,
 }: TicketTableProps): ReactElement {
+  const columns = useMemo(
+    () => createTicketTableColumns(getRowHref),
+    [getRowHref],
+  );
+
   if (isLoading) {
     return <LoadingSpinner message="チケットを読み込んでいます…" />;
   }
@@ -66,53 +72,26 @@ export function TicketTable({
     );
   }
 
-  function handleRowKeyDown(
-    event: KeyboardEvent<HTMLTableRowElement>,
-    ticket: TicketListItem,
-  ) {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-    event.preventDefault();
-    onRowClick?.(ticket);
-  }
-
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            {ticketTableColumns.map((column) => (
+            {columns.map((column) => (
               <TableHead key={column.key}>{column.header}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tickets.map((ticket) => {
-            const isInteractive = onRowClick !== undefined;
-            return (
-              <TableRow
-                key={ticket.id}
-                data-row-id={ticket.id}
-                role={isInteractive ? "button" : undefined}
-                tabIndex={isInteractive ? 0 : undefined}
-                aria-label={isInteractive ? ticket.title : undefined}
-                className={isInteractive ? "cursor-pointer" : undefined}
-                onClick={() => onRowClick?.(ticket)}
-                onKeyDown={
-                  isInteractive
-                    ? (event) => handleRowKeyDown(event, ticket)
-                    : undefined
-                }
-              >
-                {ticketTableColumns.map((column) => (
-                  <TableCell key={`${ticket.id}-${column.key}`}>
-                    {column.cell(ticket)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            );
-          })}
+          {tickets.map((ticket) => (
+            <TableRow key={ticket.id} data-row-id={ticket.id}>
+              {columns.map((column) => (
+                <TableCell key={`${ticket.id}-${column.key}`}>
+                  {column.cell(ticket)}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>
