@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
@@ -13,7 +12,7 @@ export type OrganizationTicketsPageViewProps = {
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
-  onRowClick?: (ticket: TicketListItem) => void;
+  getRowHref?: (ticket: TicketListItem) => string;
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -25,7 +24,7 @@ export function OrganizationTicketsPageView({
   isLoading = false,
   error = null,
   onRetry,
-  onRowClick,
+  getRowHref,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
@@ -43,7 +42,7 @@ export function OrganizationTicketsPageView({
         isLoading={isLoading}
         error={error}
         onRetry={onRetry}
-        onRowClick={onRowClick}
+        getRowHref={getRowHref}
         emptyAction={
           <Button type="button" className="mt-2">
             新規作成
@@ -72,7 +71,6 @@ const itemsPerPage = 2;
 export function OrganizationTicketsPage({
   organizationId,
 }: OrganizationTicketsPageProps): ReactElement {
-  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
 
   // TODO: #48, #49 のデータ取得基盤が整備されたら内部 state + データ取得 hook に置き換える
@@ -82,21 +80,18 @@ export function OrganizationTicketsPage({
     currentPage * itemsPerPage,
   );
 
-  const handleRowClick = useCallback(
+  const getRowHref = useCallback(
     (ticket: TicketListItem) => {
-      void navigate({
-        to: "/app/$organizationId/tickets/$ticketId",
-        params: { organizationId, ticketId: ticket.id },
-      });
+      return `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`;
     },
-    [navigate, organizationId],
+    [organizationId],
   );
 
   return (
     <OrganizationTicketsPageView
       organizationId={organizationId}
       tickets={paginatedTickets}
-      onRowClick={handleRowClick}
+      getRowHref={getRowHref}
       currentPage={currentPage}
       totalPages={totalPages}
       onPageChange={setCurrentPage}

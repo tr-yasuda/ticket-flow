@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
 import type { ReactNode } from "react";
 
@@ -34,25 +35,81 @@ function AssigneeCell({ assignee }: { assignee: TicketAssignee | null }) {
   );
 }
 
-export const ticketTableColumns: TicketTableColumn[] = [
-  {
-    key: "title",
-    header: "タイトル",
-    cell: (ticket) => <span className="font-medium">{ticket.title}</span>,
-  },
-  {
-    key: "status",
-    header: "ステータス",
-    cell: (ticket) => <TicketStatusBadge status={ticket.status} />,
-  },
-  {
-    key: "priority",
-    header: "優先度",
-    cell: (ticket) => <TicketPriorityBadge priority={ticket.priority} />,
-  },
-  {
-    key: "assignee",
-    header: "担当者",
-    cell: (ticket) => <AssigneeCell assignee={ticket.assignee} />,
-  },
-];
+function toSafeHref(raw: string): string {
+  if (raw === "") {
+    return "/";
+  }
+
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    return raw;
+  }
+
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin === window.location.origin) {
+      let pathname = url.pathname;
+      if (!pathname.startsWith("/")) {
+        pathname = `/${pathname}`;
+      }
+      if (pathname.startsWith("//")) {
+        return "/";
+      }
+      return `${pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // 無効な URL はフォールバック
+  }
+
+  return "/";
+}
+
+function TitleCell({
+  ticket,
+  getRowHref,
+}: {
+  ticket: TicketListItem;
+  getRowHref?: (ticket: TicketListItem) => string;
+}) {
+  if (getRowHref === undefined) {
+    return <span className="font-medium">{ticket.title}</span>;
+  }
+
+  const href = toSafeHref(getRowHref(ticket));
+
+  return (
+    <Link
+      to={href}
+      className="block font-medium hover:underline"
+      aria-label={`${ticket.title}の詳細を開く`}
+    >
+      {ticket.title}
+    </Link>
+  );
+}
+
+export function createTicketTableColumns(
+  getRowHref?: (ticket: TicketListItem) => string,
+): TicketTableColumn[] {
+  return [
+    {
+      key: "title",
+      header: "タイトル",
+      cell: (ticket) => <TitleCell ticket={ticket} getRowHref={getRowHref} />,
+    },
+    {
+      key: "status",
+      header: "ステータス",
+      cell: (ticket) => <TicketStatusBadge status={ticket.status} />,
+    },
+    {
+      key: "priority",
+      header: "優先度",
+      cell: (ticket) => <TicketPriorityBadge priority={ticket.priority} />,
+    },
+    {
+      key: "assignee",
+      header: "担当者",
+      cell: (ticket) => <AssigneeCell assignee={ticket.assignee} />,
+    },
+  ];
+}
