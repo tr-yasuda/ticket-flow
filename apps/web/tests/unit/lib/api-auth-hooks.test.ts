@@ -93,17 +93,15 @@ describe("refreshAccessToken", () => {
 
   it("リフレッシュ成功時にトークンを更新してリクエストに新しいヘッダーを付与する", async () => {
     setTokens("expired-access", "refresh-token");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            accessToken: "new-access",
-            refreshToken: "new-refresh",
-          }),
-          { status: 200 },
-        ),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: "new-access",
+          refreshToken: "new-refresh",
+        }),
+        { status: 200 },
+      ),
+    );
     mockFetch(fetchMock);
 
     const request = new Request("https://example.com/protected");
@@ -128,13 +126,11 @@ describe("refreshAccessToken", () => {
 
   it("リフレッシュ失敗時はトークンをクリアしてエラーを投げる", async () => {
     setTokens("expired-access", "refresh-token");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+      }),
+    );
     mockFetch(fetchMock);
 
     const request = new Request("https://example.com/protected");
