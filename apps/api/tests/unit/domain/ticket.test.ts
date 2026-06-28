@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  TicketInvalidStateError,
   TicketPriority,
   TicketStatus,
   TicketValidationError,
   createTicket,
+  parseTicketPriority,
+  parseTicketStatus,
   rehydrateTicket,
   updateTicket,
   updateTicketAssignee,
@@ -534,4 +537,39 @@ describe("チケット更新", () => {
       );
     });
   });
+});
+
+describe("parseTicketStatus", () => {
+  it.each([
+    ["open", TicketStatus.Open],
+    ["in-progress", TicketStatus.InProgress],
+    ["closed", TicketStatus.Closed],
+  ])("%s を TicketStatus に変換できる", (value, expected) => {
+    expect(parseTicketStatus(value)).toBe(expected);
+  });
+
+  it.each([["invalid"], [""], ["OPEN"], ["medium"], [" open "]])(
+    "無効な値 %s は TicketInvalidStateError を投げる",
+    (value) => {
+      expect(() => parseTicketStatus(value)).toThrow(TicketInvalidStateError);
+    },
+  );
+});
+
+describe("parseTicketPriority", () => {
+  it.each([
+    ["low", TicketPriority.Low],
+    ["medium", TicketPriority.Medium],
+    ["high", TicketPriority.High],
+    ["urgent", TicketPriority.Urgent],
+  ])("%s を TicketPriority に変換できる", (value, expected) => {
+    expect(parseTicketPriority(value)).toBe(expected);
+  });
+
+  it.each([["invalid"], [""], ["HIGH"], ["open"], [" low "]])(
+    "無効な値 %s は TicketInvalidStateError を投げる",
+    (value) => {
+      expect(() => parseTicketPriority(value)).toThrow(TicketInvalidStateError);
+    },
+  );
 });
