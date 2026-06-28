@@ -1,11 +1,18 @@
 import { createApiPaginatedSuccessResponse } from "@ticket-flow/shared";
-import type { Context } from "hono";
 
 import type { AuditLogWithActor } from "../domain/audit-log.js";
 import { HttpStatus } from "../lib/http-status.js";
+import {
+  type QueryInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import { listOrganizationAuditLogs } from "../services/audit-logs-service.js";
 import { getRequiredContextValue } from "./context-helpers.js";
 import { type ListOrganizationAuditLogsQuery } from "./schemas/audit-log-schema.js";
+
+type ListOrganizationAuditLogsControllerContext = ValidatedContext<
+  QueryInput<ListOrganizationAuditLogsQuery>
+>;
 
 const SENSITIVE_FIELDS = new Set([
   "password",
@@ -50,12 +57,10 @@ function serializeAuditLog(log: AuditLogWithActor) {
 }
 
 export async function listOrganizationAuditLogsController(
-  c: Context,
+  c: ListOrganizationAuditLogsControllerContext,
 ): Promise<Response> {
   const organizationId = getRequiredContextValue(c, "organizationId");
-  const { page, perPage } = c.req.valid(
-    "query" as never,
-  ) as ListOrganizationAuditLogsQuery;
+  const { page, perPage } = c.req.valid("query");
 
   const skip = (page - 1) * perPage;
 
