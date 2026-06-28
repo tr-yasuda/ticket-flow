@@ -639,7 +639,7 @@ describe("GET /api/organizations/:organizationId/tickets?priority=... (tickets.f
   });
 
   it("priority と assignee=none を組み合わせてフィルタできる", async () => {
-    const { accessToken: ownerToken } = await registerUser(
+    const { accessToken: ownerToken, userId: ownerId } = await registerUser(
       app,
       uniqueEmail("owner"),
       "password123",
@@ -662,7 +662,7 @@ describe("GET /api/organizations/:organizationId/tickets?priority=... (tickets.f
     await createTicketRequest(app, ownerToken, organizationId, {
       title: "assigned high",
       priority: "high",
-      assigneeId: ownerToken,
+      assigneeId: ownerId,
     });
 
     const response = await filterTicketsRequest(

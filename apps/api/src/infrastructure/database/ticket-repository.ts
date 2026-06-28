@@ -87,8 +87,10 @@ function hasEnumFilter<T>(values: T[] | undefined): values is T[] {
   return values !== undefined && values.length > 0;
 }
 
+type FilterableTicketColumn = "status" | "priority";
+
 function buildEnumInFilter<T extends string>(
-  column: string,
+  column: FilterableTicketColumn,
   values: T[] | undefined,
 ): Prisma.Sql {
   if (!hasEnumFilter(values)) {

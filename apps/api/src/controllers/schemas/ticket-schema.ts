@@ -64,14 +64,18 @@ export const listTicketsQuerySchema = z
     status: z
       .union([
         z.string().max(MAX_FILTER_STRING_LENGTH),
-        z.array(z.string()).max(MAX_FILTER_ARRAY_LENGTH),
+        z
+          .array(z.string().max(MAX_FILTER_STRING_LENGTH))
+          .max(MAX_FILTER_ARRAY_LENGTH),
       ])
       .optional()
       .transform((value) => parseEnumQuery(ticketStatusSchema.options, value)),
     priority: z
       .union([
         z.string().max(MAX_FILTER_STRING_LENGTH),
-        z.array(z.string()).max(MAX_FILTER_ARRAY_LENGTH),
+        z
+          .array(z.string().max(MAX_FILTER_STRING_LENGTH))
+          .max(MAX_FILTER_ARRAY_LENGTH),
       ])
       .optional()
       .transform((value) =>
