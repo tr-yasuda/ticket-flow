@@ -169,6 +169,7 @@ apps/api/prisma/e2e-test.db-*
 .worktrees/
 
 # Playwright
+/test-results/
 /playwright-report/
 /playwright/.cache/
 /blob-report/
