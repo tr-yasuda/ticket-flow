@@ -64,7 +64,10 @@ export async function createTicket(
       title: input.title,
       description: input.description,
       priority: input.priority,
-      assigneeId: input.assigneeId ?? null,
+      assigneeId:
+        input.assigneeId === undefined || input.assigneeId === null
+          ? null
+          : input.assigneeId.toLowerCase(),
       createdBy: input.createdBy,
     };
 
@@ -366,9 +369,12 @@ export async function updateTicketAssignee(
       };
     }
 
+    const normalizedAssigneeId =
+      input.assigneeId === null ? null : input.assigneeId.toLowerCase();
+
     const updatedEntity = updateTicketAssigneeEntity(
       existing,
-      input.assigneeId,
+      normalizedAssigneeId,
     );
     if (updatedEntity.assigneeId === existing.assigneeId) {
       return { success: true, data: { ticket: existing } };
