@@ -129,13 +129,6 @@ export class TicketConflictError extends Error {
   }
 }
 
-export class UserNotOrganizationMemberError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "UserNotOrganizationMemberError";
-  }
-}
-
 const ticketSchema = z.object({
   id: z
     .string({ message: "チケットIDは必須です" })

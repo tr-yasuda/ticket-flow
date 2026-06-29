@@ -10,7 +10,8 @@ import {
   updateTicketPriorityController,
   updateTicketStatusController,
 } from "../../../src/controllers/tickets-controller.js";
-import * as ticketService from "../../../src/services/ticket-service.js";
+import * as ticketCommandService from "../../../src/services/ticket-command-service.js";
+import * as ticketQueryService from "../../../src/services/ticket-query-service.js";
 
 function createTestContext({
   body,
@@ -79,7 +80,7 @@ describe("tickets-controller", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicket").mockResolvedValue({
         success: true,
         data: { ticket },
       });
@@ -91,7 +92,7 @@ describe("tickets-controller", () => {
 
       await updateTicketController(c);
 
-      expect(ticketService.updateTicket).toHaveBeenCalledWith({
+      expect(ticketCommandService.updateTicket).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         updatedBy: "user-id",
@@ -111,7 +112,7 @@ describe("tickets-controller", () => {
     });
 
     it("存在しないチケットの場合は 404 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicket").mockResolvedValue({
         success: false,
         error: { type: "ticket-not-found", message: "not found" },
       });
@@ -133,7 +134,7 @@ describe("tickets-controller", () => {
     });
 
     it("バリデーションエラーの場合は 400 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicket").mockResolvedValue({
         success: false,
         error: { type: "validation-error", message: "invalid input" },
       });
@@ -155,7 +156,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicket").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
@@ -191,7 +192,7 @@ describe("tickets-controller", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketStatus").mockResolvedValue({
         success: true,
         data: { ticket },
       });
@@ -203,7 +204,7 @@ describe("tickets-controller", () => {
 
       await updateTicketStatusController(c);
 
-      expect(ticketService.updateTicketStatus).toHaveBeenCalledWith({
+      expect(ticketCommandService.updateTicketStatus).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         status: "in-progress",
@@ -222,7 +223,7 @@ describe("tickets-controller", () => {
     });
 
     it("存在しないチケットの場合は 404 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketStatus").mockResolvedValue({
         success: false,
         error: { type: "ticket-not-found", message: "not found" },
       });
@@ -244,7 +245,7 @@ describe("tickets-controller", () => {
     });
 
     it("並行更新で競合が発生した場合は 409 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketStatus").mockResolvedValue({
         success: false,
         error: {
           type: "ticket-conflict",
@@ -274,7 +275,7 @@ describe("tickets-controller", () => {
     });
 
     it("無効な遷移の場合は 400 を返し status フィールドの詳細を含む", async () => {
-      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketStatus").mockResolvedValue({
         success: false,
         error: {
           type: "validation-error",
@@ -308,7 +309,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketStatus").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketStatus").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
@@ -344,7 +345,7 @@ describe("tickets-controller", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketPriority").mockResolvedValue({
         success: true,
         data: { ticket },
       });
@@ -356,7 +357,7 @@ describe("tickets-controller", () => {
 
       await updateTicketPriorityController(c);
 
-      expect(ticketService.updateTicketPriority).toHaveBeenCalledWith({
+      expect(ticketCommandService.updateTicketPriority).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         priority: "urgent",
@@ -375,7 +376,7 @@ describe("tickets-controller", () => {
     });
 
     it("存在しないチケットの場合は 404 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketPriority").mockResolvedValue({
         success: false,
         error: { type: "ticket-not-found", message: "not found" },
       });
@@ -397,7 +398,7 @@ describe("tickets-controller", () => {
     });
 
     it("並行更新で競合が発生した場合は 409 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketPriority").mockResolvedValue({
         success: false,
         error: {
           type: "ticket-conflict",
@@ -425,7 +426,7 @@ describe("tickets-controller", () => {
     });
 
     it("無効な優先度の場合は 400 を返し priority フィールドの詳細を含む", async () => {
-      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketPriority").mockResolvedValue({
         success: false,
         error: {
           type: "validation-error",
@@ -458,7 +459,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketPriority").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketPriority").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
@@ -494,7 +495,7 @@ describe("tickets-controller", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: true,
         data: { ticket },
       });
@@ -506,7 +507,7 @@ describe("tickets-controller", () => {
 
       await updateTicketAssigneeController(c);
 
-      expect(ticketService.updateTicketAssignee).toHaveBeenCalledWith({
+      expect(ticketCommandService.updateTicketAssignee).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         assigneeId: "550e8400-e29b-41d4-a716-446655440002",
@@ -525,7 +526,7 @@ describe("tickets-controller", () => {
     });
 
     it("存在しないチケットの場合は 404 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: false,
         error: { type: "ticket-not-found", message: "not found" },
       });
@@ -547,7 +548,7 @@ describe("tickets-controller", () => {
     });
 
     it("担当者が組織メンバーでない場合は 400 を返し assigneeId フィールドの詳細を含む", async () => {
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: false,
         error: {
           type: "user-not-organization-member",
@@ -580,7 +581,7 @@ describe("tickets-controller", () => {
     });
 
     it("無効な assigneeId の場合は 400 を返し assigneeId フィールドの詳細を含む", async () => {
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: false,
         error: {
           type: "validation-error",
@@ -625,7 +626,7 @@ describe("tickets-controller", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: true,
         data: { ticket },
       });
@@ -637,7 +638,7 @@ describe("tickets-controller", () => {
 
       await updateTicketAssigneeController(c);
 
-      expect(ticketService.updateTicketAssignee).toHaveBeenCalledWith({
+      expect(ticketCommandService.updateTicketAssignee).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         assigneeId: null,
@@ -656,7 +657,7 @@ describe("tickets-controller", () => {
     });
 
     it("並行更新で競合が発生した場合は 409 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: false,
         error: {
           type: "ticket-conflict",
@@ -684,7 +685,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "updateTicketAssignee").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "updateTicketAssignee").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
@@ -720,7 +721,7 @@ describe("tickets-controller", () => {
         updatedAt: new Date(),
         commentCount: 0,
       };
-      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
         success: true,
         data: { tickets: [ticket], total: 1 },
       });
@@ -732,7 +733,7 @@ describe("tickets-controller", () => {
 
       await listTicketsController(c);
 
-      expect(ticketService.listTickets).toHaveBeenCalledWith(
+      expect(ticketQueryService.listTickets).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "550e8400-e29b-41d4-a716-446655440001",
           skip: 0,
@@ -758,7 +759,7 @@ describe("tickets-controller", () => {
     });
 
     it("assignee クエリを assigneeId としてサービスに渡す", async () => {
-      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
         success: true,
         data: { tickets: [], total: 0 },
       });
@@ -774,7 +775,7 @@ describe("tickets-controller", () => {
 
       await listTicketsController(c);
 
-      expect(ticketService.listTickets).toHaveBeenCalledWith(
+      expect(ticketQueryService.listTickets).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "550e8400-e29b-41d4-a716-446655440001",
           skip: 0,
@@ -797,7 +798,7 @@ describe("tickets-controller", () => {
     });
 
     it("priority クエリを配列としてサービスに渡す", async () => {
-      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
         success: true,
         data: { tickets: [], total: 0 },
       });
@@ -813,7 +814,7 @@ describe("tickets-controller", () => {
 
       await listTicketsController(c);
 
-      expect(ticketService.listTickets).toHaveBeenCalledWith(
+      expect(ticketQueryService.listTickets).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "550e8400-e29b-41d4-a716-446655440001",
           skip: 0,
@@ -836,7 +837,7 @@ describe("tickets-controller", () => {
     });
 
     it("バリデーションエラーの場合は 400 を返す", async () => {
-      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
         success: false,
         error: { type: "validation-error", message: "invalid input" },
       });
@@ -858,7 +859,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "listTickets").mockResolvedValue({
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
@@ -882,7 +883,7 @@ describe("tickets-controller", () => {
 
   describe("deleteTicketController", () => {
     it("削除成功時に 204 を返す", async () => {
-      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "deleteTicket").mockResolvedValue({
         success: true,
         data: {
           ticket: {
@@ -909,7 +910,7 @@ describe("tickets-controller", () => {
       await deleteTicketController(c);
 
       expect(c.body).toHaveBeenCalledWith(null, 204);
-      expect(ticketService.deleteTicket).toHaveBeenCalledWith({
+      expect(ticketCommandService.deleteTicket).toHaveBeenCalledWith({
         organizationId: "550e8400-e29b-41d4-a716-446655440001",
         ticketId: "550e8400-e29b-41d4-a716-446655440000",
         deletedBy: "user-id",
@@ -917,7 +918,7 @@ describe("tickets-controller", () => {
     });
 
     it("チケットが存在しない場合は 404 を返す", async () => {
-      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "deleteTicket").mockResolvedValue({
         success: false,
         error: {
           type: "ticket-not-found",
@@ -942,7 +943,7 @@ describe("tickets-controller", () => {
     });
 
     it("不明なエラーの場合は 500 を返す", async () => {
-      vi.spyOn(ticketService, "deleteTicket").mockResolvedValue({
+      vi.spyOn(ticketCommandService, "deleteTicket").mockResolvedValue({
         success: false,
         error: { type: "unknown-error", message: "something went wrong" },
       });
