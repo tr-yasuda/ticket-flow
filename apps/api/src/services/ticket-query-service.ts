@@ -34,23 +34,12 @@ export async function listTickets(
   db: PrismaClient | Prisma.TransactionClient = prisma,
 ): Promise<ListTicketsResult> {
   try {
-    const normalizedInput: FindTicketsInput = {
-      ...input,
-      assigneeId:
-        input.assigneeId === undefined || input.assigneeId === null
-          ? input.assigneeId
-          : input.assigneeId.toLowerCase(),
-    };
-
     const result = await runInTransaction(db, async (tx) => {
-      if (
-        normalizedInput.assigneeId !== undefined &&
-        normalizedInput.assigneeId !== null
-      ) {
+      if (input.assigneeId !== undefined && input.assigneeId !== null) {
         const isMember = await isUserOrganizationMember(
           tx,
-          normalizedInput.organizationId,
-          normalizedInput.assigneeId,
+          input.organizationId,
+          input.assigneeId,
         );
         if (!isMember) {
           return { tickets: [], total: 0 };
@@ -58,8 +47,8 @@ export async function listTickets(
       }
 
       const [tickets, total] = await Promise.all([
-        findTicketsByOrganizationId(normalizedInput, tx),
-        countTicketsByOrganizationId(normalizedInput, tx),
+        findTicketsByOrganizationId(input, tx),
+        countTicketsByOrganizationId(input, tx),
       ]);
 
       return { tickets, total };
