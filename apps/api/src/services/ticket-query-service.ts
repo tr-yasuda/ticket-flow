@@ -36,10 +36,11 @@ export async function listTickets(
   try {
     const result = await runInTransaction(db, async (tx) => {
       if (input.assigneeId !== undefined && input.assigneeId !== null) {
+        const assigneeIdForMembershipCheck = input.assigneeId.toLowerCase();
         const isMember = await isUserOrganizationMember(
           tx,
           input.organizationId,
-          input.assigneeId,
+          assigneeIdForMembershipCheck,
         );
         if (!isMember) {
           return { tickets: [], total: 0 };
