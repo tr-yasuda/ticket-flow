@@ -62,6 +62,7 @@ export function LoginPage(): ReactElement {
                   onChange={(event) => field.handleChange(event.target.value)}
                   error={field.state.meta.errors.join(", ")}
                   disabled={form.state.isSubmitting}
+                  data-testid="login-email"
                 />
               )}
             />
@@ -78,6 +79,7 @@ export function LoginPage(): ReactElement {
                   onChange={(event) => field.handleChange(event.target.value)}
                   error={field.state.meta.errors.join(", ")}
                   disabled={form.state.isSubmitting}
+                  data-testid="login-password"
                 />
               )}
             />
@@ -88,7 +90,7 @@ export function LoginPage(): ReactElement {
                 ) : null
               }
             </form.Subscribe>
-            <Button type="submit" disabled={form.state.isSubmitting}>
+            <Button type="submit" disabled={form.state.isSubmitting} data-testid="login-submit">
               {form.state.isSubmitting ? "ログイン中..." : "ログイン"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
