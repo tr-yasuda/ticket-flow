@@ -1612,6 +1612,67 @@ describe("ticket-repository 統合テスト", () => {
       expect(other?.commentCount).toBe(1);
     });
 
+    it("他組織のコメントをカウントしない", async () => {
+      const first = await seedOrganization();
+      const second = await seedOrganization();
+
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-first",
+          organizationId: first.organizationId,
+          title: "first org ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: first.ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-second",
+          organizationId: second.organizationId,
+          title: "second org ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: second.ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+
+      await createComment(
+        "ticket-first",
+        first.organizationId,
+        first.ownerId,
+        "first org comment",
+      );
+      await createComment(
+        "ticket-second",
+        second.organizationId,
+        second.ownerId,
+        "second org comment 1",
+      );
+      await createComment(
+        "ticket-second",
+        second.organizationId,
+        second.ownerId,
+        "second org comment 2",
+      );
+
+      const result = await findTicketsByOrganizationId({
+        organizationId: first.organizationId,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe("ticket-first");
+      expect(result[0]?.commentCount).toBe(1);
+    });
+
     it("削除済みコメントも commentCount に含める", async () => {
       const { organizationId, ownerId } = await seedOrganization();
       await saveTicket(

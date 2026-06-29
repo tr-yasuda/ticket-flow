@@ -229,6 +229,9 @@ export async function findTicketsByOrganizationId(
   // これは一覧 API の既存仕様であり、チケット詳細・更新系で使用される
   // countCommentsByTicketId（deleted_at IS NULL）とは異なります。
   // 両者を統一する場合は別途仕様調整が必要です。
+  //
+  // また、derived table 側でも organization_id で絞り込み、マルチテナント
+  // スコープを厳守しつつ集計対象を縮小しています。
   const rows = await db.$queryRaw<
     Array<{
       id: string;
@@ -258,6 +261,7 @@ export async function findTicketsByOrganizationId(
     LEFT JOIN (
       SELECT ticket_id, COUNT(*) AS commentCount
       FROM comments
+      WHERE organization_id = ${input.organizationId}
       GROUP BY ticket_id
     ) cc ON cc.ticket_id = t.id
     WHERE t.organization_id = ${input.organizationId}
