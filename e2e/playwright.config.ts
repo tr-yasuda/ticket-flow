@@ -47,12 +47,13 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: "pnpm --filter @ticket-flow/web dev",
+      command: `pnpm --filter @ticket-flow/web dev --port ${E2E_WEB_PORT} --strictPort`,
       url: E2E_BASE_URL,
       reuseExistingServer: false,
       env: {
         VITE_API_BASE_URL: "/api",
         E2E_API_PORT: String(E2E_API_PORT),
+        E2E_WEB_PORT: String(E2E_WEB_PORT),
         VITE_API_PROXY_TARGET: E2E_API_URL,
       },
       stdout: "pipe",
