@@ -14,13 +14,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
-import { useAuthForm } from "@/hooks/use-auth-form";
+import { useValidatedForm } from "@/hooks/use-validated-form";
 import { login } from "@/lib/auth-api";
 
 export function LoginPage(): ReactElement {
   const navigate = useNavigate();
   const { login: authenticate } = useAuth();
-  const form = useAuthForm({
+  const form = useValidatedForm({
     schema: loginInputSchema,
     defaultValues: { email: "", password: "" },
     onSubmit: async (values) => {
