@@ -26,6 +26,8 @@ export function createApp(): Hono {
     );
   });
 
+  app.get("/api/health", (c) => c.json({ status: "ok" }));
+
   app.route("/api/auth", configureAuthRoutes());
   app.route("/api/invitations", configureInvitationRoutes());
 
