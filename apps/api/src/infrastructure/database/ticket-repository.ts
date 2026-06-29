@@ -77,7 +77,7 @@ function normalizeAssigneeId(
   return assigneeId.toLowerCase();
 }
 
-export function escapeLikePattern(value: string): string {
+function escapeLikePattern(value: string): string {
   return value.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_");
 }
 
@@ -94,26 +94,44 @@ type FilterableTicketColumn = "status" | "priority";
 function buildEnumInFilter<T extends string>(
   column: FilterableTicketColumn,
   values: T[] | undefined,
+  tableAlias?: "t",
 ): Prisma.Sql {
   if (!hasEnumFilter(values)) {
     return Prisma.empty;
   }
 
-  return Prisma.sql`AND ${Prisma.raw(column)} IN (${Prisma.join(values)})`;
+  const qualifiedColumn =
+    tableAlias !== undefined ? `${tableAlias}.${column}` : column;
+
+  return Prisma.sql`AND ${Prisma.raw(qualifiedColumn)} IN (${Prisma.join(values)})`;
 }
+
+type AssigneeColumnRef = "assignee_id" | "t.assignee_id";
 
 function buildAssigneeFilter(
   assigneeId: string | null | undefined,
+  columnRef: AssigneeColumnRef,
 ): Prisma.Sql {
   if (assigneeId === undefined) {
     return Prisma.empty;
   }
 
   if (assigneeId === null) {
-    return Prisma.sql`AND assignee_id IS NULL`;
+    return Prisma.sql`AND ${Prisma.raw(columnRef)} IS NULL`;
   }
 
-  return Prisma.sql`AND assignee_id = ${assigneeId}`;
+  return Prisma.sql`AND ${Prisma.raw(columnRef)} = ${assigneeId}`;
+}
+
+function buildSearchFilter(searchPattern: string | undefined): Prisma.Sql {
+  if (searchPattern === undefined) {
+    return Prisma.empty;
+  }
+
+  return Prisma.sql`AND (
+    LOWER(t.title) LIKE LOWER(${searchPattern}) ESCAPE '!'
+    OR LOWER(t.description) LIKE LOWER(${searchPattern}) ESCAPE '!'
+  )`;
 }
 
 function toTicketListItem(
@@ -152,36 +170,22 @@ export async function countTicketsByOrganizationId(
   const search = normalizeSearch(input.search);
   const assigneeId = normalizeAssigneeId(input.assigneeId);
 
-  if (search === undefined) {
-    return db.ticket.count({
-      where: {
-        organizationId: input.organizationId,
-        deletedAt: null,
-        ...(hasEnumFilter(input.status) && { status: { in: input.status } }),
-        ...(hasEnumFilter(input.priority) && {
-          priority: { in: input.priority },
-        }),
-        ...(assigneeId !== undefined && { assigneeId }),
-      },
-    });
-  }
+  const statusFilter = buildEnumInFilter("status", input.status, "t");
+  const priorityFilter = buildEnumInFilter("priority", input.priority, "t");
+  const assigneeFilter = buildAssigneeFilter(assigneeId, "t.assignee_id");
+  const searchPattern =
+    search !== undefined ? buildSearchPattern(search) : undefined;
+  const searchFilter = buildSearchFilter(searchPattern);
 
-  const pattern = buildSearchPattern(search);
-  const statusFilter = buildEnumInFilter("status", input.status);
-  const priorityFilter = buildEnumInFilter("priority", input.priority);
-  const assigneeFilter = buildAssigneeFilter(assigneeId);
   const rows = await db.$queryRaw<Array<{ count: number }>>`
     SELECT COUNT(*) AS count
-    FROM tickets
-    WHERE organization_id = ${input.organizationId}
-      AND deleted_at IS NULL
+    FROM tickets t
+    WHERE t.organization_id = ${input.organizationId}
+      AND t.deleted_at IS NULL
       ${statusFilter}
       ${priorityFilter}
       ${assigneeFilter}
-      AND (
-        LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
-        OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
-      )
+      ${searchFilter}
   `;
 
   const row = rows[0];
@@ -201,45 +205,12 @@ export async function findTicketsByOrganizationId(
   const take = resolveTake(input.take);
   const skip = resolveSkip(input.skip);
 
-  if (search === undefined) {
-    const rows = await db.ticket.findMany({
-      where: {
-        organizationId: input.organizationId,
-        deletedAt: null,
-        ...(hasEnumFilter(input.status) && { status: { in: input.status } }),
-        ...(hasEnumFilter(input.priority) && {
-          priority: { in: input.priority },
-        }),
-        ...(assigneeId !== undefined && { assigneeId }),
-      },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take,
-      skip,
-      select: {
-        id: true,
-        organizationId: true,
-        title: true,
-        status: true,
-        priority: true,
-        assigneeId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            comments: true,
-          },
-        },
-      },
-    });
-
-    return rows.map((row) => toTicketListItem(row, row._count.comments));
-  }
-
-  const pattern = buildSearchPattern(search);
-  const statusFilter = buildEnumInFilter("status", input.status);
-  const priorityFilter = buildEnumInFilter("priority", input.priority);
-  const assigneeFilter = buildAssigneeFilter(assigneeId);
+  const statusFilter = buildEnumInFilter("status", input.status, "t");
+  const priorityFilter = buildEnumInFilter("priority", input.priority, "t");
+  const assigneeFilter = buildAssigneeFilter(assigneeId, "t.assignee_id");
+  const searchPattern =
+    search !== undefined ? buildSearchPattern(search) : undefined;
+  const searchFilter = buildSearchFilter(searchPattern);
 
   // NOTE: title/description の部分一致検索は SQLite の LIKE を使用します。
   // LOWER() で大文字小文字を区別せず、PRAGMA 等の設定差分に依存しません。
@@ -253,6 +224,11 @@ export async function findTicketsByOrganizationId(
   // そのため現時点では FTS5 導入を見送っています。
   // 大量データ対応が必要になった場合は、PostgreSQL 移行時の tsvector/pg_trgm、
   // または外部全文検索基盤の導入を検討してください。
+  //
+  // NOTE: commentCount は論理削除済みコメントも含めて集計します。
+  // これは一覧 API の既存仕様であり、チケット詳細・更新系で使用される
+  // countCommentsByTicketId（deleted_at IS NULL）とは異なります。
+  // 両者を統一する場合は別途仕様調整が必要です。
   const rows = await db.$queryRaw<
     Array<{
       id: string;
@@ -268,31 +244,29 @@ export async function findTicketsByOrganizationId(
     }>
   >`
     SELECT
-      id,
-      organization_id AS organizationId,
-      title,
-      status,
-      priority,
-      assignee_id AS assigneeId,
-      created_by AS createdBy,
-      created_at AS createdAt,
-      updated_at AS updatedAt,
-      (
-        SELECT COUNT(*)
-        FROM comments c
-        WHERE c.ticket_id = tickets.id
-      ) AS commentCount
-    FROM tickets
-    WHERE organization_id = ${input.organizationId}
-      AND deleted_at IS NULL
+      t.id,
+      t.organization_id AS organizationId,
+      t.title,
+      t.status,
+      t.priority,
+      t.assignee_id AS assigneeId,
+      t.created_by AS createdBy,
+      t.created_at AS createdAt,
+      t.updated_at AS updatedAt,
+      COALESCE(cc.commentCount, 0) AS commentCount
+    FROM tickets t
+    LEFT JOIN (
+      SELECT ticket_id, COUNT(*) AS commentCount
+      FROM comments
+      GROUP BY ticket_id
+    ) cc ON cc.ticket_id = t.id
+    WHERE t.organization_id = ${input.organizationId}
+      AND t.deleted_at IS NULL
       ${statusFilter}
       ${priorityFilter}
       ${assigneeFilter}
-      AND (
-        LOWER(title) LIKE LOWER(${pattern}) ESCAPE '!'
-        OR LOWER(description) LIKE LOWER(${pattern}) ESCAPE '!'
-      )
-    ORDER BY updated_at DESC, id DESC
+      ${searchFilter}
+    ORDER BY t.updated_at DESC, t.id DESC
     LIMIT ${take} OFFSET ${skip}
   `;
 

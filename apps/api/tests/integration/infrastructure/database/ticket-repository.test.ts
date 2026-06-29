@@ -57,6 +57,27 @@ async function seedOrganization(): Promise<{
   return { organizationId, ownerId };
 }
 
+async function createComment(
+  ticketId: string,
+  organizationId: string,
+  authorId: string,
+  content: string,
+  overrides: Partial<Prisma.CommentCreateInput> = {},
+): Promise<void> {
+  await prisma.comment.create({
+    data: {
+      id: randomUUID(),
+      ticketId,
+      organizationId,
+      authorId,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    },
+  });
+}
+
 describe("ticket-repository 統合テスト", () => {
   beforeEach(cleanAll);
   afterAll(async () => {
@@ -1452,5 +1473,453 @@ describe("ticket-repository 統合テスト", () => {
     const total = await countTicketsByOrganizationId({ organizationId });
 
     expect(total).toBe(0);
+  });
+
+  describe("commentCount", () => {
+    it("コメントがない場合は 0 を返す", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-without-comments",
+          organizationId,
+          title: "ticket without comments",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+
+      const result = await findTicketsByOrganizationId({ organizationId });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.commentCount).toBe(0);
+    });
+
+    it("チケットのコメント数を返す", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-with-comments",
+          organizationId,
+          title: "ticket with comments",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment(
+        "ticket-with-comments",
+        organizationId,
+        ownerId,
+        "comment 1",
+      );
+      await createComment(
+        "ticket-with-comments",
+        organizationId,
+        ownerId,
+        "comment 2",
+      );
+
+      const result = await findTicketsByOrganizationId({ organizationId });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.commentCount).toBe(2);
+    });
+
+    it("search 時も commentCount を返す", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-search-comments",
+          organizationId,
+          title: "searchable ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment(
+        "ticket-search-comments",
+        organizationId,
+        ownerId,
+        "comment",
+      );
+
+      const result = await findTicketsByOrganizationId({
+        organizationId,
+        search: "searchable",
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.commentCount).toBe(1);
+    });
+
+    it("他チケットのコメントをカウントしない", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-target",
+          organizationId,
+          title: "target ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-other",
+          organizationId,
+          title: "other ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await createComment(
+        "ticket-other",
+        organizationId,
+        ownerId,
+        "other comment",
+      );
+
+      const result = await findTicketsByOrganizationId({ organizationId });
+      const target = result.find((ticket) => ticket.id === "ticket-target");
+      const other = result.find((ticket) => ticket.id === "ticket-other");
+
+      expect(result).toHaveLength(2);
+      expect(target?.commentCount).toBe(0);
+      expect(other?.commentCount).toBe(1);
+    });
+
+    it("削除済みコメントも commentCount に含める", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-deleted-comment",
+          organizationId,
+          title: "ticket with deleted comment",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment(
+        "ticket-deleted-comment",
+        organizationId,
+        ownerId,
+        "deleted comment",
+        { deletedAt: new Date() },
+      );
+
+      const result = await findTicketsByOrganizationId({ organizationId });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.commentCount).toBe(1);
+    });
+
+    it("複数チケットの commentCount を同時に返す", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-two",
+          organizationId,
+          title: "two comments",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:02.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:02.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-one",
+          organizationId,
+          title: "one comment",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-zero",
+          organizationId,
+          title: "zero comments",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment("ticket-two", organizationId, ownerId, "c1");
+      await createComment("ticket-two", organizationId, ownerId, "c2");
+      await createComment("ticket-one", organizationId, ownerId, "c1");
+
+      const result = await findTicketsByOrganizationId({ organizationId });
+
+      expect(
+        result.map((ticket) => ({
+          id: ticket.id,
+          commentCount: ticket.commentCount,
+        })),
+      ).toEqual([
+        { id: "ticket-two", commentCount: 2 },
+        { id: "ticket-one", commentCount: 1 },
+        { id: "ticket-zero", commentCount: 0 },
+      ]);
+    });
+
+    it("ページネーションと commentCount を組み合わせられる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-newest",
+          organizationId,
+          title: "newest",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:02.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:02.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-middle",
+          organizationId,
+          title: "middle",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-oldest",
+          organizationId,
+          title: "oldest",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment("ticket-newest", organizationId, ownerId, "c1");
+      await createComment("ticket-newest", organizationId, ownerId, "c2");
+      await createComment("ticket-middle", organizationId, ownerId, "c1");
+
+      const firstPage = await findTicketsByOrganizationId({
+        organizationId,
+        take: 1,
+        skip: 0,
+      });
+      expect(firstPage).toHaveLength(1);
+      expect(firstPage[0]?.id).toBe("ticket-newest");
+      expect(firstPage[0]?.commentCount).toBe(2);
+
+      const secondPage = await findTicketsByOrganizationId({
+        organizationId,
+        take: 1,
+        skip: 1,
+      });
+      expect(secondPage).toHaveLength(1);
+      expect(secondPage[0]?.id).toBe("ticket-middle");
+      expect(secondPage[0]?.commentCount).toBe(1);
+
+      const thirdPage = await findTicketsByOrganizationId({
+        organizationId,
+        take: 1,
+        skip: 2,
+      });
+      expect(thirdPage).toHaveLength(1);
+      expect(thirdPage[0]?.id).toBe("ticket-oldest");
+      expect(thirdPage[0]?.commentCount).toBe(0);
+    });
+
+    it("status フィルタと commentCount を組み合わせられる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-open",
+          organizationId,
+          title: "open ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-closed",
+          organizationId,
+          title: "closed ticket",
+          description: null,
+          status: TicketStatus.Closed,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment("ticket-open", organizationId, ownerId, "c1");
+      await createComment("ticket-open", organizationId, ownerId, "c2");
+      await createComment("ticket-closed", organizationId, ownerId, "c1");
+
+      const result = await findTicketsByOrganizationId({
+        organizationId,
+        status: [TicketStatus.Open],
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe("ticket-open");
+      expect(result[0]?.commentCount).toBe(2);
+    });
+
+    it("priority フィルタと commentCount を組み合わせられる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-high",
+          organizationId,
+          title: "high priority",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.High,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-low",
+          organizationId,
+          title: "low priority",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Low,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment("ticket-high", organizationId, ownerId, "c1");
+      await createComment("ticket-high", organizationId, ownerId, "c2");
+      await createComment("ticket-low", organizationId, ownerId, "c1");
+
+      const result = await findTicketsByOrganizationId({
+        organizationId,
+        priority: [TicketPriority.High],
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe("ticket-high");
+      expect(result[0]?.commentCount).toBe(2);
+    });
+
+    it("assigneeId フィルタと commentCount を組み合わせられる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+      const otherUserId = await createUser("other-member@example.com");
+      await prisma.organizationMember.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          userId: otherUserId,
+          role: "member",
+        },
+      });
+
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-assigned",
+          organizationId,
+          title: "assigned ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: ownerId,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:01.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:01.000Z"),
+        }),
+      );
+      await saveTicket(
+        rehydrateTicket({
+          id: "ticket-unassigned",
+          organizationId,
+          title: "unassigned ticket",
+          description: null,
+          status: TicketStatus.Open,
+          priority: TicketPriority.Medium,
+          assigneeId: null,
+          createdBy: ownerId,
+          createdAt: new Date("2026-06-19T00:00:00.000Z"),
+          updatedAt: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      );
+      await createComment("ticket-assigned", organizationId, ownerId, "c1");
+      await createComment("ticket-assigned", organizationId, ownerId, "c2");
+      await createComment("ticket-unassigned", organizationId, ownerId, "c1");
+
+      const result = await findTicketsByOrganizationId({
+        organizationId,
+        assigneeId: ownerId,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe("ticket-assigned");
+      expect(result[0]?.commentCount).toBe(2);
+    });
   });
 });
