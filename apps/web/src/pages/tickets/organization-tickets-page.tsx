@@ -1,19 +1,18 @@
-import { useNavigate } from "@tanstack/react-router";
-import { useState, type ReactElement } from "react";
+import { useCallback, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
 import type { TicketListItem } from "@/components/tickets/ticket-table-columns";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import { demoTickets } from "@/mocks/data/tickets";
+import { useTickets } from "@/hooks/use-tickets";
 
 export type OrganizationTicketsPageViewProps = {
   organizationId: string;
-  tickets: TicketListItem[];
+  tickets: readonly TicketListItem[];
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
-  onRowClick?: (ticket: TicketListItem) => void;
+  getRowHref?: (ticket: TicketListItem) => string;
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -25,7 +24,7 @@ export function OrganizationTicketsPageView({
   isLoading = false,
   error = null,
   onRetry,
-  onRowClick,
+  getRowHref,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
@@ -43,7 +42,7 @@ export function OrganizationTicketsPageView({
         isLoading={isLoading}
         error={error}
         onRetry={onRetry}
-        onRowClick={onRowClick}
+        getRowHref={getRowHref}
         emptyAction={
           <Button type="button" className="mt-2">
             新規作成
@@ -63,40 +62,44 @@ export function OrganizationTicketsPageView({
   );
 }
 
-type OrganizationTicketsPageProps = {
-  organizationId: string;
-};
+const DEFAULT_ITEMS_PER_PAGE = 20;
 
-const itemsPerPage = 2;
+export type OrganizationTicketsPageProps = {
+  organizationId: string;
+  perPage?: number;
+};
 
 export function OrganizationTicketsPage({
   organizationId,
+  perPage = DEFAULT_ITEMS_PER_PAGE,
 }: OrganizationTicketsPageProps): ReactElement {
-  const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // TODO: #48, #49 のデータ取得基盤が整備されたら内部 state + データ取得 hook に置き換える
-  const totalPages = Math.max(1, Math.ceil(demoTickets.length / itemsPerPage));
-  const paginatedTickets = demoTickets.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
-
-  const handleRowClick = (ticket: TicketListItem) => {
-    // TODO: チケット詳細画面実装時に正しいルートへ遷移させる
-    void navigate({
-      to: `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`,
+  const [requestedPage, setRequestedPage] = useState(1);
+  const { tickets, isLoading, error, currentPage, totalPages, refetch } =
+    useTickets({
+      organizationId,
+      page: requestedPage,
+      perPage,
+      enabled: organizationId !== "",
     });
-  };
+
+  const getRowHref = useCallback(
+    (ticket: TicketListItem) => {
+      return `/app/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticket.id)}`;
+    },
+    [organizationId],
+  );
 
   return (
     <OrganizationTicketsPageView
       organizationId={organizationId}
-      tickets={paginatedTickets}
-      onRowClick={handleRowClick}
+      tickets={tickets}
+      isLoading={isLoading}
+      error={error}
+      onRetry={refetch}
+      getRowHref={getRowHref}
       currentPage={currentPage}
       totalPages={totalPages}
-      onPageChange={setCurrentPage}
+      onPageChange={setRequestedPage}
     />
   );
 }

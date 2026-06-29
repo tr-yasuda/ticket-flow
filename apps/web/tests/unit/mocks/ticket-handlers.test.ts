@@ -1,5 +1,4 @@
 import {
-  createApiPaginatedSuccessResponse,
   type ApiPaginatedSuccessResponse,
   type ApiSuccessResponse,
 } from "@ticket-flow/shared";
@@ -37,17 +36,64 @@ describe("ticket mock handlers", () => {
     });
   });
 
-  it("存在しない組織のチケット一覧は空配列", async () => {
-    const response = await apiClient
-      .get("organizations/other-org/tickets")
-      .json();
+  it("存在しない組織のチケット一覧は 403", async () => {
+    await expect(
+      apiClient.get("organizations/other-org/tickets").json(),
+    ).rejects.toMatchObject({ status: 403 });
+  });
 
-    expect(response).toEqual(
-      createApiPaginatedSuccessResponse(
-        { tickets: [] },
-        { page: 1, perPage: 20, total: 0, totalPages: 1 },
-      ),
-    );
+  it("page / perPage クエリでページネーションできる", async () => {
+    const response = await apiClient
+      .get("organizations/demo-org-001/tickets?page=2&perPage=2")
+      .json<ApiPaginatedSuccessResponse<{ tickets: MockTicketListItem[] }>>();
+
+    expect(response.success).toBe(true);
+    expect(response.data.tickets).toHaveLength(2);
+    expect(response.data.tickets[0]?.id).toBe("demo-ticket-003");
+    expect(response.meta).toEqual({
+      page: 2,
+      perPage: 2,
+      total: 4,
+      totalPages: 2,
+    });
+  });
+
+  it("無効な page クエリは 400", async () => {
+    await expect(
+      apiClient.get("organizations/demo-org-001/tickets?page=abc").json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "page" }),
+      ]),
+    });
+  });
+
+  it("無効な perPage クエリは 400", async () => {
+    await expect(
+      apiClient.get("organizations/demo-org-001/tickets?perPage=999").json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "perPage" }),
+      ]),
+    });
+  });
+
+  it("ページ範囲が skip 上限を超える場合は 400", async () => {
+    await expect(
+      apiClient
+        .get("organizations/demo-org-001/tickets?page=1002&perPage=10")
+        .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "page" }),
+      ]),
+    });
   });
 
   it("特定のチケットを取得できる", async () => {

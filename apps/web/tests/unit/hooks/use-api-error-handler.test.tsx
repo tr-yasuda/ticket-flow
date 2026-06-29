@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { Toaster } from "@/components/ui/sonner";
 import { useApiErrorHandler } from "@/hooks/use-api-error-handler";
-import { API_ERROR_MESSAGES } from "@/lib/api-error";
+import { API_ERROR_MESSAGES } from "@/lib/api-error-message";
 
 function ApiErrorTestButton() {
   const { handleApiError } = useApiErrorHandler();

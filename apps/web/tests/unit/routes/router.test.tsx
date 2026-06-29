@@ -154,6 +154,26 @@ describe("routing", () => {
     });
   });
 
+  it("renders /app/$organizationId/tickets/$ticketId skeleton inside AppShell when authenticated", async () => {
+    renderRoute("/app/org-123/tickets/ticket-abc", true);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("ticket-detail-organization-id"),
+      ).toHaveTextContent("org-123");
+      expect(screen.getByTestId("ticket-detail-ticket-id")).toHaveTextContent(
+        "ticket-abc",
+      );
+      expect(
+        screen.getByText("チケット詳細画面は準備中です。"),
+      ).toBeInTheDocument();
+      expect(screen.getAllByTestId("ticket-detail-skeleton")).toHaveLength(4);
+      expect(
+        screen.getByRole("link", { name: /Tickets/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("renders NotFound for unknown paths", async () => {
     renderRoute("/nonexistent");
 

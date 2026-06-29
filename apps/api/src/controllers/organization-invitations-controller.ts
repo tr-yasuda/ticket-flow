@@ -17,7 +17,10 @@ import { extractBearerToken } from "../lib/extract-bearer-token.js";
 import { HttpStatus } from "../lib/http-status.js";
 import { enqueueInvitationEmail } from "../lib/invitation-mail-queue.js";
 import { tokenConfig } from "../lib/token-config.js";
-import { getValidatedJson } from "../lib/validated-json.js";
+import {
+  type JsonInput,
+  type ValidatedContext,
+} from "../lib/validated-input.js";
 import {
   acceptOrganizationInvitation,
   createOrganizationInvitation,
@@ -26,6 +29,10 @@ import {
   type AcceptOrganizationInvitationResult,
   type CreateOrganizationInvitationResult,
 } from "../services/organization-invitations-service.js";
+
+type CreateOrganizationInvitationControllerContext = ValidatedContext<
+  JsonInput<CreateOrganizationInvitationInput>
+>;
 
 type CreateOrganizationInvitationError = Extract<
   CreateOrganizationInvitationResult,
@@ -63,11 +70,13 @@ function mapInvitationErrorToResponse(
   }
 }
 
-export async function createOrganizationInvitationController(c: Context) {
+export async function createOrganizationInvitationController(
+  c: CreateOrganizationInvitationControllerContext,
+) {
   const organizationId = c.get("organizationId") as string;
   const inviterRole = c.get("organizationRole") as OrganizationMemberRole;
   const inviterUserId = c.get("userId") as string;
-  const data = getValidatedJson<CreateOrganizationInvitationInput>(c);
+  const data = c.req.valid("json");
 
   const result = await createOrganizationInvitation({
     organizationId,
@@ -293,6 +302,10 @@ function enqueueAcceptanceAuditLog(
   }
 }
 
+/**
+ * 招待承諾は認証済みユーザーと未登録ユーザーでリクエストボディの形式が異なるため、
+ * `sValidator` / `ValidatedContext` を使わず、controller 内で手動でパースしている。
+ */
 export async function acceptOrganizationInvitationController(c: Context) {
   const inputOrResponse = await resolveAcceptInvitationInput(c);
   if (inputOrResponse instanceof Response) {

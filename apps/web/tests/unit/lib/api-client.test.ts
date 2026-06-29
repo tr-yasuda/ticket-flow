@@ -43,6 +43,37 @@ describe("apiClient", () => {
     expect(request.headers.get("Authorization")).toBe("Bearer access-token");
   });
 
+  it("トークン未設定時は Authorization ヘッダーを付与しない", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    await apiClient.get("protected");
+
+    const request = getFirstRequest(fetchMock);
+    expect(request.headers.has("Authorization")).toBe(false);
+  });
+
+  it("既存の Authorization ヘッダーは上書きしない", async () => {
+    setTokens("access-token", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    await apiClient.get("protected", {
+      headers: { Authorization: "Bearer existing" },
+    });
+
+    const request = getFirstRequest(fetchMock);
+    expect(request.headers.get("Authorization")).toBe("Bearer existing");
+  });
+
   it("デフォルト設定で /api/<path> にリクエストする", async () => {
     const fetchMock = vi
       .fn()

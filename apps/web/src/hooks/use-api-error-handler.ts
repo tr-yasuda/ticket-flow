@@ -1,5 +1,5 @@
 import { useToast } from "@/hooks/use-toast";
-import { reportApiError } from "@/lib/api-error";
+import { reportApiError } from "@/lib/api-error-message";
 
 export interface UseApiErrorHandlerReturn {
   handleApiError: (error: unknown) => void;
