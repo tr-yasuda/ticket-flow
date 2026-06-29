@@ -104,7 +104,7 @@ apps/api/src/
 # Node.js のバージョンを .node-version / .nvmrc に合わせる
 nvm use      # .nvmrc を読み取る
 fnm use      # .node-version を読み取る
-mise use     # .node-version / .mise.toml を読み取る
+mise use     # .node-version を読み取る
 
 # 依存関係のインストール
 pnpm install
