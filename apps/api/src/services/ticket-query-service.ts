@@ -16,6 +16,7 @@ import { isUserOrganizationMember } from "../lib/membership-assertions.js";
 import { prisma } from "../lib/prisma.js";
 import {
   mapServiceError,
+  runInTransaction,
   type TicketServiceError,
 } from "./ticket-service-base.js";
 
@@ -41,26 +42,30 @@ export async function listTickets(
           : input.assigneeId.toLowerCase(),
     };
 
-    if (
-      normalizedInput.assigneeId !== undefined &&
-      normalizedInput.assigneeId !== null
-    ) {
-      const isMember = await isUserOrganizationMember(
-        db,
-        normalizedInput.organizationId,
-        normalizedInput.assigneeId,
-      );
-      if (!isMember) {
-        return { success: true, data: { tickets: [], total: 0 } };
+    const result = await runInTransaction(db, async (tx) => {
+      if (
+        normalizedInput.assigneeId !== undefined &&
+        normalizedInput.assigneeId !== null
+      ) {
+        const isMember = await isUserOrganizationMember(
+          tx,
+          normalizedInput.organizationId,
+          normalizedInput.assigneeId,
+        );
+        if (!isMember) {
+          return { tickets: [], total: 0 };
+        }
       }
-    }
 
-    const [tickets, total] = await Promise.all([
-      findTicketsByOrganizationId(normalizedInput, db),
-      countTicketsByOrganizationId(normalizedInput, db),
-    ]);
+      const [tickets, total] = await Promise.all([
+        findTicketsByOrganizationId(normalizedInput, tx),
+        countTicketsByOrganizationId(normalizedInput, tx),
+      ]);
 
-    return { success: true, data: { tickets, total } };
+      return { tickets, total };
+    });
+
+    return { success: true, data: result };
   } catch (error) {
     return mapServiceError(error);
   }
