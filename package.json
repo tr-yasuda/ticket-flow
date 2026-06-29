@@ -13,6 +13,8 @@
     "test:scripts": "vitest run scripts",
     "test:watch": "pnpm -r run test:watch",
     "test:coverage": "pnpm -r run --if-present test:coverage",
+    "test:e2e": "pnpm exec playwright test --config e2e/playwright.config.ts",
+    "test:e2e:ui": "pnpm exec playwright test --config e2e/playwright.config.ts --ui",
     "typecheck": "pnpm run build:shared && pnpm -r run typecheck",
     "lint": "oxlint .",
     "format:check": "oxfmt . --check --ignore-path .oxfmtignore --ignore-path apps/web/.oxfmtignore",
