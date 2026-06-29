@@ -99,8 +99,6 @@ jobs:
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: pnpm exec playwright install-deps chromium
-      - name: Build shared package
-        run: pnpm run build:shared
       - name: Run E2E tests
         run: pnpm run test:e2e
       - name: Upload Playwright report

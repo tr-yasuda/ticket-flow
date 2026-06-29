@@ -36,7 +36,7 @@ export default defineConfig({
       url: `${E2E_API_URL}/api/health`,
       reuseExistingServer: false,
       env: {
-        DATABASE_URL: "file:./prisma/e2e-test.db",
+        DATABASE_URL: "file:./e2e-test.db",
         JWT_SECRET:
           process.env.E2E_JWT_SECRET ?? randomBytes(32).toString("hex"),
         JWT_ACCESS_EXPIRES_IN: "15m",
@@ -53,6 +53,8 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         VITE_API_BASE_URL: "/api",
+        E2E_API_PORT: String(E2E_API_PORT),
+        VITE_API_PROXY_TARGET: E2E_API_URL,
       },
       stdout: "pipe",
       stderr: "pipe",
