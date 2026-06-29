@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 
+const repoRoot = resolve(import.meta.dirname, "..");
 const dbFiles = [
   "apps/api/prisma/e2e-test.db",
   "apps/api/prisma/e2e-test.db-wal",
@@ -8,7 +9,7 @@ const dbFiles = [
 ];
 
 for (const file of dbFiles) {
-  rmSync(resolve(process.cwd(), file), { force: true });
+  rmSync(resolve(repoRoot, file), { force: true });
 }
 
 console.log("E2E database cleaned");

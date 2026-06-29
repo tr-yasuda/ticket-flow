@@ -2,8 +2,22 @@ import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
-const E2E_API_PORT = Number(process.env.E2E_API_PORT ?? "3000");
-const E2E_WEB_PORT = Number(process.env.E2E_WEB_PORT ?? "5173");
+function parsePort(
+  raw: string | undefined,
+  defaultValue: number,
+  name: string,
+): number {
+  const value = Number(raw ?? String(defaultValue));
+  if (!Number.isInteger(value) || value < 1 || value > 65_535) {
+    throw new Error(
+      `${name} must be an integer between 1 and 65535, got: ${raw}`,
+    );
+  }
+  return value;
+}
+
+const E2E_API_PORT = parsePort(process.env.E2E_API_PORT, 3000, "E2E_API_PORT");
+const E2E_WEB_PORT = parsePort(process.env.E2E_WEB_PORT, 5173, "E2E_WEB_PORT");
 const E2E_API_URL =
   process.env.E2E_API_URL ?? `http://localhost:${E2E_API_PORT}`;
 const E2E_BASE_URL =
