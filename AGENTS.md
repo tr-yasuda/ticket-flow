@@ -10,7 +10,7 @@
 - **バージョン**: `0.0.1`
 - **ライセンス**: MIT
 - **パッケージマネージャー**: pnpm `11.7.0`（`packageManager` フィールドで固定）
-- **Node.js**: `>=22.12.0`
+- **Node.js**: 最小要件 `>=22.13.0`、推奨バージョンは `.node-version` を参照（nvm 利用時は `.nvmrc` も併記）
 - **言語**: TypeScript（厳格モード）
 - **主な自然言語**: 日本語（Issue、PR、コミットメッセージ、ドキュメント、UI ラベルなど）
 
@@ -101,6 +101,11 @@ apps/api/src/
 ## セットアップとよく使うコマンド
 
 ```bash
+# Node.js のバージョンを .node-version / .nvmrc に合わせる
+nvm use      # .nvmrc を読み取る
+fnm use      # .node-version を読み取る
+mise use     # .node-version を読み取る
+
 # 依存関係のインストール
 pnpm install
 

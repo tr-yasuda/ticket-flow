@@ -168,8 +168,17 @@ ticket-flow/
 
 ### 前提条件
 
-- Node.js `>=22.12.0`
+- Node.js 最小要件: `>=22.13.0`
+- Node.js 推奨バージョン: `.node-version`（nvm 利用時は `.nvmrc`）を参照
 - pnpm `11.7.0`（`packageManager` フィールドで固定）
+
+開発環境・CI ともに、`.node-version`（nvm ユーザーの場合は `.nvmrc`）に記載されたバージョンを使用してください。正確なバージョンは各ファイルを参照してください。
+
+```bash
+nvm use      # nvm の場合（.nvmrc を読み取ります）
+fnm use      # fnm の場合（.node-version を読み取ります）
+mise use     # mise の場合（.node-version を読み取ります）
+```
 
 ### インストール
 
