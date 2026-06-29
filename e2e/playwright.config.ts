@@ -9,7 +9,7 @@ const E2E_API_URL =
 const E2E_BASE_URL =
   process.env.E2E_BASE_URL ?? `http://localhost:${E2E_WEB_PORT}`;
 
-// テストごとにクリーンな DB 状態を保つため、実行前に E2E 用 DB を削除する。
+// テスト実行前に E2E 用 DB を削除し、クリーンな状態から開始する。
 // SQLite を使うため workers=1・fullyParallel=false で順次実行し、テスト間で DB 状態が混在しないようにしている。
 export default defineConfig({
   testDir: "./specs",

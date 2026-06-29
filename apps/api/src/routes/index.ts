@@ -37,7 +37,7 @@ export function createApp(): Hono {
       console.error("Health check failed:", error);
       return c.json(
         createApiErrorResponse(
-          ApiErrorCode.INTERNAL_ERROR,
+          ApiErrorCode.SERVICE_UNAVAILABLE,
           "Database connection failed",
         ),
         HttpStatus.SERVICE_UNAVAILABLE,
