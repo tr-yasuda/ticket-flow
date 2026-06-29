@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "../../../src/lib/prisma.js";
 import { createApp } from "../../../src/routes/index.js";
@@ -200,5 +200,34 @@ describe("createApp", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("GET /api/health は DB 接続確認を行い 200 を返す", async () => {
+    const app = createApp();
+
+    const response = await app.request("/api/health");
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.status).toBe("ok");
+  });
+
+  it("GET /api/health は DB ping 失敗時に 503 を返す", async () => {
+    const queryRawSpy = vi
+      .spyOn(prisma, "$queryRaw")
+      .mockRejectedValueOnce(new Error("connection failed"));
+    try {
+      const app = createApp();
+
+      const response = await app.request("/api/health");
+
+      expect(response.status).toBe(503);
+      const body = await response.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
+    } finally {
+      queryRawSpy.mockRestore();
+    }
   });
 });

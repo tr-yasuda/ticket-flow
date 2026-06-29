@@ -1,9 +1,14 @@
-import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  createApiSuccessResponse,
+} from "@ticket-flow/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { authMiddleware } from "../controllers/auth-middleware.js";
 import { HttpStatus } from "../lib/http-status.js";
+import { prisma } from "../lib/prisma.js";
 import { configureAuthRoutes } from "./auth.js";
 import { configureInvitationRoutes } from "./invitations.js";
 import { configureMeRoutes } from "./me.js";
@@ -24,6 +29,24 @@ export function createApp(): Hono {
       ),
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
+  });
+
+  // NOTE: /api/health は liveness/readiness 用途のため、軽量な DB ping を行う。
+  // レート制限は意図的に適用していない。負荷対策が必要になった場合は別途検討する。
+  app.get("/api/health", async (c) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return c.json(createApiSuccessResponse({ status: "ok" }));
+    } catch (error) {
+      console.error("Health check failed:", error);
+      return c.json(
+        createApiErrorResponse(
+          ApiErrorCode.SERVICE_UNAVAILABLE,
+          "Database connection failed",
+        ),
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
   });
 
   app.route("/api/auth", configureAuthRoutes());
