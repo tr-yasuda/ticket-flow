@@ -11,7 +11,7 @@ export async function isUserOrganizationMember(
     where: {
       organizationId_userId: {
         organizationId,
-        userId,
+        userId: userId.toLowerCase(),
       },
     },
   });
