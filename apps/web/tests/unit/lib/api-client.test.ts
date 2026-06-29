@@ -43,6 +43,37 @@ describe("apiClient", () => {
     expect(request.headers.get("Authorization")).toBe("Bearer access-token");
   });
 
+  it("トークン未設定時は Authorization ヘッダーを付与しない", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    await apiClient.get("protected");
+
+    const request = getFirstRequest(fetchMock);
+    expect(request.headers.has("Authorization")).toBe(false);
+  });
+
+  it("既存の Authorization ヘッダーは上書きしない", async () => {
+    setTokens("access-token", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    await apiClient.get("protected", {
+      headers: { Authorization: "Bearer existing" },
+    });
+
+    const request = getFirstRequest(fetchMock);
+    expect(request.headers.get("Authorization")).toBe("Bearer existing");
+  });
+
   it("デフォルト設定で /api/<path> にリクエストする", async () => {
     const fetchMock = vi
       .fn()
@@ -91,6 +122,46 @@ describe("apiClient", () => {
     const [retryRequest] = fetchMock.mock.calls[2] as [Request];
     expect(retryRequest).toBeInstanceOf(Request);
     expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+  });
+
+  it("POST 401 応答時にリフレッシュして元リクエストをリトライする", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "new-access" }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const result = await apiClient
+      .post("protected", { json: { name: "test" } })
+      .json<{ ok: boolean }>();
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(getAccessToken()).toBe("new-access");
+    const [retryRequest] = fetchMock.mock.calls[2] as [Request];
+    expect(retryRequest).toBeInstanceOf(Request);
+    expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+    expect(retryRequest.method).toBe("POST");
+    expect(await retryRequest.clone().json()).toEqual({ name: "test" });
   });
 
   it("リフレッシュに失敗した場合はトークンをクリアしてエラーを投げる", async () => {
@@ -217,34 +288,166 @@ describe("apiClient", () => {
     }
   });
 
-  it("トークン未設定時は Authorization ヘッダーを付与しない", async () => {
+  it("POST で一時的なネットワークエラー時に retry しない", async () => {
+    setTokens("access-token", "refresh-token");
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
+      .mockRejectedValueOnce(new TypeError("Network error"));
+    mockFetch(fetchMock);
+
+    await expect(
+      apiClient.post("protected", { json: { name: "test" } }),
+    ).rejects.toThrow(TypeError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["put", "patch", "delete"] as const)(
+    "%s で一時的なネットワークエラー時に retry しない",
+    async (method) => {
+      setTokens("access-token", "refresh-token");
+      const fetchMock = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Network error"));
+      mockFetch(fetchMock);
+
+      await expect(apiClient[method]("protected")).rejects.toThrow(TypeError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("refresh 後の再送が 401 になっても無限ループしない", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "new-access" }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      );
+    mockFetch(fetchMock);
+
+    await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(getAccessToken()).toBe("new-access");
+  });
+
+  it("refresh endpoint 自体の 401 では無限ループしない", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "AUTH_UNAUTHORIZED",
+            message: "認証が必要です",
+          },
+        }),
+        { status: 401 },
+      ),
+    );
+    mockFetch(fetchMock);
+
+    await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("GET で 503 応答時に 1 回 retry する", async () => {
+    setTokens("access-token", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Service Unavailable" }), {
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       );
     mockFetch(fetchMock);
 
-    await apiClient.get("protected");
+    const result = await apiClient.get("protected").json<{ ok: boolean }>();
 
-    const request = getFirstRequest(fetchMock);
-    expect(request.headers.has("Authorization")).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("既存の Authorization ヘッダーは上書きしない", async () => {
-    setTokens("access-token", "refresh-token");
+  it("呼び出し側の Authorization ヘッダーがあっても refresh 後は新しいトークンを使う", async () => {
+    setTokens("expired-access", "refresh-token");
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "AUTH_UNAUTHORIZED",
+              message: "認証が必要です",
+            },
+          }),
+          { status: 401 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: "new-access" }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       );
     mockFetch(fetchMock);
 
     await apiClient.get("protected", {
-      headers: { Authorization: "Bearer existing" },
+      headers: { Authorization: "Bearer caller-token" },
     });
 
-    const request = getFirstRequest(fetchMock);
-    expect(request.headers.get("Authorization")).toBe("Bearer existing");
+    const [retryRequest] = fetchMock.mock.calls[2] as [Request];
+    expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+  });
+
+  it("refresh token が空文字の場合は 401 時に refresh しない", async () => {
+    setTokens("expired-access", "   ");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "AUTH_UNAUTHORIZED",
+            message: "認証が必要です",
+          },
+        }),
+        { status: 401 },
+      ),
+    );
+    mockFetch(fetchMock);
+
+    await expect(apiClient.get("protected")).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
   });
 });

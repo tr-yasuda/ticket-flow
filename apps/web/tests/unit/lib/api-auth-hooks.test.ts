@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { addAuthHeader, refreshAccessToken } from "@/lib/api-auth-hooks";
+import {
+  addAuthHeader,
+  handleUnauthorizedResponse,
+} from "@/lib/api-auth-hooks";
 import { ApiError } from "@/lib/api-error";
 import {
   clearTokens,
@@ -17,6 +20,12 @@ function mockFetch(impl: ReturnType<typeof vi.fn>): ReturnType<typeof vi.fn> {
 
 function invokeAddAuthHeader(request: Request) {
   return addAuthHeader(request, {} as never, { retryCount: 0 });
+}
+
+function createOptions(context: Record<string, unknown> = {}) {
+  return { context } as unknown as Parameters<
+    typeof handleUnauthorizedResponse
+  >[1];
 }
 
 describe("addAuthHeader", () => {
@@ -71,7 +80,7 @@ describe("addAuthHeader", () => {
   });
 });
 
-describe("refreshAccessToken", () => {
+describe("handleUnauthorizedResponse", () => {
   beforeEach(() => {
     clearTokens();
   });
@@ -80,51 +89,42 @@ describe("refreshAccessToken", () => {
     vi.restoreAllMocks();
   });
 
-  it("retryCount が 1 でない場合は何もしない", async () => {
-    const request = new Request("https://example.com/protected");
-
-    const result = await refreshAccessToken({
-      request,
-      retryCount: 0,
-    } as unknown as Parameters<typeof refreshAccessToken>[0]);
-
-    expect(result).toBeUndefined();
-  });
-
-  it("リフレッシュ成功時にトークンを更新してリクエストに新しいヘッダーを付与する", async () => {
+  it("401 応答で refresh 成功後に元リクエストを再送する", async () => {
     setTokens("expired-access", "refresh-token");
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          accessToken: "new-access",
-          refreshToken: "new-refresh",
-        }),
-        { status: 200 },
-      ),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            accessToken: "new-access",
+            refreshToken: "new-refresh",
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
     mockFetch(fetchMock);
 
-    const request = new Request("https://example.com/protected");
-    const result = await refreshAccessToken({
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const result = (await handleUnauthorizedResponse(
       request,
-      retryCount: 1,
-    } as unknown as Parameters<typeof refreshAccessToken>[0]);
+      createOptions(),
+      response,
+      { retryCount: 0 },
+    )) as Response;
 
-    expect(result).toBeInstanceOf(Request);
-    expect((result as Request).headers.get("Authorization")).toBe(
-      "Bearer new-access",
-    );
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(getAccessToken()).toBe("new-access");
     expect(getRefreshToken()).toBe("new-refresh");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [, refreshOptions] = fetchMock.mock.calls[0] as [
-      string,
-      { headers: Record<string, string> },
-    ];
-    expect(refreshOptions.headers.Authorization).toBe("Bearer refresh-token");
   });
 
-  it("リフレッシュ失敗時はトークンをクリアしてエラーを投げる", async () => {
+  it("refresh 失敗時はトークンをクリアしてエラーを投げる", async () => {
     setTokens("expired-access", "refresh-token");
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -133,12 +133,14 @@ describe("refreshAccessToken", () => {
     );
     mockFetch(fetchMock);
 
-    const request = new Request("https://example.com/protected");
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
     await expect(
-      refreshAccessToken({
-        request,
-        retryCount: 1,
-      } as unknown as Parameters<typeof refreshAccessToken>[0]),
+      handleUnauthorizedResponse(request, createOptions(), response, {
+        retryCount: 0,
+      }),
     ).rejects.toBeInstanceOf(ApiError);
 
     expect(getAccessToken()).toBeNull();
@@ -150,49 +152,62 @@ describe("refreshAccessToken", () => {
     const fetchMock = vi.fn();
     mockFetch(fetchMock);
 
-    const request = new Request("https://example.com/protected");
-    await expect(
-      refreshAccessToken({
-        request,
-        retryCount: 1,
-      } as unknown as Parameters<typeof refreshAccessToken>[0]),
-    ).rejects.toBeInstanceOf(ApiError);
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const result = (await handleUnauthorizedResponse(
+      request,
+      createOptions(),
+      response,
+      { retryCount: 0 },
+    )) as Response;
 
+    expect(result.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(getAccessToken()).toBeNull();
     expect(getRefreshToken()).toBeNull();
   });
 
-  it("並列したリフレッシュは 1 回のみ実行する", async () => {
+  it("refresh endpoint 自体の 401 では無限ループしない", async () => {
     setTokens("expired-access", "refresh-token");
-    let resolveRefresh: (response: Response) => void = () => {};
-    const refreshPromise = new Promise<Response>((resolve) => {
-      resolveRefresh = resolve;
-    });
-    const fetchMock = vi.fn().mockImplementation(() => refreshPromise);
+    const fetchMock = vi.fn();
     mockFetch(fetchMock);
 
-    const request = new Request("https://example.com/protected");
-    const promise1 = refreshAccessToken({
+    const request = new Request("http://localhost/api/auth/refresh");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const result = (await handleUnauthorizedResponse(
       request,
-      retryCount: 1,
-    } as unknown as Parameters<typeof refreshAccessToken>[0]);
-    const promise2 = refreshAccessToken({
+      createOptions(),
+      response,
+      { retryCount: 0 },
+    )) as Response;
+
+    expect(result.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
+  });
+
+  it("2 度目の 401 ではリフレッシュを試行しない", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi.fn();
+    mockFetch(fetchMock);
+
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const result = (await handleUnauthorizedResponse(
       request,
-      retryCount: 1,
-    } as unknown as Parameters<typeof refreshAccessToken>[0]);
+      createOptions({ authRefreshAttempted: true }),
+      response,
+      { retryCount: 0 },
+    )) as Response;
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    resolveRefresh(
-      new Response(JSON.stringify({ accessToken: "new-access" }), {
-        status: 200,
-      }),
-    );
-    const [result1, result2] = await Promise.all([promise1, promise2]);
-
-    expect(result1).toBeInstanceOf(Request);
-    expect(result2).toBeInstanceOf(Request);
-    expect(getAccessToken()).toBe("new-access");
+    expect(result.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

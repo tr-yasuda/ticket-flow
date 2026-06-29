@@ -1,7 +1,7 @@
-import { type BeforeRequestHook, type BeforeRetryHook } from "ky";
+import ky, { type AfterResponseHook, type BeforeRequestHook } from "ky";
 
 import { buildApiUrl } from "./api-base-url";
-import { ApiError } from "./api-error";
+import { ApiError, handleApiErrorResponse } from "./api-error";
 import {
   clearTokens,
   getAccessToken,
@@ -51,7 +51,7 @@ let refreshingPromise: Promise<
  * リフレッシュトークンを使って新しいアクセストークンを取得する。
  *
  * このリクエストは ky / apiClient を使わず、グローバルの fetch を直接使う。
- * ky 経由で送ると beforeRequest / beforeRetry / afterResponse フックが再帰的に
+ * ky 経由で送ると beforeRequest / afterResponse フックが再帰的に
  * 発火し、401 応答で無限にリフレッシュを繰り返す可能性があるため。
  */
 async function performRefresh(): Promise<
@@ -100,6 +100,17 @@ async function performRefresh(): Promise<
   return refreshingPromise;
 }
 
+function isRefreshRequest(request: Request): boolean {
+  return (
+    new URL(request.url).pathname ===
+    new URL(buildApiUrl("/auth/refresh"), "http://localhost").pathname
+  );
+}
+
+function hasRefreshBeenAttempted(context: unknown): boolean {
+  return isRecord(context) && context.authRefreshAttempted === true;
+}
+
 /**
  * @internal ky の beforeRequest hook として apiClient に登録する専用。
  *   単独で呼び出さないこと。
@@ -118,25 +129,66 @@ export const addAuthHeader: BeforeRequestHook = (request) => {
 };
 
 /**
- * @internal ky の beforeRetry hook として apiClient に登録する専用。
+ * @internal ky の afterResponse hook として apiClient に登録する専用。
  *   単独で呼び出さないこと。
  */
-export const refreshAccessToken: BeforeRetryHook = async ({
+export const handleUnauthorizedResponse: AfterResponseHook = async (
   request,
-  retryCount,
-}) => {
-  if (retryCount !== 1) {
-    return;
+  options,
+  response,
+) => {
+  if (response.status !== 401) {
+    return response;
   }
 
+  if (isRefreshRequest(request)) {
+    clearTokens();
+    return response;
+  }
+
+  if (hasRefreshBeenAttempted(options.context)) {
+    return response;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (refreshToken === null || refreshToken.trim() === "") {
+    clearTokens();
+    return response;
+  }
+
+  const context = isRecord(options.context)
+    ? options.context
+    : ({} as Record<string, unknown>);
+  context.authRefreshAttempted = true;
+
+  let accessToken: string;
+  let newRefreshToken: string;
   try {
-    const { accessToken, refreshToken } = await performRefresh();
-    setTokens(accessToken, refreshToken);
-    const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${accessToken}`);
-    return new Request(request, { headers });
+    const tokens = await performRefresh();
+    accessToken = tokens.accessToken;
+    newRefreshToken = tokens.refreshToken;
   } catch (error) {
     clearTokens();
     throw error;
   }
+
+  setTokens(accessToken, newRefreshToken);
+
+  const headers = new Headers(request.headers);
+  // 古い Authorization を削除し、addAuthHeader 経由で新しいトークンを付与する。
+  // これにより、テスト環境の Headers 実装で Authorization が重複するのを防ぐ。
+  headers.delete("Authorization");
+
+  // 元の Request を再構築し、再送時に ky のデフォルト hooks を適用する。
+  // options に含まれる headers / body は新しい Request に統合済みのため除外する。
+  const { headers: _headers, body: _body, ...retryOptions } = options;
+
+  return ky(new Request(request, { headers }), {
+    ...retryOptions,
+    hooks: {
+      beforeRequest: [addAuthHeader],
+      afterResponse: [handleUnauthorizedResponse, handleApiErrorResponse],
+    },
+    retry: { limit: 0 },
+  });
 };
