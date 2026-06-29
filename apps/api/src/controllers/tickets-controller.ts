@@ -27,15 +27,17 @@ import {
 import {
   createTicket,
   deleteTicket,
-  getTicket,
-  getTicketHistory,
-  listTickets,
   updateTicket,
   updateTicketAssignee,
   updateTicketPriority,
   updateTicketStatus,
   type TicketServiceError,
-} from "../services/ticket-service.js";
+} from "../services/ticket-command-service.js";
+import {
+  getTicket,
+  getTicketHistory,
+  listTickets,
+} from "../services/ticket-query-service.js";
 import { getRequiredContextValue } from "./context-helpers.js";
 import { type ErrorMapping } from "./error-mapping.js";
 import {

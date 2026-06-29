@@ -115,3 +115,10 @@ export function toOrganizationMemberRole(role: string): OrganizationMemberRole {
   }
   return role;
 }
+
+export class UserNotOrganizationMemberError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserNotOrganizationMemberError";
+  }
+}

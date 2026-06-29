@@ -1,68 +1,39 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { type Prisma, type PrismaClient } from "@prisma/client";
 
-import {
-  AUDIT_LOG_ENTITY_TYPE_TICKET,
-  createAuditLog,
-  type AuditLogValues,
-  type AuditLogWithActor,
-} from "../domain/audit-log.js";
+import { createAuditLog, type AuditLogValues } from "../domain/audit-log.js";
 import {
   createTicket as createTicketEntity,
   type CreateTicketInput as DomainCreateTicketInput,
-  type Ticket,
-  type TicketListItem,
   TicketConflictError,
-  TicketInvalidStateError,
   TicketNotFoundError,
   TicketPriority,
   TicketStatus,
-  TicketValidationError,
+  type Ticket,
   type UpdateTicketPatch,
   updateTicket as updateTicketEntity,
   updateTicketAssignee as updateTicketAssigneeEntity,
   updateTicketPriority as updateTicketPriorityEntity,
   updateTicketStatus as updateTicketStatusEntity,
-  UserNotOrganizationMemberError,
 } from "../domain/ticket.js";
+import { saveAuditLog } from "../infrastructure/database/audit-log-repository.js";
 import {
-  findAuditLogsByEntityWithActor,
-  saveAuditLog,
-} from "../infrastructure/database/audit-log-repository.js";
-import {
-  countTicketsByOrganizationId,
   findTicketById,
-  findTicketsByOrganizationId,
   saveTicket,
   softDeleteTicket,
   updateTicket as updateTicketRepository,
   updateTicketAssignee as updateTicketAssigneeRepository,
   updateTicketPriority as updateTicketPriorityRepository,
   updateTicketStatus as updateTicketStatusRepository,
-  type FindTicketsInput,
 } from "../infrastructure/database/ticket-repository.js";
+import { assertUserIsOrganizationMember } from "../lib/membership-assertions.js";
 import { prisma } from "../lib/prisma.js";
+import {
+  mapServiceError,
+  runInTransaction,
+  type TicketServiceError,
+} from "./ticket-service-base.js";
 
-async function runInTransaction<T>(
-  db: PrismaClient | Prisma.TransactionClient,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
-): Promise<T> {
-  if (
-    "$transaction" in db &&
-    typeof (db as PrismaClient).$transaction === "function"
-  ) {
-    return (db as PrismaClient).$transaction(fn);
-  }
-
-  return fn(db as Prisma.TransactionClient);
-}
-
-export type TicketServiceError = Readonly<
-  | { type: "ticket-not-found"; message: string }
-  | { type: "ticket-conflict"; message: string }
-  | { type: "user-not-organization-member"; message: string }
-  | { type: "validation-error"; message: string }
-  | { type: "unknown-error"; message: string }
->;
+export type { TicketServiceError } from "./ticket-service-base.js";
 
 export type CreateTicketServiceInput = Readonly<{
   organizationId: string;
@@ -121,132 +92,6 @@ export async function createTicket(
     });
 
     return { success: true, data: { ticket: saved } };
-  } catch (error) {
-    return mapServiceError(error);
-  }
-}
-
-export type ListTicketsResult =
-  | {
-      success: true;
-      data: { tickets: readonly TicketListItem[]; total: number };
-    }
-  | { success: false; error: TicketServiceError };
-
-export async function listTickets(
-  input: FindTicketsInput,
-  db: PrismaClient | Prisma.TransactionClient = prisma,
-): Promise<ListTicketsResult> {
-  try {
-    const normalizedInput: FindTicketsInput = {
-      ...input,
-      assigneeId:
-        input.assigneeId === undefined || input.assigneeId === null
-          ? input.assigneeId
-          : input.assigneeId.toLowerCase(),
-    };
-
-    const result = await runInTransaction(db, async (tx) => {
-      if (
-        normalizedInput.assigneeId !== undefined &&
-        normalizedInput.assigneeId !== null
-      ) {
-        const isMember = await isUserOrganizationMember(
-          tx,
-          normalizedInput.organizationId,
-          normalizedInput.assigneeId,
-        );
-        if (!isMember) {
-          return { tickets: [], total: 0 };
-        }
-      }
-
-      const [tickets, total] = await Promise.all([
-        findTicketsByOrganizationId(normalizedInput, tx),
-        countTicketsByOrganizationId(normalizedInput, tx),
-      ]);
-      return { tickets, total };
-    });
-
-    return { success: true, data: result };
-  } catch (error) {
-    return mapServiceError(error);
-  }
-}
-
-export type GetTicketInput = Readonly<{
-  organizationId: string;
-  ticketId: string;
-}>;
-
-export type GetTicketResult =
-  | { success: true; data: { ticket: Ticket } }
-  | { success: false; error: TicketServiceError };
-
-export async function getTicket(
-  input: GetTicketInput,
-  db: PrismaClient | Prisma.TransactionClient = prisma,
-): Promise<GetTicketResult> {
-  try {
-    const ticket = await findTicketById(input, db);
-    if (ticket === null) {
-      return {
-        success: false,
-        error: {
-          type: "ticket-not-found",
-          message: "チケットが見つかりません",
-        },
-      };
-    }
-
-    return { success: true, data: { ticket } };
-  } catch (error) {
-    return mapServiceError(error);
-  }
-}
-
-export type GetTicketHistoryInput = Readonly<{
-  organizationId: string;
-  ticketId: string;
-  take?: number;
-  skip?: number;
-}>;
-
-export type GetTicketHistoryResult =
-  | { success: true; data: { history: readonly AuditLogWithActor[] } }
-  | { success: false; error: TicketServiceError };
-
-export async function getTicketHistory(
-  input: GetTicketHistoryInput,
-  db: PrismaClient | Prisma.TransactionClient = prisma,
-): Promise<GetTicketHistoryResult> {
-  try {
-    const ticket = await findTicketById(
-      { organizationId: input.organizationId, ticketId: input.ticketId },
-      db,
-    );
-    if (ticket === null) {
-      return {
-        success: false,
-        error: {
-          type: "ticket-not-found",
-          message: "チケットが見つかりません",
-        },
-      };
-    }
-
-    const history = await findAuditLogsByEntityWithActor(
-      {
-        organizationId: input.organizationId,
-        entityType: AUDIT_LOG_ENTITY_TYPE_TICKET,
-        entityId: ticket.id,
-        take: input.take,
-        skip: input.skip,
-      },
-      db,
-    );
-
-    return { success: true, data: { history } };
   } catch (error) {
     return mapServiceError(error);
   }
@@ -643,102 +488,4 @@ export async function deleteTicket(
   } catch (error) {
     return mapServiceError(error);
   }
-}
-
-async function isUserOrganizationMember(
-  db: PrismaClient | Prisma.TransactionClient,
-  organizationId: string,
-  userId: string,
-): Promise<boolean> {
-  const membership = await db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId,
-        userId,
-      },
-    },
-  });
-
-  return membership !== null;
-}
-
-async function assertUserIsOrganizationMember(
-  db: PrismaClient | Prisma.TransactionClient,
-  organizationId: string,
-  userId: string,
-): Promise<void> {
-  const isMember = await isUserOrganizationMember(db, organizationId, userId);
-
-  if (!isMember) {
-    throw new UserNotOrganizationMemberError(
-      `ユーザー ${userId} は組織 ${organizationId} のメンバーではありません`,
-    );
-  }
-}
-
-function mapServiceError(error: unknown): {
-  success: false;
-  error: TicketServiceError;
-} {
-  if (error instanceof TicketConflictError) {
-    return {
-      success: false,
-      error: { type: "ticket-conflict", message: error.message },
-    };
-  }
-
-  if (error instanceof TicketNotFoundError) {
-    return {
-      success: false,
-      error: { type: "ticket-not-found", message: error.message },
-    };
-  }
-
-  if (error instanceof UserNotOrganizationMemberError) {
-    return {
-      success: false,
-      error: { type: "user-not-organization-member", message: error.message },
-    };
-  }
-
-  if (error instanceof TicketValidationError) {
-    return {
-      success: false,
-      error: { type: "validation-error", message: error.message },
-    };
-  }
-
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    console.error("Prisma error:", error);
-    return {
-      success: false,
-      error: {
-        type: "unknown-error",
-        message: "データベースエラーが発生しました",
-      },
-    };
-  }
-
-  if (error instanceof TicketInvalidStateError) {
-    console.error("Ticket data integrity error:", error);
-    return {
-      success: false,
-      error: {
-        type: "unknown-error",
-        message: "データの整合性に問題が発生しました",
-      },
-    };
-  }
-
-  if (error instanceof Error) {
-    return {
-      success: false,
-      error: { type: "unknown-error", message: error.message },
-    };
-  }
-
-  return {
-    success: false,
-    error: { type: "unknown-error", message: "不明なエラーが発生しました" },
-  };
 }
