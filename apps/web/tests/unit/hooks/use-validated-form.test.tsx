@@ -2,18 +2,19 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { FormError } from "@/components/form/form-error";
 import { TextField } from "@/components/form/text-field";
-import { useAuthForm } from "@/hooks/use-auth-form";
+import { useValidatedForm } from "@/hooks/use-validated-form";
 import { ApiError } from "@/lib/api-client";
 
 const schema = z.object({
-  email: z.string().email("メールアドレスの形式が正しくありません"),
-  password: z.string().min(8, "パスワードは8文字以上で入力してください"),
+  title: z.string().min(1, "タイトルを入力してください"),
+  body: z.string().optional(),
 });
 
 type FormValues = {
-  email: string;
-  password: string;
+  title: string;
+  body?: string;
 };
 
 function TestForm({
@@ -21,9 +22,9 @@ function TestForm({
 }: {
   onSubmit: (values: FormValues) => Promise<void>;
 }) {
-  const form = useAuthForm({
+  const form = useValidatedForm({
     schema,
-    defaultValues: { email: "", password: "" },
+    defaultValues: { title: "", body: "" },
     onSubmit,
   });
 
@@ -36,13 +37,12 @@ function TestForm({
       data-testid="form"
     >
       <form.Field
-        name="email"
+        name="title"
         children={(field) => (
           <TextField
-            id="email"
-            name="email"
-            label="メールアドレス"
-            type="email"
+            id="title"
+            name="title"
+            label="タイトル"
             value={field.state.value}
             onBlur={field.handleBlur}
             onChange={(e) => field.handleChange(e.target.value)}
@@ -51,13 +51,12 @@ function TestForm({
         )}
       />
       <form.Field
-        name="password"
+        name="body"
         children={(field) => (
           <TextField
-            id="password"
-            name="password"
-            label="パスワード"
-            type="password"
+            id="body"
+            name="body"
+            label="本文"
             value={field.state.value}
             onBlur={field.handleBlur}
             onChange={(e) => field.handleChange(e.target.value)}
@@ -65,28 +64,35 @@ function TestForm({
           />
         )}
       />
+      <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+        {(formError) =>
+          typeof formError === "string" ? (
+            <FormError message={formError} />
+          ) : null
+        }
+      </form.Subscribe>
       <button type="submit">送信</button>
     </form>
   );
 }
 
-describe("useAuthForm", () => {
+describe("useValidatedForm", () => {
   it("有効な入力で onSubmit を呼び出す", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<TestForm onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByLabelText("メールアドレス"), {
-      target: { value: "user@example.com" },
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "テストチケット" },
     });
-    fireEvent.change(screen.getByLabelText("パスワード"), {
-      target: { value: "password" },
+    fireEvent.change(screen.getByLabelText("本文"), {
+      target: { value: "詳細な説明" },
     });
     fireEvent.click(screen.getByRole("button", { name: "送信" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
-        email: "user@example.com",
-        password: "password",
+        title: "テストチケット",
+        body: "詳細な説明",
       });
     });
   });
@@ -99,10 +105,7 @@ describe("useAuthForm", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("メールアドレスの形式が正しくありません"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("パスワードは8文字以上で入力してください"),
+        screen.getByText("タイトルを入力してください"),
       ).toBeInTheDocument();
     });
     expect(onSubmit).not.toHaveBeenCalled();
@@ -110,22 +113,38 @@ describe("useAuthForm", () => {
 
   it("サーバーエラーをフィールドに表示する", async () => {
     const error = new ApiError("入力内容を確認してください", 400, [
-      { field: "email", message: "サーバー側でメールアドレスが無効です" },
+      { field: "title", message: "サーバー側でタイトルが無効です" },
     ]);
     const onSubmit = vi.fn().mockRejectedValue(error);
     render(<TestForm onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByLabelText("メールアドレス"), {
-      target: { value: "user@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("パスワード"), {
-      target: { value: "password" },
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "テストチケット" },
     });
     fireEvent.click(screen.getByRole("button", { name: "送信" }));
 
     await waitFor(() => {
       expect(
-        screen.getByText("サーバー側でメールアドレスが無効です"),
+        screen.getByText("サーバー側でタイトルが無効です"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("フィールド以外のサーバーエラーをフォーム全体に表示する", async () => {
+    const error = new ApiError("Internal server error", 500);
+    const onSubmit = vi.fn().mockRejectedValue(error);
+    render(<TestForm onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "テストチケット" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "送信" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "処理に失敗しました。時間をおいて再度お試しください。",
+        ),
       ).toBeInTheDocument();
     });
   });
