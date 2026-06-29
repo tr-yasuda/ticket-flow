@@ -1,10 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 
+import { DEMO_USER } from "../../../e2e/fixtures/demo-credentials.js";
 import { hashPassword } from "../src/domain/password.js";
 import { TicketStatus } from "../src/domain/ticket.js";
 
-const DEMO_USER_EMAIL = "demo@example.com";
-const DEMO_USER_PASSWORD = "demo1234";
+const DEMO_USER_EMAIL = DEMO_USER.email;
+const DEMO_USER_PASSWORD = DEMO_USER.password;
 const DEMO_USER_ID = "demo-user-001";
 const DEMO_USER_NAME = "Demo User";
 const DEMO_ORGANIZATION_ID = "demo-organization-001";

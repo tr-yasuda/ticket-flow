@@ -201,4 +201,14 @@ describe("createApp", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("GET /api/health は DB 接続確認を行い 200 を返す", async () => {
+    const app = createApp();
+
+    const response = await app.request("/api/health");
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.status).toBe("ok");
+  });
 });

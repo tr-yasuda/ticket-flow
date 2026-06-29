@@ -288,7 +288,13 @@ API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, me
   - `apps/api/tests/unit/` — ドメイン / controller / service / lib の単体テスト
   - `apps/api/tests/integration/` — DB 接続・service・マイグレーション・seed の統合テスト
   - `apps/web/tests/unit/` — コンポーネント / hook / lib / router の単体テスト
-  - E2E テストは現状ありません
+  - `e2e/` — Playwright による E2E テスト
+    - 設定: `e2e/playwright.config.ts`
+    - 固定値: `e2e/fixtures/`
+    - スペック: `e2e/specs/`
+    - 実行: `pnpm run test:e2e` / `pnpm run test:e2e:ui`
+    - ローカル実行時は他の API / Web 開発サーバーを停止しておく（`reuseExistingServer: false`）
+    - E2E 専用 DB は `apps/api/prisma/e2e-test.db`（実行前に削除・再作成される）
 
 ## 開発フローと規約
 

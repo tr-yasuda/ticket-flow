@@ -1,15 +1,28 @@
+import { randomBytes } from "node:crypto";
+
 import { defineConfig, devices } from "@playwright/test";
 
+const E2E_API_PORT = Number(process.env.E2E_API_PORT ?? "3000");
+const E2E_WEB_PORT = Number(process.env.E2E_WEB_PORT ?? "5173");
+const E2E_API_URL =
+  process.env.E2E_API_URL ?? `http://localhost:${E2E_API_PORT}`;
+const E2E_BASE_URL =
+  process.env.E2E_BASE_URL ?? `http://localhost:${E2E_WEB_PORT}`;
+
+// テストごとにクリーンな DB 状態を保つため、実行前に E2E 用 DB を削除する。
+// SQLite を使うため workers=1・fullyParallel=false で順次実行し、テスト間で DB 状態が混在しないようにしている。
 export default defineConfig({
   testDir: "./specs",
+  globalSetup: "./global-setup.ts",
   fullyParallel: false,
   workers: 1,
-  retries: 1,
+  retries: process.env.CI ? 1 : 0,
+  forbidOnly: !!process.env.CI,
   reporter: [["list"], ["html", { outputFolder: "../playwright-report" }]],
   use: {
-    baseURL: "http://localhost:5173",
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
+    baseURL: E2E_BASE_URL,
+    trace: process.env.CI ? "off" : "on-first-retry",
+    screenshot: process.env.CI ? "off" : "only-on-failure",
   },
   projects: [
     {
@@ -20,14 +33,15 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm --filter @ticket-flow/api dev",
-      url: "http://localhost:3000/api/health",
-      reuseExistingServer: !process.env.CI,
+      url: `${E2E_API_URL}/api/health`,
+      reuseExistingServer: false,
       env: {
         DATABASE_URL: "file:./prisma/e2e-test.db",
-        JWT_SECRET: "test-jwt-secret-for-e2e-tests-only-minimum-32-bytes",
+        JWT_SECRET:
+          process.env.E2E_JWT_SECRET ?? randomBytes(32).toString("hex"),
         JWT_ACCESS_EXPIRES_IN: "15m",
         JWT_REFRESH_EXPIRES_IN: "7d",
-        PORT: "3000",
+        PORT: String(E2E_API_PORT),
       },
       stdout: "pipe",
       stderr: "pipe",
@@ -35,8 +49,8 @@ export default defineConfig({
     },
     {
       command: "pnpm --filter @ticket-flow/web dev",
-      url: "http://localhost:5173",
-      reuseExistingServer: !process.env.CI,
+      url: E2E_BASE_URL,
+      reuseExistingServer: false,
       env: {
         VITE_API_BASE_URL: "/api",
       },

@@ -157,6 +157,8 @@ apps/api/prisma/migrate-test.db
 apps/api/prisma/migrate-test.db-*
 apps/api/prisma/seed-test.db
 apps/api/prisma/seed-test.db-*
+apps/api/prisma/e2e-test.db
+apps/api/prisma/e2e-test.db-*
 
 # Git worktrees
 .worktree/
@@ -167,9 +169,7 @@ apps/api/prisma/seed-test.db-*
 .worktrees/
 
 # Playwright
-/test-results/
 /playwright-report/
 /playwright/.cache/
 /blob-report/
 e2e/test-results/
-e2e/playwright-report/

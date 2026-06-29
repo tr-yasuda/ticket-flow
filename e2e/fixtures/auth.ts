@@ -1,19 +1,18 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
-export const DEMO_USER = {
-  email: "demo@example.com",
-  password: "demo1234",
-} as const;
+import { DEMO_USER } from "./demo-credentials.js";
 
-export const DEMO_ORGANIZATION = {
-  id: "demo-organization-001",
-  slug: "demo-organization",
-} as const;
-
-export async function login(page: Page): Promise<void> {
+export async function loginAsDemoUser(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.getByTestId("login-email").fill(DEMO_USER.email);
-  await page.getByTestId("login-password").fill(DEMO_USER.password);
-  await page.getByTestId("login-submit").click();
+  await page
+    .getByRole("textbox", { name: "メールアドレス" })
+    .fill(DEMO_USER.email);
+  await page
+    .getByRole("textbox", { name: "パスワード" })
+    .fill(DEMO_USER.password);
+  await page.getByRole("button", { name: "ログイン" }).click();
   await page.waitForURL("/app");
+  await expect(
+    page.getByRole("heading", { name: "アプリトップ" }),
+  ).toBeVisible();
 }
