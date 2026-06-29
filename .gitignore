@@ -165,3 +165,11 @@ apps/api/prisma/seed-test.db-*
 # Claude Code editor settings
 .claude/
 .worktrees/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/
+e2e/test-results/
+e2e/playwright-report/
