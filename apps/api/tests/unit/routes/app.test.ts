@@ -209,21 +209,25 @@ describe("createApp", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.status).toBe("ok");
+    expect(body.success).toBe(true);
+    expect(body.data.status).toBe("ok");
   });
 
   it("GET /api/health は DB ping 失敗時に 503 を返す", async () => {
     const queryRawSpy = vi
       .spyOn(prisma, "$queryRaw")
       .mockRejectedValueOnce(new Error("connection failed"));
-    const app = createApp();
+    try {
+      const app = createApp();
 
-    const response = await app.request("/api/health");
+      const response = await app.request("/api/health");
 
-    expect(response.status).toBe(503);
-    const body = await response.json();
-    expect(body.success).toBe(false);
-    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
-    queryRawSpy.mockRestore();
+      expect(response.status).toBe(503);
+      const body = await response.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
+    } finally {
+      queryRawSpy.mockRestore();
+    }
   });
 });

@@ -1,4 +1,8 @@
-import { ApiErrorCode, createApiErrorResponse } from "@ticket-flow/shared";
+import {
+  ApiErrorCode,
+  createApiErrorResponse,
+  createApiSuccessResponse,
+} from "@ticket-flow/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
@@ -32,7 +36,7 @@ export function createApp(): Hono {
   app.get("/api/health", async (c) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      return c.json({ status: "ok" });
+      return c.json(createApiSuccessResponse({ status: "ok" }));
     } catch (error) {
       console.error("Health check failed:", error);
       return c.json(
