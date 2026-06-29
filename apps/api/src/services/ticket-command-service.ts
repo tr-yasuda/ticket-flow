@@ -68,7 +68,7 @@ export async function createTicket(
         input.assigneeId === undefined || input.assigneeId === null
           ? null
           : input.assigneeId.toLowerCase(),
-      createdBy: input.createdBy,
+      createdBy: input.createdBy.toLowerCase(),
     };
 
     const ticket = createTicketEntity(domainInput);
