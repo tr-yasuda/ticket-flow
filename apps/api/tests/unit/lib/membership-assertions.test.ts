@@ -32,6 +32,30 @@ describe("membership-assertions", () => {
       });
     });
 
+    it("大文字の userId は小文字化してクエリする", async () => {
+      const db = {
+        organizationMember: {
+          findUnique: vi.fn().mockResolvedValue({ id: "member-id" }),
+        },
+      };
+
+      const result = await isUserOrganizationMember(
+        db as never,
+        "org-id",
+        "USER-ID",
+      );
+
+      expect(result).toBe(true);
+      expect(db.organizationMember.findUnique).toHaveBeenCalledWith({
+        where: {
+          organizationId_userId: {
+            organizationId: "org-id",
+            userId: "user-id",
+          },
+        },
+      });
+    });
+
     it("メンバーが存在しない場合は false を返す", async () => {
       const db = {
         organizationMember: {

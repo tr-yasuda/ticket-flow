@@ -391,10 +391,8 @@ describe("ticket-query-service 統合テスト", () => {
           action: "update",
           oldValues: { title: "履歴取得" },
           newValues: { title: "更新 1" },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
         },
-      });
-      await new Promise((resolve) => {
-        setTimeout(resolve, 20);
       });
       await prisma.auditLog.create({
         data: {
@@ -405,6 +403,7 @@ describe("ticket-query-service 統合テスト", () => {
           action: "update",
           oldValues: { title: "更新 1" },
           newValues: { title: "更新 2" },
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
         },
       });
 
@@ -474,10 +473,8 @@ describe("ticket-query-service 統合テスト", () => {
           action: "update",
           oldValues: { title: "pagination" },
           newValues: { title: "更新 1" },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
         },
-      });
-      await new Promise((resolve) => {
-        setTimeout(resolve, 20);
       });
       await prisma.auditLog.create({
         data: {
@@ -488,6 +485,7 @@ describe("ticket-query-service 統合テスト", () => {
           action: "update",
           oldValues: { title: "更新 1" },
           newValues: { title: "更新 2" },
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
         },
       });
 
