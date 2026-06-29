@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useOrganizationMembership } from "@/contexts/organization-membership-context";
-import { useAuthForm } from "@/hooks/use-auth-form";
+import { useValidatedForm } from "@/hooks/use-validated-form";
 import { ApiError } from "@/lib/api-client";
 import { createOrganization } from "@/lib/organizations-api";
 import {
@@ -26,7 +26,7 @@ export function OrganizationOnboardingPage(): ReactElement {
   const navigate = useNavigate();
   const { refetch } = useOrganizationMembership();
 
-  const form = useAuthForm<OrganizationOnboardingInput>({
+  const form = useValidatedForm<OrganizationOnboardingInput>({
     schema: organizationOnboardingSchema,
     defaultValues: { name: "" },
     onSubmit: async (values) => {
