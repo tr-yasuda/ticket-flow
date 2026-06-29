@@ -299,7 +299,7 @@ API ハンドラでは `createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, me
     - スペック: `e2e/specs/`
     - 実行: `pnpm run test:e2e` / `pnpm run test:e2e:ui`
     - ローカル実行時は他の API / Web 開発サーバーを停止しておく（`reuseExistingServer: false`）
-    - E2E 専用 DB は `apps/api/prisma/e2e-test.db`（実行前に削除・再作成される）
+    - E2E 専用 DB は `apps/api/prisma/e2e-test.db`（API の dev スクリプトが起動時に migrate + seed する）
 
 ## 開発フローと規約
 

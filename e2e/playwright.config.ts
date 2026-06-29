@@ -13,7 +13,6 @@ const E2E_BASE_URL =
 // SQLite を使うため workers=1・fullyParallel=false で順次実行し、テスト間で DB 状態が混在しないようにしている。
 export default defineConfig({
   testDir: "./specs",
-  globalSetup: "./global-setup.ts",
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
