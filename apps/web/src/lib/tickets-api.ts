@@ -8,6 +8,7 @@ import {
 import { type TicketAssignee, type TicketListItem } from "@/types/ticket";
 
 import { apiClient } from "./api-client";
+import { extractData, isApiPaginatedEnvelope, isRecord } from "./api-response";
 
 export type { TicketAssignee, TicketListItem } from "@/types/ticket";
 
@@ -29,10 +30,6 @@ export type ListTicketsResult = Readonly<{
   total: number;
   totalPages: number;
 }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isPositiveInteger(value: unknown): value is number {
   return (
@@ -104,12 +101,8 @@ function isTicketsData(value: unknown): value is { tickets: unknown[] } {
 }
 
 function extractTicketsData(body: unknown): { tickets: TicketListItem[] } {
-  if (!isRecord(body) || body.success !== true || !isRecord(body.data)) {
-    throw new Error("Invalid tickets response");
-  }
-
-  const data = body.data;
-  if (!isTicketsData(data) || !data.tickets.every(isTicketListItem)) {
+  const data = extractData(body, isTicketsData, "Invalid tickets response");
+  if (!data.tickets.every(isTicketListItem)) {
     throw new Error("Invalid tickets response");
   }
 
@@ -123,9 +116,7 @@ function extractPaginationMeta(body: unknown): {
   totalPages: number;
 } {
   if (
-    isRecord(body) &&
-    body.success === true &&
-    isRecord(body.meta) &&
+    isApiPaginatedEnvelope(body) &&
     isPositiveInteger(body.meta.page) &&
     isPositiveInteger(body.meta.perPage) &&
     body.meta.perPage <= MAX_PER_PAGE &&

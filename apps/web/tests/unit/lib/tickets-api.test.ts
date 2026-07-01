@@ -123,7 +123,7 @@ describe("listTickets", () => {
 
     await expect(
       listTickets({ organizationId: "demo-org-001" }),
-    ).rejects.toThrow("Invalid tickets response");
+    ).rejects.toThrow("Invalid tickets response: invalid envelope");
   });
 
   it("不正な meta を含むレスポンスはエラー", async () => {

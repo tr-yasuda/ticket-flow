@@ -2,16 +2,13 @@ import ky, { type AfterResponseHook, type BeforeRequestHook } from "ky";
 
 import { buildApiUrl } from "./api-base-url";
 import { ApiError, handleApiErrorResponse } from "./api-error";
+import { isRecord } from "./api-response";
 import {
   clearTokens,
   getAccessToken,
   getRefreshToken,
   setTokens,
 } from "./token-storage";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "";
