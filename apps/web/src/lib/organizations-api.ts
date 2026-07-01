@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client";
+import { extractData, isRecord } from "./api-response";
 
 export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
 
@@ -13,10 +14,6 @@ export type CreateOrganizationInput = Readonly<{
   name: string;
   slug: string;
 }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isOrganizationRole(value: unknown): value is OrganizationRole {
   return (
@@ -44,20 +41,6 @@ function isCreatedOrganization(
     typeof value.name === "string" &&
     typeof value.slug === "string"
   );
-}
-
-function extractData<T>(
-  body: unknown,
-  isData: (data: unknown) => data is T,
-): T {
-  const data =
-    isRecord(body) && body.success === true && isRecord(body.data)
-      ? body.data
-      : body;
-  if (!isData(data)) {
-    throw new Error("Invalid response");
-  }
-  return data;
 }
 
 function isOrganizationsData(

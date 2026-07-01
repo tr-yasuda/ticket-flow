@@ -1,6 +1,7 @@
 import { type ApiSuccessResponse } from "@ticket-flow/shared";
 
 import { apiClient } from "./api-client";
+import { isRecord } from "./api-response";
 import { clearTokens, getRefreshToken, setTokens } from "./token-storage";
 
 export type LoginInput = Readonly<{ email: string; password: string }>;
@@ -16,10 +17,6 @@ export type AuthResponse = Readonly<{
   accessToken: string;
   refreshToken: string;
 }>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 function isCurrentUser(value: unknown): value is CurrentUser {
   return (
