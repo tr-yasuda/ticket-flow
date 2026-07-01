@@ -11,7 +11,11 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function isApiSuccessEnvelope(
   value: unknown,
 ): value is Readonly<{ success: true; data: unknown }> {
-  return isRecord(value) && value.success === true && "data" in value;
+  return (
+    isRecord(value) &&
+    value.success === true &&
+    Object.prototype.hasOwnProperty.call(value, "data")
+  );
 }
 
 /**
@@ -29,7 +33,8 @@ export function isApiPaginatedEnvelope(value: unknown): value is Readonly<{
   return (
     isRecord(value) &&
     value.success === true &&
-    "data" in value &&
+    Object.prototype.hasOwnProperty.call(value, "data") &&
+    Object.prototype.hasOwnProperty.call(value, "meta") &&
     isRecord(value.meta)
   );
 }
