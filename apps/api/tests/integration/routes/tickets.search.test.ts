@@ -378,7 +378,7 @@ describe("GET /api/organizations/:organizationId/tickets?search=... (tickets.sea
     expect(body.data.tickets[0]?.title).toBe("file_1");
   });
 
-  it("検索結果が 0 件の場合 totalPages は 1", async () => {
+  it("検索結果が 0 件の場合 totalPages は 0", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,
       uniqueEmail("owner"),
@@ -409,7 +409,7 @@ describe("GET /api/organizations/:organizationId/tickets?search=... (tickets.sea
       page: 1,
       perPage: 20,
       total: 0,
-      totalPages: 1,
+      totalPages: 0,
     });
   });
 

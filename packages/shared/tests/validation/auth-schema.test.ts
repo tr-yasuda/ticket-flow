@@ -5,6 +5,7 @@ import {
   loginInputSchema,
   passwordSchema,
   registerInputSchema,
+  userNameSchema,
 } from "../../src/validation/auth-schema.js";
 
 describe("emailSchema", () => {
@@ -107,6 +108,36 @@ describe("loginInputSchema", () => {
   });
 });
 
+describe("userNameSchema", () => {
+  it("有効な名前を受け入れる", () => {
+    const result = userNameSchema.safeParse("山田太郎");
+    expect(result.success).toBe(true);
+  });
+
+  it("空文字を拒否する", () => {
+    const result = userNameSchema.safeParse("");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("名前を入力してください");
+    }
+  });
+
+  it("100文字を超える名前を拒否する", () => {
+    const result = userNameSchema.safeParse("a".repeat(101));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "名前は100文字以内で入力してください",
+      );
+    }
+  });
+
+  it("undefined を受け入れる", () => {
+    const result = userNameSchema.safeParse(undefined);
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("registerInputSchema", () => {
   it("有効な入力を受け入れる", () => {
     const result = registerInputSchema.safeParse({
@@ -114,5 +145,14 @@ describe("registerInputSchema", () => {
       password: "password",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("空文字の名前を拒否する", () => {
+    const result = registerInputSchema.safeParse({
+      email: "user@example.com",
+      password: "password",
+      name: "",
+    });
+    expect(result.success).toBe(false);
   });
 });

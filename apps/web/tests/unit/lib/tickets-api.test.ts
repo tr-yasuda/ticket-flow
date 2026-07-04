@@ -89,6 +89,24 @@ describe("listTickets", () => {
     expect(result.perPage).toBe(100);
   });
 
+  it("total が 0 の場合は totalPages も 0 を受け入れる", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", () =>
+        HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [] },
+            { page: 1, perPage: 20, total: 0, totalPages: 0 },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const result = await listTickets({ organizationId: "demo-org-001" });
+
+    expect(result.totalPages).toBe(0);
+  });
+
   it("不正なチケット要素を含むレスポンスはエラー", async () => {
     server.use(
       http.get("/api/organizations/:id/tickets", () =>

@@ -17,18 +17,18 @@ describe("listTicketsQuerySchema の priority パース", () => {
     expect(result.priority).toEqual(["high", "urgent"]);
   });
 
-  it("無効な優先度値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("無効な優先度値が含まれる場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       priority: "high,invalid",
     });
-    expect(result.priority).toEqual(["high"]);
+    expect(result.success).toBe(false);
   });
 
-  it("すべて無効な優先度値の場合は undefined を返す", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("すべて無効な優先度値の場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       priority: "invalid1,invalid2",
     });
-    expect(result.priority).toBeUndefined();
+    expect(result.success).toBe(false);
   });
 
   it("priority が省略された場合は undefined を返す", () => {
@@ -43,11 +43,11 @@ describe("listTicketsQuerySchema の priority パース", () => {
     expect(result.priority).toEqual(["high", "low"]);
   });
 
-  it("配列形式でも無効な値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("配列形式でも無効な値が含まれる場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       priority: ["high", "invalid"],
     });
-    expect(result.priority).toEqual(["high"]);
+    expect(result.success).toBe(false);
   });
 
   it("空配列の priority は undefined を返す", () => {
@@ -85,10 +85,10 @@ describe("listTicketsQuerySchema の priority パース", () => {
     expect(result.priority).toBeUndefined();
   });
 
-  it("大文字の優先度値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("大文字の優先度値はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       priority: "High,Urgent",
     });
-    expect(result.priority).toBeUndefined();
+    expect(result.success).toBe(false);
   });
 });

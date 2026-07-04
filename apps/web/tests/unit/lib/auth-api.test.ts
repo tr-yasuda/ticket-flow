@@ -30,7 +30,11 @@ describe("auth-api", () => {
           JSON.stringify({
             success: true,
             data: {
-              user: { id: "user-1", email: "user@example.com" },
+              user: {
+                id: "user-1",
+                email: "user@example.com",
+                name: "Test User",
+              },
               accessToken: "access-token",
               refreshToken: "refresh-token",
             },
@@ -46,6 +50,7 @@ describe("auth-api", () => {
     });
 
     expect(result.user.email).toBe("user@example.com");
+    expect(result.user.name).toBe("Test User");
     expect(result.accessToken).toBe("access-token");
     expect(getAccessToken()).toBe("access-token");
     expect(getRefreshToken()).toBe("refresh-token");
@@ -58,7 +63,11 @@ describe("auth-api", () => {
           JSON.stringify({
             success: true,
             data: {
-              user: { id: "user-1", email: "user@example.com" },
+              user: {
+                id: "user-1",
+                email: "user@example.com",
+                name: "Test User",
+              },
               accessToken: "access-token",
               refreshToken: "refresh-token",
             },
@@ -103,7 +112,11 @@ describe("auth-api", () => {
             JSON.stringify({
               success: true,
               data: {
-                user: { id: "user-1", email: "user@example.com" },
+                user: {
+                  id: "user-1",
+                  email: "user@example.com",
+                  name: "Wrapped User",
+                },
               },
             }),
             { status: 200 },
@@ -113,7 +126,11 @@ describe("auth-api", () => {
 
       const user = await getCurrentUser();
 
-      expect(user).toEqual({ id: "user-1", email: "user@example.com" });
+      expect(user).toEqual({
+        id: "user-1",
+        email: "user@example.com",
+        name: "Wrapped User",
+      });
     });
 
     it("ラップされていないレスポンスから current user を取得する", async () => {
@@ -122,7 +139,11 @@ describe("auth-api", () => {
         vi.fn().mockResolvedValue(
           new Response(
             JSON.stringify({
-              user: { id: "user-2", email: "other@example.com" },
+              user: {
+                id: "user-2",
+                email: "other@example.com",
+                name: null,
+              },
             }),
             { status: 200 },
           ),
@@ -131,7 +152,11 @@ describe("auth-api", () => {
 
       const user = await getCurrentUser();
 
-      expect(user).toEqual({ id: "user-2", email: "other@example.com" });
+      expect(user).toEqual({
+        id: "user-2",
+        email: "other@example.com",
+        name: null,
+      });
     });
 
     it("不正なレスポンスの場合はエラーを投げる", async () => {

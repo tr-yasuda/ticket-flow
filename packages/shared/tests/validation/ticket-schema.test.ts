@@ -5,6 +5,7 @@ import {
   ticketStatusSchema,
   ticketTitleSchema,
   updateTicketAssigneeInputSchema,
+  updateTicketInputSchema,
   updateTicketPriorityInputSchema,
   updateTicketStatusInputSchema,
 } from "../../src/validation/ticket-schema.js";
@@ -275,6 +276,35 @@ describe("updateTicketAssigneeInputSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].path[0]).toBe("assigneeId");
+    }
+  });
+});
+
+describe("updateTicketInputSchema", () => {
+  it("title のみの更新を受け入れる", () => {
+    const result = updateTicketInputSchema.safeParse({
+      title: "新しいタイトル",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("description のみの更新を受け入れる", () => {
+    const result = updateTicketInputSchema.safeParse({ description: "説明" });
+    expect(result.success).toBe(true);
+  });
+
+  it("priority のみの更新を受け入れる", () => {
+    const result = updateTicketInputSchema.safeParse({ priority: "high" });
+    expect(result.success).toBe(true);
+  });
+
+  it("空のパッチを拒否する", () => {
+    const result = updateTicketInputSchema.safeParse({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "更新する項目を指定してください",
+      );
     }
   });
 });

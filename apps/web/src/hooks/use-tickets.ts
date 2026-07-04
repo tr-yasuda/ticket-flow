@@ -44,10 +44,19 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
   const [isFetching, setIsFetching] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [requestedPage, setRequestedPage] = useState(page);
+
+  useEffect(() => {
+    setRequestedPage(page);
+  }, [page]);
+
+  useEffect(() => {
+    setRequestedPage(1);
+  }, [organizationId]);
 
   const requestKey = useMemo(
-    () => createRequestKey(organizationId, page, perPage, retryKey),
-    [organizationId, page, perPage, retryKey],
+    () => createRequestKey(organizationId, requestedPage, perPage, retryKey),
+    [organizationId, requestedPage, perPage, retryKey],
   );
 
   useEffect(() => {
@@ -66,7 +75,7 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
 
     void listTickets({
       organizationId,
-      page,
+      page: requestedPage,
       perPage,
       signal: controller.signal,
     })
@@ -90,7 +99,7 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, requestKey, organizationId, page, perPage]);
+  }, [enabled, requestKey, organizationId, requestedPage, perPage]);
 
   const refetch = useCallback(() => {
     setRetryKey((previous) => previous + 1);
@@ -104,10 +113,18 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       tickets: currentResult?.tickets ?? emptyTickets,
       isLoading: enabled && (isFetching || isStale) && error === null,
       error,
-      currentPage: currentResult?.page ?? page,
-      totalPages: currentResult?.totalPages ?? 1,
+      currentPage: currentResult?.page ?? requestedPage,
+      totalPages: currentResult?.totalPages ?? 0,
       refetch,
     }),
-    [currentResult, enabled, isFetching, isStale, error, page, refetch],
+    [
+      currentResult,
+      enabled,
+      isFetching,
+      isStale,
+      error,
+      requestedPage,
+      refetch,
+    ],
   );
 }

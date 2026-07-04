@@ -121,7 +121,7 @@ function extractPaginationMeta(body: unknown): {
     isPositiveInteger(body.meta.perPage) &&
     body.meta.perPage <= MAX_PER_PAGE &&
     isNonNegativeInteger(body.meta.total) &&
-    isPositiveInteger(body.meta.totalPages)
+    isNonNegativeInteger(body.meta.totalPages)
   ) {
     return {
       page: body.meta.page,

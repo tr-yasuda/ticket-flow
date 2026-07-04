@@ -140,6 +140,44 @@ describe("useTickets", () => {
     expect(result.current.tickets).toHaveLength(1);
   });
 
+  it("organizationId 変更時にページを 1 にリセットする", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", ({ request }) => {
+        const url = new URL(request.url);
+        const page = Number(url.searchParams.get("page")) || 1;
+        return HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [validTicket] },
+            { page, perPage: 20, total: 2, totalPages: 2 },
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ organizationId, page }: { organizationId: string; page: number }) =>
+        useTickets({ organizationId, page }),
+      { initialProps: { organizationId: "demo-org-001", page: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    rerender({ organizationId: "demo-org-001", page: 2 });
+
+    await waitFor(() => {
+      expect(result.current.currentPage).toBe(2);
+    });
+
+    rerender({ organizationId: "demo-org-002", page: 2 });
+
+    await waitFor(() => {
+      expect(result.current.currentPage).toBe(1);
+    });
+  });
+
   it("enabled=false の場合はフェッチしない", async () => {
     server.use(createSuccessHandler());
 

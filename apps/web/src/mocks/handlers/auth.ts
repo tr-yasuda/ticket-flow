@@ -38,7 +38,11 @@ export const authHandlers = [
 
     return HttpResponse.json(
       createApiSuccessResponse({
-        user: { id: demoUser.id, email: demoUser.email },
+        user: {
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.name,
+        },
         accessToken,
         refreshToken,
       }),
@@ -74,7 +78,7 @@ export const authHandlers = [
 
     return HttpResponse.json(
       createApiSuccessResponse({
-        user: { id: "mock-new-user-id", email: body.email },
+        user: { id: "mock-new-user-id", email: body.email, name: null },
         accessToken,
         refreshToken,
       }),
@@ -100,7 +104,11 @@ export const authHandlers = [
 
     return HttpResponse.json(
       createApiSuccessResponse({
-        user: { id: demoUser.id, email: demoUser.email },
+        user: {
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.name,
+        },
       }),
       { status: 200 },
     );

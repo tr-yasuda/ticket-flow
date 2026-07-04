@@ -89,11 +89,21 @@ export const updateTicketAssigneeInputSchema = z.object({
     .nullable(),
 });
 
-export const updateTicketInputSchema = z.object({
-  title: ticketTitleSchema.optional(),
-  description: ticketDescriptionSchema,
-  priority: ticketPrioritySchema.optional(),
-});
+export const updateTicketInputSchema = z
+  .object({
+    title: ticketTitleSchema.optional(),
+    description: ticketDescriptionSchema,
+    priority: ticketPrioritySchema.optional(),
+  })
+  .refine(
+    (data) =>
+      data.title !== undefined ||
+      data.description !== undefined ||
+      data.priority !== undefined,
+    {
+      message: "更新する項目を指定してください",
+    },
+  );
 
 export type CreateTicketInput = z.infer<typeof createTicketInputSchema>;
 export type UpdateTicketInput = z.infer<typeof updateTicketInputSchema>;

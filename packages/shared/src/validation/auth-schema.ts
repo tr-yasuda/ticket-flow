@@ -52,6 +52,7 @@ export const loginInputSchema = z.object({
 
 export const userNameSchema = z
   .string()
+  .min(1, "名前を入力してください")
   .max(100, "名前は100文字以内で入力してください")
   .optional();
 

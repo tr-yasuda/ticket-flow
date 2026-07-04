@@ -1,3 +1,4 @@
+import { TimeoutError } from "ky";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -427,6 +428,26 @@ describe("apiClient", () => {
 
     const [retryRequest] = fetchMock.mock.calls[2] as [Request];
     expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
+  });
+
+  it("timeout を超える応答は TimeoutError で失敗する", async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          setTimeout(
+            () =>
+              resolve(
+                new Response(JSON.stringify({ ok: true }), { status: 200 }),
+              ),
+            100,
+          );
+        }),
+    );
+    mockFetch(fetchMock);
+
+    await expect(
+      apiClient.get("protected", { timeout: 1 }),
+    ).rejects.toBeInstanceOf(TimeoutError);
   });
 
   it("refresh token が空文字の場合は 401 時に refresh しない", async () => {
