@@ -287,7 +287,7 @@ export async function listTicketsController(c: ListTicketsControllerContext) {
     return c.json(createApiErrorResponse(code, message, details), httpStatus);
   }
 
-  const totalPages = Math.max(1, Math.ceil(result.data.total / perPage));
+  const totalPages = Math.ceil(result.data.total / perPage);
 
   return c.json(
     createApiPaginatedSuccessResponse(

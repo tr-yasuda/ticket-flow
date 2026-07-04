@@ -790,7 +790,7 @@ describe("tickets-controller", () => {
             page: 1,
             perPage: 20,
             total: 0,
-            totalPages: 1,
+            totalPages: 0,
           }),
         }),
         200,
@@ -829,7 +829,34 @@ describe("tickets-controller", () => {
             page: 1,
             perPage: 20,
             total: 0,
-            totalPages: 1,
+            totalPages: 0,
+          }),
+        }),
+        200,
+      );
+    });
+
+    it("チケットが 0 件の場合は totalPages が 0 になる", async () => {
+      vi.spyOn(ticketQueryService, "listTickets").mockResolvedValue({
+        success: true,
+        data: { tickets: [], total: 0 },
+      });
+      const c = createTestContext({
+        query: { page: 1, perPage: 20 },
+        userId: "user-id",
+        organizationId: "550e8400-e29b-41d4-a716-446655440001",
+      });
+
+      await listTicketsController(c);
+
+      expect(c.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          meta: expect.objectContaining({
+            page: 1,
+            perPage: 20,
+            total: 0,
+            totalPages: 0,
           }),
         }),
         200,

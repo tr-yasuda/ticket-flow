@@ -17,18 +17,18 @@ describe("listTicketsQuerySchema の status パース", () => {
     expect(result.status).toEqual(["open", "in-progress"]);
   });
 
-  it("無効なステータス値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("無効なステータス値が含まれる場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       status: "open,invalid",
     });
-    expect(result.status).toEqual(["open"]);
+    expect(result.success).toBe(false);
   });
 
-  it("すべて無効なステータス値の場合は undefined を返す", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("すべて無効なステータス値の場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       status: "invalid1,invalid2",
     });
-    expect(result.status).toBeUndefined();
+    expect(result.success).toBe(false);
   });
 
   it("status が省略された場合は undefined を返す", () => {
@@ -43,11 +43,11 @@ describe("listTicketsQuerySchema の status パース", () => {
     expect(result.status).toEqual(["open", "closed"]);
   });
 
-  it("配列形式でも無効な値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("配列形式でも無効な値が含まれる場合はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       status: ["open", "invalid"],
     });
-    expect(result.status).toEqual(["open"]);
+    expect(result.success).toBe(false);
   });
 
   it("前後の空白をトリムする", () => {
@@ -78,10 +78,10 @@ describe("listTicketsQuerySchema の status パース", () => {
     expect(result.status).toBeUndefined();
   });
 
-  it("大文字のステータス値は無視される", () => {
-    const result = listTicketsQuerySchema.parse({
+  it("大文字のステータス値はエラー", () => {
+    const result = listTicketsQuerySchema.safeParse({
       status: "Open,In-Progress",
     });
-    expect(result.status).toBeUndefined();
+    expect(result.success).toBe(false);
   });
 });

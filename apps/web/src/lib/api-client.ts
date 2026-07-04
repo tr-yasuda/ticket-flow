@@ -14,6 +14,7 @@ const RETRYABLE_HTTP_STATUSES = [408, 429, 500, 502, 503, 504] as const;
 
 export const apiClient = ky.create({
   prefixUrl: getApiBaseUrl(),
+  timeout: 10000,
   hooks: {
     beforeRequest: [addAuthHeader],
     afterResponse: [handleUnauthorizedResponse, handleApiErrorResponse],

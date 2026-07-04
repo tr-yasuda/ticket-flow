@@ -34,22 +34,34 @@ export type CreateTicketBody = z.infer<typeof createTicketBodySchema>;
 function parseEnumQuery<T extends string>(
   allowedValues: readonly T[],
   value: string | string[] | undefined,
+  ctx: z.RefinementCtx,
 ): T[] | undefined {
   if (value === undefined) {
     return undefined;
   }
 
   const rawValues = Array.isArray(value) ? value : value.split(",");
-  const validValues = rawValues
+  const trimmedValues = rawValues
     .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .filter((item): item is T => allowedValues.includes(item as T));
+    .filter((item) => item.length > 0);
 
-  if (validValues.length === 0) {
+  if (trimmedValues.length === 0) {
     return undefined;
   }
 
-  return [...new Set(validValues)];
+  const invalidValues = trimmedValues.filter(
+    (item) => !allowedValues.includes(item as T),
+  );
+  if (invalidValues.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `無効な値が含まれています: ${invalidValues.join(", ")}`,
+      path: [],
+    });
+    return z.NEVER;
+  }
+
+  return [...new Set(trimmedValues as T[])];
 }
 
 export const listTicketsQuerySchema = z
@@ -62,8 +74,8 @@ export const listTicketsQuerySchema = z
         message: `検索キーワードは${MAX_TICKET_SEARCH_LENGTH}文字以内で入力してください`,
       })
       .optional(),
-    // NOTE: status / priority はドメイン enum と同じ小文字値で一致させ、
-    // 大文字・無効値は無視する。無効値のみの場合はフィルタが解除される。
+    // NOTE: status / priority はドメイン enum と同じ小文字値で一致させる。
+    // 無効な値が含まれる場合はバリデーションエラーとする。
     status: z
       .union([
         z.string().max(MAX_FILTER_STRING_LENGTH),
@@ -72,7 +84,9 @@ export const listTicketsQuerySchema = z
           .max(MAX_FILTER_ARRAY_LENGTH),
       ])
       .optional()
-      .transform((value) => parseEnumQuery(ticketStatusSchema.options, value)),
+      .transform((value, ctx) =>
+        parseEnumQuery(ticketStatusSchema.options, value, ctx),
+      ),
     priority: z
       .union([
         z.string().max(MAX_FILTER_STRING_LENGTH),
@@ -81,8 +95,8 @@ export const listTicketsQuerySchema = z
           .max(MAX_FILTER_ARRAY_LENGTH),
       ])
       .optional()
-      .transform((value) =>
-        parseEnumQuery(ticketPrioritySchema.options, value),
+      .transform((value, ctx) =>
+        parseEnumQuery(ticketPrioritySchema.options, value, ctx),
       ),
     assignee: z
       .preprocess(

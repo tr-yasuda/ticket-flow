@@ -59,40 +59,38 @@ async function performRefresh(): Promise<
     throw new ApiError("Refresh token is missing", 401);
   }
 
-  if (refreshingPromise !== null) {
-    return refreshingPromise;
-  }
-
-  refreshingPromise = (async () => {
-    try {
-      const response = await fetch(buildApiUrl("/auth/refresh"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        throw new ApiError("Refresh failed", response.status);
-      }
-
-      let body: unknown;
+  if (refreshingPromise === null) {
+    refreshingPromise = (async () => {
       try {
-        body = await response.json();
-      } catch {
-        throw new ApiError("Invalid refresh response", 500);
-      }
+        const response = await fetch(buildApiUrl("/auth/refresh"), {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      const { accessToken, refreshToken } = extractTokens(body);
-      if (accessToken === undefined || accessToken.trim() === "") {
-        throw new ApiError("Invalid refresh response", 500);
+        if (!response.ok) {
+          throw new ApiError("Refresh failed", response.status);
+        }
+
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          throw new ApiError("Invalid refresh response", 500);
+        }
+
+        const { accessToken, refreshToken } = extractTokens(body);
+        if (accessToken === undefined || accessToken.trim() === "") {
+          throw new ApiError("Invalid refresh response", 500);
+        }
+        return {
+          accessToken,
+          refreshToken: refreshToken ?? token,
+        };
+      } finally {
+        refreshingPromise = null;
       }
-      return {
-        accessToken,
-        refreshToken: refreshToken ?? token,
-      };
-    } finally {
-      refreshingPromise = null;
-    }
-  })();
+    })();
+  }
 
   return refreshingPromise;
 }

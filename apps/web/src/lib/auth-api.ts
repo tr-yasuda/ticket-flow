@@ -10,6 +10,7 @@ export type RegisterInput = Readonly<{ email: string; password: string }>;
 export type CurrentUser = Readonly<{
   id: string;
   email: string;
+  name: string | null;
 }>;
 
 export type AuthResponse = Readonly<{
@@ -22,7 +23,8 @@ function isCurrentUser(value: unknown): value is CurrentUser {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
-    typeof value.email === "string"
+    typeof value.email === "string" &&
+    (typeof value.name === "string" || value.name === null)
   );
 }
 

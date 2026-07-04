@@ -13,9 +13,27 @@ describe("getApiErrorMessage", () => {
     );
   });
 
-  it("400 番台は入力内容の確認を促す", () => {
+  it("400 / 422 は入力内容の確認を促す", () => {
     expect(getApiErrorMessage({ status: 400 })).toBe(API_ERROR_MESSAGES.client);
     expect(getApiErrorMessage({ status: 422 })).toBe(API_ERROR_MESSAGES.client);
+  });
+
+  it("401 は再ログインを促す", () => {
+    expect(getApiErrorMessage({ status: 401 })).toBe(
+      API_ERROR_MESSAGES.unauthorized,
+    );
+  });
+
+  it("403 は権限不足を示す", () => {
+    expect(getApiErrorMessage({ status: 403 })).toBe(
+      API_ERROR_MESSAGES.forbidden,
+    );
+  });
+
+  it("409 は競合を示す", () => {
+    expect(getApiErrorMessage({ status: 409 })).toBe(
+      API_ERROR_MESSAGES.conflict,
+    );
   });
 
   it("500 番台は時間をおいて再試行を促す", () => {

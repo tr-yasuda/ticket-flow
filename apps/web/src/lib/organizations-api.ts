@@ -1,13 +1,16 @@
+import {
+  organizationMemberRoleSchema,
+  type OrganizationMemberRole,
+} from "@ticket-flow/shared";
+
 import { apiClient } from "./api-client";
 import { extractData, isRecord } from "./api-response";
-
-export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
 
 export type Organization = Readonly<{
   id: string;
   name: string;
   slug: string;
-  role: OrganizationRole;
+  role: OrganizationMemberRole;
 }>;
 
 export type CreateOrganizationInput = Readonly<{
@@ -15,10 +18,10 @@ export type CreateOrganizationInput = Readonly<{
   slug: string;
 }>;
 
-function isOrganizationRole(value: unknown): value is OrganizationRole {
+function isOrganizationRole(value: unknown): value is OrganizationMemberRole {
   return (
     typeof value === "string" &&
-    ["owner", "admin", "member", "viewer"].includes(value)
+    organizationMemberRoleSchema.safeParse(value).success
   );
 }
 

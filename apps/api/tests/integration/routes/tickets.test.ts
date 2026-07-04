@@ -938,7 +938,7 @@ describe("GET /api/organizations/:organizationId/tickets (tickets.list)", () => 
     });
   });
 
-  it("チケットが0件の場合は空配列と totalPages:1 を返す", async () => {
+  it("チケットが0件の場合は空配列と totalPages:0 を返す", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,
       uniqueEmail("owner"),
@@ -961,7 +961,7 @@ describe("GET /api/organizations/:organizationId/tickets (tickets.list)", () => 
       page: 1,
       perPage: 20,
       total: 0,
-      totalPages: 1,
+      totalPages: 0,
     });
   });
 

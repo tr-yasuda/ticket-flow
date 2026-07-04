@@ -191,6 +191,45 @@ describe("handleUnauthorizedResponse", () => {
     expect(getRefreshToken()).toBeNull();
   });
 
+  it("並行した 401 ハンドラは refresh を 1 回だけ実行する", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            accessToken: "new-access",
+            refreshToken: "new-refresh",
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const [result1, result2] = (await Promise.all([
+      handleUnauthorizedResponse(request, createOptions(), response, {
+        retryCount: 0,
+      }),
+      handleUnauthorizedResponse(request, createOptions(), response, {
+        retryCount: 0,
+      }),
+    ])) as [Response, Response];
+
+    expect(result1.status).toBe(200);
+    expect(result2.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("2 度目の 401 ではリフレッシュを試行しない", async () => {
     setTokens("expired-access", "refresh-token");
     const fetchMock = vi.fn();

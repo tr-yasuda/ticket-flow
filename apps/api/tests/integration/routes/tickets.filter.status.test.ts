@@ -197,7 +197,7 @@ describe("GET /api/organizations/:organizationId/tickets?status=... (tickets.fil
     expect(body.meta.total).toBe(2);
   });
 
-  it("無効なステータス値は無視される", async () => {
+  it("無効なステータス値は 400 Bad Request", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,
       uniqueEmail("owner"),
@@ -222,14 +222,13 @@ describe("GET /api/organizations/:organizationId/tickets?status=... (tickets.fil
       },
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.data.tickets).toHaveLength(1);
-    expect(body.data.tickets[0]?.title).toBe("open ticket");
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("有効な値と無効な値が混在する場合、有効な値のみ適用される", async () => {
+  it("有効な値と無効な値が混在する場合も 400 Bad Request", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,
       uniqueEmail("owner"),
@@ -270,14 +269,13 @@ describe("GET /api/organizations/:organizationId/tickets?status=... (tickets.fil
       },
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.data.tickets).toHaveLength(1);
-    expect(body.data.tickets[0]?.title).toBe("open ticket");
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("すべて無効なステータス値の場合はフィルタが解除される", async () => {
+  it("すべて無効なステータス値の場合も 400 Bad Request", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,
       uniqueEmail("owner"),
@@ -318,11 +316,10 @@ describe("GET /api/organizations/:organizationId/tickets?status=... (tickets.fil
       },
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.data.tickets).toHaveLength(2);
-    expect(body.meta.total).toBe(2);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
   it("status クエリがない場合は全件返す", async () => {

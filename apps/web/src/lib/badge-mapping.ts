@@ -1,4 +1,5 @@
 import type {
+  OrganizationMemberRole,
   TicketPriority as SharedTicketPriority,
   TicketStatus as SharedTicketStatus,
 } from "@ticket-flow/shared";
@@ -7,8 +8,6 @@ import type { VariantProps } from "class-variance-authority";
 type BadgeVariant = NonNullable<
   VariantProps<typeof import("@/components/ui/badge").badgeVariants>["variant"]
 >;
-
-export type Role = "owner" | "admin" | "member" | "viewer";
 
 type BadgeConfig = {
   label: string;
@@ -28,7 +27,7 @@ const ticketPriorityConfig: Record<SharedTicketPriority, BadgeConfig> = {
   urgent: { label: "緊急", variant: "destructive" },
 };
 
-const roleConfig: Record<Role, BadgeConfig> = {
+const roleConfig: Record<OrganizationMemberRole, BadgeConfig> = {
   owner: { label: "オーナー", variant: "default" },
   admin: { label: "管理者", variant: "secondary" },
   member: { label: "メンバー", variant: "outline" },

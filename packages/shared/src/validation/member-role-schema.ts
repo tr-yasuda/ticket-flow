@@ -11,6 +11,10 @@ export const organizationMemberRoleSchema = z.enum(organizationMemberRoles, {
   message: "ロールの値が正しくありません",
 });
 
+export type OrganizationMemberRole = z.infer<
+  typeof organizationMemberRoleSchema
+>;
+
 export const updateOrganizationMemberRoleInputSchema = z.object({
   role: organizationMemberRoleSchema,
 });

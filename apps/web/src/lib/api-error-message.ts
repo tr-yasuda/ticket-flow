@@ -3,6 +3,9 @@ export const API_ERROR_MESSAGES = {
   network: "通信に失敗しました。ネットワーク環境を確認してください。",
   client: "入力内容を確認してください。",
   server: "システムエラーが発生しました。時間をおいて再度お試しください。",
+  unauthorized: "認証情報が無効です。再度ログインしてください。",
+  forbidden: "この操作を行う権限がありません。",
+  conflict: "データが競合しました。画面を更新してから再度お試しください。",
 } as const;
 
 export type ErrorNotifier = (message: string) => void;
@@ -28,7 +31,19 @@ export function getApiErrorMessage(error: unknown): string {
       return API_ERROR_MESSAGES.server;
     }
 
-    if (status >= 400) {
+    if (status === 401) {
+      return API_ERROR_MESSAGES.unauthorized;
+    }
+
+    if (status === 403) {
+      return API_ERROR_MESSAGES.forbidden;
+    }
+
+    if (status === 409) {
+      return API_ERROR_MESSAGES.conflict;
+    }
+
+    if (status >= 400 && status < 500) {
       return API_ERROR_MESSAGES.client;
     }
   }
