@@ -56,7 +56,6 @@ function parseEnumQuery<T extends string>(
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: `無効な値が含まれています: ${invalidValues.join(", ")}`,
-      path: [],
     });
     return z.NEVER;
   }

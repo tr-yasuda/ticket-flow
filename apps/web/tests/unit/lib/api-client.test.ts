@@ -430,7 +430,7 @@ describe("apiClient", () => {
     expect(retryRequest.headers.get("Authorization")).toBe("Bearer new-access");
   });
 
-  it("timeout を超える応答は AbortError で失敗する", async () => {
+  it("timeout を超える応答は TimeoutError で失敗する", async () => {
     const fetchMock = vi.fn().mockImplementation(
       () =>
         new Promise<Response>((resolve) => {
