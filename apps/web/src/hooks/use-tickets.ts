@@ -1,3 +1,4 @@
+import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -32,13 +33,26 @@ function createRequestKey(
   organizationId: string,
   page: number,
   perPage: number,
+  search: string | undefined,
+  status: TicketStatus | undefined,
+  priority: TicketPriority | undefined,
+  assignee: string | undefined,
   retryKey: number,
 ): string {
-  return `${organizationId}:${page}:${perPage}:${retryKey}`;
+  return `${organizationId}:${page}:${perPage}:${search ?? ""}:${status ?? ""}:${priority ?? ""}:${assignee ?? ""}:${retryKey}`;
 }
 
 export function useTickets(input: UseTicketsInput): UseTicketsResult {
-  const { organizationId, page = 1, perPage = 20, enabled = true } = input;
+  const {
+    organizationId,
+    page = 1,
+    perPage = 20,
+    search,
+    status,
+    priority,
+    assignee,
+    enabled = true,
+  } = input;
 
   const [result, setResult] = useState<ResultEntry | null>(null);
   const [isFetching, setIsFetching] = useState(enabled);
@@ -55,8 +69,27 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
   }, [organizationId]);
 
   const requestKey = useMemo(
-    () => createRequestKey(organizationId, requestedPage, perPage, retryKey),
-    [organizationId, requestedPage, perPage, retryKey],
+    () =>
+      createRequestKey(
+        organizationId,
+        requestedPage,
+        perPage,
+        search,
+        status,
+        priority,
+        assignee,
+        retryKey,
+      ),
+    [
+      organizationId,
+      requestedPage,
+      perPage,
+      search,
+      status,
+      priority,
+      assignee,
+      retryKey,
+    ],
   );
 
   useEffect(() => {
@@ -77,6 +110,10 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       organizationId,
       page: requestedPage,
       perPage,
+      search,
+      status,
+      priority,
+      assignee,
       signal: controller.signal,
     })
       .then((data) => {
@@ -99,7 +136,17 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, requestKey, organizationId, requestedPage, perPage]);
+  }, [
+    enabled,
+    requestKey,
+    organizationId,
+    requestedPage,
+    perPage,
+    search,
+    status,
+    priority,
+    assignee,
+  ]);
 
   const refetch = useCallback(() => {
     setRetryKey((previous) => previous + 1);

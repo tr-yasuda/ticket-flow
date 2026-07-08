@@ -409,6 +409,58 @@ describe("getTicket", () => {
     expect(result.assigneeId).toBeNull();
   });
 
+  it("assigneeId: null の場合は assignee オブジェクトを無視する", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets/:ticketId", () =>
+        HttpResponse.json(
+          createApiSuccessResponse({
+            ...validTicketDetail,
+            assigneeId: null,
+            assignee: { id: "other-user", name: null },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const result = await getTicket({
+      organizationId: "demo-org-001",
+      ticketId: "demo-ticket-001",
+    });
+
+    expect(result.assigneeId).toBeNull();
+  });
+
+  it("assigneeId と assignee の両方が欠けている詳細レスポンスはエラー", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets/:ticketId", () => {
+        const responseWithoutAssignee = {
+          id: validTicketDetail.id,
+          organizationId: validTicketDetail.organizationId,
+          title: validTicketDetail.title,
+          description: validTicketDetail.description,
+          status: validTicketDetail.status,
+          priority: validTicketDetail.priority,
+          createdBy: validTicketDetail.createdBy,
+          createdAt: validTicketDetail.createdAt,
+          updatedAt: validTicketDetail.updatedAt,
+          commentCount: validTicketDetail.commentCount,
+        };
+        return HttpResponse.json(
+          createApiSuccessResponse(responseWithoutAssignee),
+          { status: 200 },
+        );
+      }),
+    );
+
+    await expect(
+      getTicket({
+        organizationId: "demo-org-001",
+        ticketId: "demo-ticket-001",
+      }),
+    ).rejects.toBeInstanceOf(ApiResponseValidationError);
+  });
+
   it("Date オブジェクトレスポンスを parse できる", async () => {
     server.use(
       http.get("/api/organizations/:id/tickets/:ticketId", () =>

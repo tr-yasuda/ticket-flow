@@ -3,6 +3,7 @@ import {
   createApiPaginatedSuccessResponse,
   createApiErrorResponse,
   ApiErrorCode,
+  type TicketStatus,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -192,5 +193,88 @@ describe("useTickets", () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.tickets).toHaveLength(0);
+  });
+
+  it("filter オプションを listTickets に渡す", async () => {
+    const captured = {
+      search: null as string | null,
+      status: null as string | null,
+      priority: null as string | null,
+      assignee: null as string | null,
+    };
+
+    server.use(
+      http.get("/api/organizations/:id/tickets", ({ request }) => {
+        const url = new URL(request.url);
+        captured.search = url.searchParams.get("search");
+        captured.status = url.searchParams.get("status");
+        captured.priority = url.searchParams.get("priority");
+        captured.assignee = url.searchParams.get("assignee");
+        return HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [validTicket] },
+            { page: 1, perPage: 20, total: 1, totalPages: 1 },
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useTickets({
+        organizationId: "demo-org-001",
+        search: "ログイン",
+        status: "open",
+        priority: "high",
+        assignee: "demo-user-001",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(captured.search).toBe("ログイン");
+    expect(captured.status).toBe("open");
+    expect(captured.priority).toBe("high");
+    expect(captured.assignee).toBe("demo-user-001");
+  });
+
+  it("filter 変更で再取得する", async () => {
+    const capturedStatuses: (string | null)[] = [];
+
+    server.use(
+      http.get("/api/organizations/:id/tickets", ({ request }) => {
+        const url = new URL(request.url);
+        capturedStatuses.push(url.searchParams.get("status"));
+        return HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [validTicket] },
+            { page: 1, perPage: 20, total: 1, totalPages: 1 },
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ status }: { status: TicketStatus }) =>
+        useTickets({ organizationId: "demo-org-001", status }),
+      { initialProps: { status: "open" as TicketStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    rerender({ status: "closed" as TicketStatus });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(capturedStatuses).toHaveLength(2);
+    expect(capturedStatuses[0]).toBe("open");
+    expect(capturedStatuses[1]).toBe("closed");
   });
 });

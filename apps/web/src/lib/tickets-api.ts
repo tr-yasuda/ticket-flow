@@ -232,7 +232,7 @@ function isValidDate(value: unknown): boolean {
 }
 
 function isValidAssigneeId(value: unknown): boolean {
-  if (value === null || value === undefined) {
+  if (value === null) {
     return true;
   }
   if (typeof value === "string") {
@@ -241,8 +241,12 @@ function isValidAssigneeId(value: unknown): boolean {
   return isRecord(value) && typeof value.id === "string";
 }
 
+function responseHasAssigneeField(value: Record<string, unknown>): boolean {
+  return "assigneeId" in value || "assignee" in value;
+}
+
 function extractAssigneeId(value: unknown): string | null {
-  if (value === null || value === undefined) {
+  if (value === null) {
     return null;
   }
   if (typeof value === "string") {
@@ -281,7 +285,10 @@ function isTicketDetailResponse(value: unknown): value is TicketDetailResponse {
     isNonNegativeInteger(value.commentCount) &&
     isValidDate(value.createdAt) &&
     isValidDate(value.updatedAt) &&
-    isValidAssigneeId(value.assigneeId ?? value.assignee)
+    responseHasAssigneeField(value) &&
+    isValidAssigneeId(
+      value.assigneeId !== undefined ? value.assigneeId : value.assignee,
+    )
   );
 }
 
@@ -299,7 +306,9 @@ function extractTicketDetail(body: unknown): TicketDetail {
     description: data.description,
     status: data.status,
     priority: data.priority,
-    assigneeId: extractAssigneeId(data.assigneeId ?? data.assignee),
+    assigneeId: extractAssigneeId(
+      data.assigneeId !== undefined ? data.assigneeId : data.assignee,
+    ),
     createdBy: data.createdBy,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
