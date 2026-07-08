@@ -1,5 +1,5 @@
 import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   listTickets,
@@ -39,7 +39,16 @@ function createRequestKey(
   assignee: string | undefined,
   retryKey: number,
 ): string {
-  return `${organizationId}:${page}:${perPage}:${search ?? ""}:${status ?? ""}:${priority ?? ""}:${assignee ?? ""}:${retryKey}`;
+  return JSON.stringify({
+    organizationId,
+    page,
+    perPage,
+    search: search ?? null,
+    status: status ?? null,
+    priority: priority ?? null,
+    assignee: assignee ?? null,
+    retryKey,
+  });
 }
 
 export function useTickets(input: UseTicketsInput): UseTicketsResult {
@@ -59,14 +68,19 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
   const [error, setError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [requestedPage, setRequestedPage] = useState(page);
+  const isInitialFilterRender = useRef(true);
 
   useEffect(() => {
     setRequestedPage(page);
   }, [page]);
 
   useEffect(() => {
+    if (isInitialFilterRender.current) {
+      isInitialFilterRender.current = false;
+      return;
+    }
     setRequestedPage(1);
-  }, [organizationId]);
+  }, [organizationId, search, status, priority, assignee]);
 
   const requestKey = useMemo(
     () =>

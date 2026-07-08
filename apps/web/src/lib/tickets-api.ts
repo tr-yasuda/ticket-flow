@@ -184,8 +184,14 @@ function extractTicketsData(body: unknown): { tickets: TicketListItem[] } {
   return {
     tickets: data.tickets.map((ticket) => ({
       ...ticket,
-      createdAt: toDate(ticket.createdAt),
-      updatedAt: toDate(ticket.updatedAt),
+      createdAt: toDate(
+        ticket.createdAt,
+        "Invalid tickets response: invalid date",
+      ),
+      updatedAt: toDate(
+        ticket.updatedAt,
+        "Invalid tickets response: invalid date",
+      ),
     })),
   };
 }
@@ -260,16 +266,14 @@ function extractAssigneeId(value: unknown): string | null {
   );
 }
 
-function toDate(value: unknown): Date {
+function toDate(value: unknown, message = "Invalid date"): Date {
   if (value instanceof Date) {
     return value;
   }
   if (isValidDateString(value)) {
     return new Date(value);
   }
-  throw new ApiResponseValidationError(
-    "Invalid ticket detail response: invalid date",
-  );
+  throw new ApiResponseValidationError(message);
 }
 
 function isTicketDetailResponse(value: unknown): value is TicketDetailResponse {
@@ -310,8 +314,14 @@ function extractTicketDetail(body: unknown): TicketDetail {
       data.assigneeId !== undefined ? data.assigneeId : data.assignee,
     ),
     createdBy: data.createdBy,
-    createdAt: toDate(data.createdAt),
-    updatedAt: toDate(data.updatedAt),
+    createdAt: toDate(
+      data.createdAt,
+      "Invalid ticket detail response: invalid date",
+    ),
+    updatedAt: toDate(
+      data.updatedAt,
+      "Invalid ticket detail response: invalid date",
+    ),
     commentCount: data.commentCount,
   };
 }

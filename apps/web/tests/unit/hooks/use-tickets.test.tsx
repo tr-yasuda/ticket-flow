@@ -277,4 +277,44 @@ describe("useTickets", () => {
     expect(capturedStatuses[0]).toBe("open");
     expect(capturedStatuses[1]).toBe("closed");
   });
+
+  it("filter 変更時にページを 1 にリセットする", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets", ({ request }) => {
+        const url = new URL(request.url);
+        const page = Number(url.searchParams.get("page")) || 1;
+        const status = url.searchParams.get("status");
+        return HttpResponse.json(
+          createApiPaginatedSuccessResponse(
+            { tickets: [validTicket] },
+            {
+              page,
+              perPage: 20,
+              total: status === "closed" ? 1 : 2,
+              totalPages: status === "closed" ? 1 : 2,
+            },
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ status, page }: { status: TicketStatus; page: number }) =>
+        useTickets({ organizationId: "demo-org-001", status, page }),
+      { initialProps: { status: "open" as TicketStatus, page: 2 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.currentPage).toBe(2);
+
+    rerender({ status: "closed" as TicketStatus, page: 2 });
+
+    await waitFor(() => {
+      expect(result.current.currentPage).toBe(1);
+    });
+  });
 });
