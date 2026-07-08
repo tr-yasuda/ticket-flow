@@ -461,6 +461,49 @@ describe("getTicket", () => {
     ).rejects.toBeInstanceOf(ApiResponseValidationError);
   });
 
+  it("空文字の assigneeId はエラー", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets/:ticketId", () =>
+        HttpResponse.json(
+          createApiSuccessResponse({
+            ...validTicketDetail,
+            assigneeId: "",
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(
+      getTicket({
+        organizationId: "demo-org-001",
+        ticketId: "demo-ticket-001",
+      }),
+    ).rejects.toBeInstanceOf(ApiResponseValidationError);
+  });
+
+  it("空文字 id の assignee オブジェクトはエラー", async () => {
+    server.use(
+      http.get("/api/organizations/:id/tickets/:ticketId", () =>
+        HttpResponse.json(
+          createApiSuccessResponse({
+            ...validTicketDetail,
+            assigneeId: undefined,
+            assignee: { id: "", name: null },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(
+      getTicket({
+        organizationId: "demo-org-001",
+        ticketId: "demo-ticket-001",
+      }),
+    ).rejects.toBeInstanceOf(ApiResponseValidationError);
+  });
+
   it("Date オブジェクトレスポンスを parse できる", async () => {
     server.use(
       http.get("/api/organizations/:id/tickets/:ticketId", () =>

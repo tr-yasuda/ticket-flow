@@ -133,16 +133,19 @@ describe("auth-api", () => {
       });
     });
 
-    it("ラップされていないレスポンスから current user を取得する", async () => {
+    it("success: true でラップされた user レスポンスから current user を取得する", async () => {
       setTokens("access-token", "refresh-token");
       mockFetch(
         vi.fn().mockResolvedValue(
           new Response(
             JSON.stringify({
-              user: {
-                id: "user-2",
-                email: "other@example.com",
-                name: null,
+              success: true,
+              data: {
+                user: {
+                  id: "user-2",
+                  email: "other@example.com",
+                  name: null,
+                },
               },
             }),
             { status: 200 },

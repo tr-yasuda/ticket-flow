@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { organizationMemberRoleSchema } from "./member-role-schema.js";
+
 const MAX_NAME_LENGTH = 200;
 const MAX_SLUG_LENGTH = 200;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -30,4 +32,24 @@ export const createOrganizationInputSchema = z.object({
 
 export type CreateOrganizationInput = z.infer<
   typeof createOrganizationInputSchema
+>;
+
+export const organizationSchema = z.object({
+  id: z.string().min(1, "組織IDは空文字でない文字列である必要があります"),
+  name: z.string().min(1, "組織名が必要です"),
+  slug: z.string().min(1, "スラッグが必要です"),
+  role: organizationMemberRoleSchema,
+});
+
+export const organizationWithoutRoleSchema = organizationSchema.omit({
+  role: true,
+});
+
+export const organizationsListResponseSchema = z.object({
+  organizations: z.array(organizationSchema),
+});
+
+export type Organization = z.infer<typeof organizationSchema>;
+export type OrganizationWithoutRole = z.infer<
+  typeof organizationWithoutRoleSchema
 >;

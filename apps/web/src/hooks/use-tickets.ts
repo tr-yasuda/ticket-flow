@@ -11,6 +11,7 @@ import {
 export type UseTicketsInput = Omit<ListTicketsInput, "signal"> &
   Readonly<{
     enabled?: boolean;
+    onPageChange?: (page: number) => void;
   }>;
 
 export type UseTicketsResult = Readonly<{
@@ -61,6 +62,7 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
     priority,
     assignee,
     enabled = true,
+    onPageChange,
   } = input;
 
   const [result, setResult] = useState<ResultEntry | null>(null);
@@ -80,7 +82,8 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       return;
     }
     setRequestedPage(1);
-  }, [organizationId, search, status, priority, assignee]);
+    onPageChange?.(1);
+  }, [organizationId, search, status, priority, assignee, onPageChange]);
 
   const requestKey = useMemo(
     () =>

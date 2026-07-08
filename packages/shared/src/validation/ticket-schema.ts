@@ -105,6 +105,102 @@ export const updateTicketInputSchema = z
     },
   );
 
+export const ticketAssigneeSchema = z.union([
+  z.object({
+    id: z.string().min(1, "担当者IDは空文字でない文字列である必要があります"),
+    name: z.string().nullable(),
+  }),
+  z.null(),
+]);
+
+const dateOrIsoStringSchema = z.union([z.string().datetime(), z.date()]);
+
+export const ticketListItemResponseSchema = z
+  .object({
+    id: z.string(),
+    organizationId: z.string(),
+    title: z.string(),
+    status: ticketStatusSchema,
+    priority: ticketPrioritySchema,
+    assignee: ticketAssigneeSchema,
+    createdBy: z.string(),
+    createdAt: dateOrIsoStringSchema,
+    updatedAt: dateOrIsoStringSchema,
+    commentCount: z.number().int().nonnegative(),
+  })
+  .transform((data) => ({
+    ...data,
+    createdAt:
+      data.createdAt instanceof Date
+        ? data.createdAt
+        : new Date(data.createdAt),
+    updatedAt:
+      data.updatedAt instanceof Date
+        ? data.updatedAt
+        : new Date(data.updatedAt),
+  }));
+
+export type TicketListItemResponse = z.infer<
+  typeof ticketListItemResponseSchema
+>;
+
+export const ticketDetailResponseSchema = z
+  .object({
+    id: z.string(),
+    organizationId: z.string(),
+    title: z.string(),
+    description: z.string().nullable(),
+    status: ticketStatusSchema,
+    priority: ticketPrioritySchema,
+    createdBy: z.string(),
+    createdAt: dateOrIsoStringSchema,
+    updatedAt: dateOrIsoStringSchema,
+    commentCount: z.number().int().nonnegative(),
+    assigneeId: z
+      .string()
+      .min(1, "担当者IDは空文字でない文字列である必要があります")
+      .nullable()
+      .optional(),
+    assignee: ticketAssigneeSchema.optional(),
+  })
+  .refine(
+    (data) => data.assigneeId !== undefined || data.assignee !== undefined,
+    {
+      message: "assigneeId または assignee が必要です",
+    },
+  );
+
+export type TicketDetailResponse = z.infer<typeof ticketDetailResponseSchema>;
+
+export const ticketDetailSchema = ticketDetailResponseSchema.transform(
+  (data) => ({
+    id: data.id,
+    organizationId: data.organizationId,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    priority: data.priority,
+    assigneeId:
+      data.assigneeId !== undefined
+        ? data.assigneeId
+        : data.assignee !== undefined && data.assignee !== null
+          ? data.assignee.id
+          : null,
+    createdBy: data.createdBy,
+    createdAt:
+      data.createdAt instanceof Date
+        ? data.createdAt
+        : new Date(data.createdAt),
+    updatedAt:
+      data.updatedAt instanceof Date
+        ? data.updatedAt
+        : new Date(data.updatedAt),
+    commentCount: data.commentCount,
+  }),
+);
+
+export type TicketDetail = z.infer<typeof ticketDetailSchema>;
+
 export type CreateTicketInput = z.infer<typeof createTicketInputSchema>;
 export type UpdateTicketInput = z.infer<typeof updateTicketInputSchema>;
 export type UpdateTicketStatusInput = z.infer<

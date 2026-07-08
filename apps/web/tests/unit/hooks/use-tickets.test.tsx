@@ -6,7 +6,7 @@ import {
   type TicketStatus,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTickets } from "@/hooks/use-tickets";
 import { clearTokens, setTokens } from "@/lib/token-storage";
@@ -279,6 +279,8 @@ describe("useTickets", () => {
   });
 
   it("filter 変更時にページを 1 にリセットする", async () => {
+    const onPageChange = vi.fn();
+
     server.use(
       http.get("/api/organizations/:id/tickets", ({ request }) => {
         const url = new URL(request.url);
@@ -301,7 +303,12 @@ describe("useTickets", () => {
 
     const { result, rerender } = renderHook(
       ({ status, page }: { status: TicketStatus; page: number }) =>
-        useTickets({ organizationId: "demo-org-001", status, page }),
+        useTickets({
+          organizationId: "demo-org-001",
+          status,
+          page,
+          onPageChange,
+        }),
       { initialProps: { status: "open" as TicketStatus, page: 2 } },
     );
 
@@ -316,5 +323,7 @@ describe("useTickets", () => {
     await waitFor(() => {
       expect(result.current.currentPage).toBe(1);
     });
+
+    expect(onPageChange).toHaveBeenCalledWith(1);
   });
 });

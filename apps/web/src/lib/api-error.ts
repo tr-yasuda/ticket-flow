@@ -1,29 +1,38 @@
-import { type ApiErrorResponse } from "@ticket-flow/shared";
+import {
+  type ApiErrorResponse,
+  apiErrorDetailSchema,
+  type ApiValidationErrorDetail,
+} from "@ticket-flow/shared";
 import { type AfterResponseHook } from "ky";
+import { z } from "zod";
 
+export type ApiErrorDetail = ApiValidationErrorDetail;
 export type ApiErrorSource = "client" | "server";
 
-export type ApiErrorDetail = Readonly<{
-  field: string;
-  message: string;
-}>;
+const apiErrorResponseLikeSchema = z.object({
+  success: z.literal(false),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.unknown().optional(),
+  }),
+});
 
-function isApiErrorDetail(value: unknown): value is ApiErrorDetail {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as Record<string, unknown>).field === "string" &&
-    typeof (value as Record<string, unknown>).message === "string"
-  );
-}
-
-export function parseDetails(
+function parseApiErrorDetails(
   value: unknown,
 ): ReadonlyArray<ApiErrorDetail> | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
-  const details = value.filter(isApiErrorDetail);
+
+  const details = value
+    .map((item) => apiErrorDetailSchema.safeParse(item))
+    .filter(
+      (result): result is { success: true; data: ApiErrorDetail } =>
+        result.success,
+    )
+    .map((result) => result.data);
+
   return details.length > 0 ? details : undefined;
 }
 
@@ -39,24 +48,8 @@ export class ApiError extends Error {
   }
 }
 
-export function isApiErrorResponseLike(
-  body: unknown,
-): body is ApiErrorResponse {
-  if (typeof body !== "object" || body === null) {
-    return false;
-  }
-  const response = body as { success?: unknown; error?: unknown };
-  if (response.success !== false) {
-    return false;
-  }
-  if (typeof response.error !== "object" || response.error === null) {
-    return false;
-  }
-  const error = response.error as {
-    code?: unknown;
-    message?: unknown;
-  };
-  return typeof error.code === "string" && typeof error.message === "string";
+function isApiErrorResponseLike(body: unknown): body is ApiErrorResponse {
+  return apiErrorResponseLikeSchema.safeParse(body).success;
 }
 
 export const handleApiErrorResponse: AfterResponseHook = async (
@@ -75,7 +68,7 @@ export const handleApiErrorResponse: AfterResponseHook = async (
       throw new ApiError(
         body.error.message,
         response.status,
-        parseDetails(body.error.details),
+        parseApiErrorDetails(body.error.details),
         "server",
       );
     }
@@ -87,7 +80,7 @@ export const handleApiErrorResponse: AfterResponseHook = async (
     throw new ApiError(
       message,
       response.status,
-      parseDetails(legacyBody.details),
+      parseApiErrorDetails(legacyBody.details),
       "server",
     );
   } catch (error) {

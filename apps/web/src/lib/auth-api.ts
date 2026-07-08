@@ -1,89 +1,40 @@
-import { type ApiSuccessResponse } from "@ticket-flow/shared";
+import {
+  authResponseSchema,
+  currentUserSchema,
+  type AuthResponse,
+  type CurrentUser,
+} from "@ticket-flow/shared";
+import { z } from "zod";
 
 import { apiClient } from "./api-client";
-import { isRecord } from "./api-response";
+import { extractData } from "./api-response";
 import { clearTokens, getRefreshToken, setTokens } from "./token-storage";
 
 export type LoginInput = Readonly<{ email: string; password: string }>;
 export type RegisterInput = Readonly<{ email: string; password: string }>;
 
-export type CurrentUser = Readonly<{
-  id: string;
-  email: string;
-  name: string | null;
-}>;
+export type { AuthResponse, CurrentUser };
 
-export type AuthResponse = Readonly<{
-  user: CurrentUser;
-  accessToken: string;
-  refreshToken: string;
-}>;
-
-function isCurrentUser(value: unknown): value is CurrentUser {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.email === "string" &&
-    (typeof value.name === "string" || value.name === null)
-  );
-}
-
-function isAuthResponse(value: unknown): value is AuthResponse {
-  return (
-    isRecord(value) &&
-    isCurrentUser(value.user) &&
-    typeof value.accessToken === "string" &&
-    typeof value.refreshToken === "string"
-  );
-}
-
-function isApiSuccessResponse<T>(
-  value: unknown,
-  isData: (data: unknown) => data is T,
-): value is ApiSuccessResponse<T> {
-  return (
-    isRecord(value) &&
-    value.success === true &&
-    isRecord(value.data) &&
-    isData(value.data)
-  );
-}
-
-function extractAuthResponse(body: unknown): AuthResponse {
-  const data = isApiSuccessResponse(body, isAuthResponse) ? body.data : body;
-  if (!isAuthResponse(data)) {
-    throw new Error("Invalid auth response");
-  }
-  return data;
-}
-
-function extractCurrentUser(body: unknown): CurrentUser {
-  const data = isApiSuccessResponse(
-    body,
-    (value): value is { user: CurrentUser } =>
-      isRecord(value) && isCurrentUser(value.user),
-  )
-    ? body.data
-    : body;
-  if (!isRecord(data) || !isCurrentUser(data.user)) {
-    throw new Error("Invalid current user response");
-  }
-  return data.user;
-}
+const currentUserEnvelopeSchema = z.object({ user: currentUserSchema });
 
 async function postAuth(
   endpoint: "auth/login" | "auth/register",
   input: LoginInput | RegisterInput,
 ): Promise<AuthResponse> {
   const body = await apiClient.post(endpoint, { json: input }).json<unknown>();
-  const data = extractAuthResponse(body);
+  const data = extractData(body, authResponseSchema, "Invalid auth response");
   setTokens(data.accessToken, data.refreshToken);
   return data;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
   const body = await apiClient.get("me").json<unknown>();
-  return extractCurrentUser(body);
+  const data = extractData(
+    body,
+    currentUserEnvelopeSchema,
+    "Invalid current user response",
+  );
+  return data.user;
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
