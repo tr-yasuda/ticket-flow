@@ -215,12 +215,9 @@ export const ticketHandlers = [
       );
     }
 
-    return HttpResponse.json(
-      createApiSuccessResponse({ ...ticket, commentCount: 0 }),
-      {
-        status: 200,
-      },
-    );
+    return HttpResponse.json(createApiSuccessResponse(ticket), {
+      status: 200,
+    });
   }),
 
   http.post("/api/organizations/:id/tickets", async ({ request, params }) => {

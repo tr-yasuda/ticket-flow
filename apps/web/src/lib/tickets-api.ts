@@ -26,8 +26,8 @@ export type ListTicketsInput = Readonly<{
   page?: number;
   perPage?: number;
   search?: string;
-  status?: string;
-  priority?: string;
+  status?: TicketStatus;
+  priority?: TicketPriority;
   assignee?: string;
   signal?: AbortSignal;
 }>;
@@ -79,8 +79,8 @@ type TicketDetailResponse = Readonly<{
   assigneeId?: string | null;
   assignee?: { id: string } | null;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
   commentCount: number;
 }>;
 
@@ -138,7 +138,24 @@ function isTicketAssignee(value: unknown): value is TicketAssignee {
   );
 }
 
-function isTicketListItem(value: unknown): value is TicketListItem {
+/**
+ * API レスポンスとして受け取る直後のチケット一覧アイテム。
+ * `createdAt` / `updatedAt` は JSON 経由では string、MSW 等では Date の可能性がある。
+ */
+type RawTicketListItem = Readonly<{
+  id: string;
+  organizationId: string;
+  title: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assignee: TicketAssignee | null;
+  createdBy: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  commentCount: number;
+}>;
+
+function isTicketListItem(value: unknown): value is RawTicketListItem {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
