@@ -21,10 +21,15 @@ afterEach(() => {
 
 const validTicket = {
   id: "demo-ticket-001",
+  organizationId: "demo-org-001",
   title: "ログイン画面の UI 改善",
   status: "open" as const,
   priority: "medium" as const,
   assignee: { id: "demo-user-001", name: null as string | null },
+  createdBy: "demo-user-001",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  commentCount: 0,
 };
 
 function createSuccessHandler(

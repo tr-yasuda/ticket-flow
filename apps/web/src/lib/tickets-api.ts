@@ -8,7 +8,12 @@ import {
 import { type TicketAssignee, type TicketListItem } from "@/types/ticket";
 
 import { apiClient } from "./api-client";
-import { extractData, isApiPaginatedEnvelope, isRecord } from "./api-response";
+import {
+  ApiResponseValidationError,
+  extractData,
+  isApiPaginatedEnvelope,
+  isRecord,
+} from "./api-response";
 
 export type { TicketAssignee, TicketListItem } from "@/types/ticket";
 
@@ -20,6 +25,10 @@ export type ListTicketsInput = Readonly<{
   organizationId: string;
   page?: number;
   perPage?: number;
+  search?: string;
+  status?: string;
+  priority?: string;
+  assignee?: string;
   signal?: AbortSignal;
 }>;
 
@@ -29,6 +38,50 @@ export type ListTicketsResult = Readonly<{
   perPage: number;
   total: number;
   totalPages: number;
+}>;
+
+export type TicketDetail = Readonly<{
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assigneeId: string | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  commentCount: number;
+}>;
+
+export type GetTicketInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  signal?: AbortSignal;
+}>;
+
+export type CreateTicketInput = Readonly<{
+  organizationId: string;
+  title: string;
+  description?: string | null;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+  signal?: AbortSignal;
+}>;
+
+type TicketDetailResponse = Readonly<{
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assigneeId?: string | null;
+  assignee?: { id: string } | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  commentCount: number;
 }>;
 
 function isPositiveInteger(value: unknown): value is number {
@@ -89,10 +142,15 @@ function isTicketListItem(value: unknown): value is TicketListItem {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
+    typeof value.organizationId === "string" &&
     typeof value.title === "string" &&
     isTicketStatus(value.status) &&
     isTicketPriority(value.priority) &&
-    (value.assignee === null || isTicketAssignee(value.assignee))
+    (value.assignee === null || isTicketAssignee(value.assignee)) &&
+    typeof value.createdBy === "string" &&
+    isValidDate(value.createdAt) &&
+    isValidDate(value.updatedAt) &&
+    isNonNegativeInteger(value.commentCount)
   );
 }
 
@@ -103,10 +161,16 @@ function isTicketsData(value: unknown): value is { tickets: unknown[] } {
 function extractTicketsData(body: unknown): { tickets: TicketListItem[] } {
   const data = extractData(body, isTicketsData, "Invalid tickets response");
   if (!data.tickets.every(isTicketListItem)) {
-    throw new Error("Invalid tickets response");
+    throw new ApiResponseValidationError("Invalid tickets response");
   }
 
-  return { tickets: data.tickets };
+  return {
+    tickets: data.tickets.map((ticket) => ({
+      ...ticket,
+      createdAt: toDate(ticket.createdAt),
+      updatedAt: toDate(ticket.updatedAt),
+    })),
+  };
 }
 
 function extractPaginationMeta(body: unknown): {
@@ -131,7 +195,116 @@ function extractPaginationMeta(body: unknown): {
     };
   }
 
-  throw new Error("Invalid pagination meta");
+  throw new ApiResponseValidationError("Invalid pagination meta");
+}
+
+function isValidDateString(value: unknown): value is string {
+  const isoUtcPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+  return (
+    typeof value === "string" &&
+    isoUtcPattern.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  );
+}
+
+function isValidDate(value: unknown): boolean {
+  return (
+    (value instanceof Date && !Number.isNaN(value.getTime())) ||
+    isValidDateString(value)
+  );
+}
+
+function isValidAssigneeId(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return true;
+  }
+  return isRecord(value) && typeof value.id === "string";
+}
+
+function extractAssigneeId(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value.length > 0 ? value : null;
+  }
+  if (isRecord(value) && typeof value.id === "string") {
+    return value.id.length > 0 ? value.id : null;
+  }
+  throw new ApiResponseValidationError(
+    "Invalid ticket detail response: invalid assignee",
+  );
+}
+
+function toDate(value: unknown): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (isValidDateString(value)) {
+    return new Date(value);
+  }
+  throw new ApiResponseValidationError(
+    "Invalid ticket detail response: invalid date",
+  );
+}
+
+function isTicketDetailResponse(value: unknown): value is TicketDetailResponse {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.organizationId === "string" &&
+    typeof value.title === "string" &&
+    (value.description === null || typeof value.description === "string") &&
+    isTicketStatus(value.status) &&
+    isTicketPriority(value.priority) &&
+    typeof value.createdBy === "string" &&
+    isNonNegativeInteger(value.commentCount) &&
+    isValidDate(value.createdAt) &&
+    isValidDate(value.updatedAt) &&
+    isValidAssigneeId(value.assigneeId ?? value.assignee)
+  );
+}
+
+function extractTicketDetail(body: unknown): TicketDetail {
+  const data = extractData(
+    body,
+    isTicketDetailResponse,
+    "Invalid ticket detail response",
+  );
+
+  return {
+    id: data.id,
+    organizationId: data.organizationId,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    priority: data.priority,
+    assigneeId: extractAssigneeId(data.assigneeId ?? data.assignee),
+    createdBy: data.createdBy,
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
+    commentCount: data.commentCount,
+  };
+}
+
+function assertNonEmptyString(value: string, name: string): void {
+  if (value.trim().length === 0) {
+    throw new Error(`${name} must not be empty`);
+  }
+}
+
+function buildTicketsPath(organizationId: string): string {
+  assertNonEmptyString(organizationId, "organizationId");
+  return `organizations/${encodeURIComponent(organizationId)}/tickets`;
+}
+
+function buildTicketPath(organizationId: string, ticketId: string): string {
+  assertNonEmptyString(organizationId, "organizationId");
+  assertNonEmptyString(ticketId, "ticketId");
+  return `organizations/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticketId)}`;
 }
 
 export async function listTickets(
@@ -141,18 +314,37 @@ export async function listTickets(
     organizationId,
     page = MIN_PAGE,
     perPage = DEFAULT_PER_PAGE,
+    search,
+    status,
+    priority,
+    assignee,
     signal,
   } = input;
 
   const normalizedPage = normalizePage(page);
   const normalizedPerPage = normalizePerPage(perPage);
 
+  const searchParams: Record<string, string> = {
+    page: String(normalizedPage),
+    perPage: String(normalizedPerPage),
+  };
+
+  if (search !== undefined && search.trim() !== "") {
+    searchParams.search = search.trim();
+  }
+  if (status !== undefined && status.trim() !== "") {
+    searchParams.status = status.trim();
+  }
+  if (priority !== undefined && priority.trim() !== "") {
+    searchParams.priority = priority.trim();
+  }
+  if (assignee !== undefined && assignee.trim() !== "") {
+    searchParams.assignee = assignee.trim();
+  }
+
   const body = await apiClient
-    .get(`organizations/${encodeURIComponent(organizationId)}/tickets`, {
-      searchParams: {
-        page: String(normalizedPage),
-        perPage: String(normalizedPerPage),
-      },
+    .get(buildTicketsPath(organizationId), {
+      searchParams,
       signal,
     })
     .json<unknown>();
@@ -167,4 +359,37 @@ export async function listTickets(
     total: meta.total,
     totalPages: meta.totalPages,
   };
+}
+
+export const getTickets = listTickets;
+
+export async function getTicket(input: GetTicketInput): Promise<TicketDetail> {
+  const { organizationId, ticketId, signal } = input;
+
+  const body = await apiClient
+    .get(buildTicketPath(organizationId, ticketId), { signal })
+    .json<unknown>();
+
+  return extractTicketDetail(body);
+}
+
+export async function createTicket(
+  input: CreateTicketInput,
+): Promise<TicketDetail> {
+  const { organizationId, title, description, priority, assigneeId, signal } =
+    input;
+
+  const body = await apiClient
+    .post(buildTicketsPath(organizationId), {
+      json: {
+        title,
+        ...(description !== undefined && { description }),
+        ...(priority !== undefined && { priority }),
+        ...(assigneeId !== undefined && { assigneeId }),
+      },
+      signal,
+    })
+    .json<unknown>();
+
+  return extractTicketDetail(body);
 }

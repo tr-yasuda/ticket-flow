@@ -1,3 +1,13 @@
+export class ApiResponseValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiResponseValidationError";
+  }
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -44,7 +54,8 @@ export function isApiPaginatedEnvelope(value: unknown): value is Readonly<{
  * ガードで検証する。
  *
  * envelope 形状が不正な場合と data 検証が失敗した場合は、それぞれ
- * `<message>: invalid envelope` / `<message>: invalid data` で例外を投げる。
+ * `<message>: invalid envelope` / `<message>: invalid data` で
+ * `ApiResponseValidationError` を投げる。
  */
 export function extractData<T>(
   body: unknown,
@@ -52,12 +63,12 @@ export function extractData<T>(
   message = "Invalid response",
 ): T {
   if (!isApiSuccessEnvelope(body)) {
-    throw new Error(`${message}: invalid envelope`);
+    throw new ApiResponseValidationError(`${message}: invalid envelope`, body);
   }
 
   const { data } = body;
   if (!isData(data)) {
-    throw new Error(`${message}: invalid data`);
+    throw new ApiResponseValidationError(`${message}: invalid data`, data);
   }
 
   return data;

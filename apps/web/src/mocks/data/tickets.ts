@@ -18,6 +18,7 @@ export type MockTicket = Readonly<{
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  commentCount: number;
 }>;
 
 export type MockTicketListItem = Readonly<{
@@ -30,6 +31,7 @@ export type MockTicketListItem = Readonly<{
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  commentCount: number;
 }>;
 
 const now = new Date().toISOString();
@@ -46,6 +48,7 @@ export const demoTickets: MockTicket[] = [
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-002",
@@ -58,6 +61,7 @@ export const demoTickets: MockTicket[] = [
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-003",
@@ -70,6 +74,7 @@ export const demoTickets: MockTicket[] = [
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-004",
@@ -82,5 +87,6 @@ export const demoTickets: MockTicket[] = [
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
 ];

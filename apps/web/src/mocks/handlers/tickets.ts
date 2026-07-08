@@ -62,6 +62,7 @@ function toTicketListItem(ticket: MockTicket): MockTicketListItem {
     createdBy: ticket.createdBy,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
+    commentCount: ticket.commentCount,
   };
 }
 
@@ -214,9 +215,12 @@ export const ticketHandlers = [
       );
     }
 
-    return HttpResponse.json(createApiSuccessResponse(ticket), {
-      status: 200,
-    });
+    return HttpResponse.json(
+      createApiSuccessResponse({ ...ticket, commentCount: 0 }),
+      {
+        status: 200,
+      },
+    );
   }),
 
   http.post("/api/organizations/:id/tickets", async ({ request, params }) => {
@@ -273,6 +277,7 @@ export const ticketHandlers = [
         createdBy: "mock-user-id",
         createdAt: now,
         updatedAt: now,
+        commentCount: 0,
       }),
       { status: 201 },
     );

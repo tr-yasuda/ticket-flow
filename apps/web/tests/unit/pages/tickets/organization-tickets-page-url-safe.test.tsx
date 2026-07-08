@@ -16,10 +16,15 @@ import { routeTree } from "@/routeTree.gen";
 
 const urlUnsafeTicket = {
   id: "ticket/with/slash",
+  organizationId: "demo-org-001",
   title: "URL 非安全チケット",
   status: "open" as const,
   priority: "medium" as const,
   assignee: null,
+  createdBy: "demo-user-001",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  commentCount: 0,
 };
 
 beforeEach(() => {

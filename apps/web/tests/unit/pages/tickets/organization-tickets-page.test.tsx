@@ -32,17 +32,27 @@ beforeEach(() => {
 const sampleTickets = [
   {
     id: "ticket-1",
+    organizationId: "org-1",
     title: "ログイン画面の UI 改善",
     status: "open" as const,
     priority: "medium" as const,
     assignee: { id: "user-1", name: "山田太郎" },
+    createdBy: "user-1",
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    commentCount: 0,
   },
   {
     id: "ticket-2",
+    organizationId: "org-1",
     title: "通知メール実装",
     status: "in-progress" as const,
     priority: "high" as const,
     assignee: null,
+    createdBy: "user-2",
+    createdAt: new Date("2026-01-02T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+    commentCount: 0,
   },
 ];
 
@@ -211,10 +221,15 @@ describe("OrganizationTicketsPageView", () => {
           tickets={[
             {
               id: "ticket#1/2",
+              organizationId: "org-1",
               title: "特殊文字 ID",
               status: "open" as const,
               priority: "medium" as const,
               assignee: null,
+              createdBy: "user-1",
+              createdAt: new Date("2026-01-01T00:00:00.000Z"),
+              updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+              commentCount: 0,
             },
           ]}
           getRowHref={(ticket) =>
@@ -374,10 +389,15 @@ describe("OrganizationTicketsPage", () => {
               tickets: [
                 {
                   id: "demo-ticket-001",
+                  organizationId: "demo-org-001",
                   title: "ログイン画面の UI 改善",
                   status: "open",
                   priority: "medium",
                   assignee: { id: "demo-user-001", name: null },
+                  createdBy: "demo-user-001",
+                  createdAt: "2026-01-01T00:00:00.000Z",
+                  updatedAt: "2026-01-01T00:00:00.000Z",
+                  commentCount: 0,
                 },
               ],
             },

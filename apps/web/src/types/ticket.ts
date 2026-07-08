@@ -7,8 +7,13 @@ export type TicketAssignee = Readonly<{
 
 export type TicketListItem = Readonly<{
   id: string;
+  organizationId: string;
   title: string;
   status: TicketStatus;
   priority: TicketPriority;
   assignee: TicketAssignee | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  commentCount: number;
 }>;
