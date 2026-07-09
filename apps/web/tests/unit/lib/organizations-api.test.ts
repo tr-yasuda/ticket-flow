@@ -57,7 +57,7 @@ describe("organizations-api", () => {
     );
 
     await expect(getOrganizations()).rejects.toThrow(
-      "Invalid response: invalid envelope",
+      "Invalid organizations response: invalid envelope",
     );
   });
 

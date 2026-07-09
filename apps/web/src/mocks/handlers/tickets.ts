@@ -7,6 +7,7 @@ import {
   createTicketInputSchema,
 } from "@ticket-flow/shared";
 import { http, HttpResponse } from "msw";
+import { z } from "zod";
 
 import { demoOrganization } from "@/mocks/data/organizations";
 import {
@@ -32,23 +33,14 @@ function mapZodIssuesToDetails(
   return details;
 }
 
-function findDemoAssignee(assigneeId: string) {
-  return (
-    demoTickets
-      .map((ticket) => ticket.assignee)
-      .find((assignee) => assignee !== null && assignee.id === assigneeId) ??
-    null
-  );
-}
-
 function toTicketListAssignee(
-  assignee: MockTicket["assignee"],
+  assigneeId: MockTicket["assigneeId"],
 ): MockTicketAssignee | null {
-  if (assignee === null) {
+  if (assigneeId === null) {
     return null;
   }
   // 実 API と同様に User に name カラムがないため、一覧では常に null を返す
-  return { id: assignee.id, name: null };
+  return { id: assigneeId, name: null };
 }
 
 function toTicketListItem(ticket: MockTicket): MockTicketListItem {
@@ -58,88 +50,40 @@ function toTicketListItem(ticket: MockTicket): MockTicketListItem {
     title: ticket.title,
     status: ticket.status,
     priority: ticket.priority,
-    assignee: toTicketListAssignee(ticket.assignee),
+    assignee: toTicketListAssignee(ticket.assigneeId),
     createdBy: ticket.createdBy,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
+    commentCount: ticket.commentCount,
   };
 }
 
 const demoTicketListItems = demoTickets.map(toTicketListItem);
 
-const MIN_PAGE = 1;
-const DEFAULT_PER_PAGE = 20;
-const MAX_PER_PAGE = 100;
 const MAX_SKIP = 10000;
 
 type PaginationParseResult =
   | { ok: true; page: number; perPage: number }
   | { ok: false; details: ApiValidationErrorDetail[] };
 
-function parseIntQueryParam(
-  value: string | null,
-  options: Readonly<{ defaultValue: number; min: number; max: number }>,
-): { ok: true; value: number } | { ok: false } {
-  if (value === null) {
-    return { ok: true, value: options.defaultValue };
-  }
-
-  const parsed = Number(value);
-  if (
-    !Number.isFinite(parsed) ||
-    !Number.isInteger(parsed) ||
-    parsed < options.min ||
-    parsed > options.max
-  ) {
-    return { ok: false };
-  }
-
-  return { ok: true, value: parsed };
-}
+const paginationQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).max(10000).default(1),
+    perPage: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .refine((data) => (data.page - 1) * data.perPage <= MAX_SKIP, {
+    message: "ページ範囲が大きすぎます",
+    path: ["page"],
+  });
 
 function parsePaginationQuery(url: URL): PaginationParseResult {
-  const pageParam = url.searchParams.get("page");
-  const perPageParam = url.searchParams.get("perPage");
-
-  const pageResult = parseIntQueryParam(pageParam, {
-    defaultValue: MIN_PAGE,
-    min: MIN_PAGE,
-    max: 10000,
-  });
-  const perPageResult = parseIntQueryParam(perPageParam, {
-    defaultValue: DEFAULT_PER_PAGE,
-    min: MIN_PAGE,
-    max: MAX_PER_PAGE,
-  });
-
-  const details: ApiValidationErrorDetail[] = [];
-  if (!pageResult.ok) {
-    details.push({
-      field: "page",
-      message: "ページ番号は1以上の整数を指定してください",
-    });
+  const result = paginationQuerySchema.safeParse(
+    Object.fromEntries(url.searchParams),
+  );
+  if (!result.success) {
+    return { ok: false, details: mapZodIssuesToDetails(result.error.issues) };
   }
-  if (!perPageResult.ok) {
-    details.push({
-      field: "perPage",
-      message: "1ページあたり件数は1以上100以下の整数を指定してください",
-    });
-  }
-  if (!pageResult.ok || !perPageResult.ok) {
-    return { ok: false, details };
-  }
-
-  const page = pageResult.value;
-  const perPage = perPageResult.value;
-  if ((page - 1) * perPage > MAX_SKIP) {
-    details.push({
-      field: "page",
-      message: "ページ範囲が大きすぎます",
-    });
-    return { ok: false, details };
-  }
-
-  return { ok: true, page, perPage };
+  return { ok: true, page: result.data.page, perPage: result.data.perPage };
 }
 
 export const ticketHandlers = [
@@ -171,7 +115,7 @@ export const ticketHandlers = [
     }
 
     const total = demoTicketListItems.length;
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const totalPages = total === 0 ? 0 : Math.ceil(total / perPage);
     const start = (page - 1) * perPage;
     const tickets = demoTicketListItems.slice(start, start + perPage);
 
@@ -269,10 +213,11 @@ export const ticketHandlers = [
         description: description ?? null,
         status: "open",
         priority: priority ?? "medium",
-        assignee: assigneeId != null ? findDemoAssignee(assigneeId) : null,
+        assigneeId: assigneeId ?? null,
         createdBy: "mock-user-id",
         createdAt: now,
         updatedAt: now,
+        commentCount: 0,
       }),
       { status: 201 },
     );

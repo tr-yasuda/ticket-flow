@@ -62,5 +62,29 @@ export const registerInputSchema = z.object({
   name: userNameSchema,
 });
 
+export const currentUserSchema = z.object({
+  id: z.string().min(1, "ユーザーIDは空文字でない文字列である必要があります"),
+  email: z.string().email("メールアドレスの形式が正しくありません"),
+  name: z.string().nullable(),
+});
+
+export const authTokensSchema = z.object({
+  accessToken: z.string().min(1, "アクセストークンが必要です"),
+  refreshToken: z.string().min(1, "リフレッシュトークンが必要です"),
+});
+
+export const refreshTokenResponseSchema = z.object({
+  accessToken: z.string().min(1, "アクセストークンが必要です"),
+  refreshToken: z.string().min(1, "リフレッシュトークンが必要です").optional(),
+});
+
+export const authResponseSchema = z.object({
+  user: currentUserSchema,
+  ...authTokensSchema.shape,
+});
+
+export type CurrentUser = z.infer<typeof currentUserSchema>;
+export type AuthTokens = z.infer<typeof authTokensSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
 export type RegisterInput = z.infer<typeof registerInputSchema>;

@@ -14,10 +14,11 @@ export type MockTicket = Readonly<{
   description: string | null;
   status: TicketStatus;
   priority: TicketPriority;
-  assignee: MockTicketAssignee | null;
+  assigneeId: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  commentCount: number;
 }>;
 
 export type MockTicketListItem = Readonly<{
@@ -30,6 +31,7 @@ export type MockTicketListItem = Readonly<{
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  commentCount: number;
 }>;
 
 const now = new Date().toISOString();
@@ -42,10 +44,11 @@ export const demoTickets: MockTicket[] = [
     description: null,
     status: "open",
     priority: "medium",
-    assignee: { id: "demo-user-001", name: "山田太郎" },
+    assigneeId: "demo-user-001",
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-002",
@@ -54,10 +57,11 @@ export const demoTickets: MockTicket[] = [
     description: null,
     status: "in-progress",
     priority: "high",
-    assignee: { id: "demo-user-002", name: "佐藤花子" },
+    assigneeId: "demo-user-002",
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-003",
@@ -66,10 +70,11 @@ export const demoTickets: MockTicket[] = [
     description: null,
     status: "closed",
     priority: "low",
-    assignee: null,
+    assigneeId: null,
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
   {
     id: "demo-ticket-004",
@@ -78,9 +83,10 @@ export const demoTickets: MockTicket[] = [
     description: null,
     status: "open",
     priority: "urgent",
-    assignee: { id: "demo-user-003", name: "田中一郎" },
+    assigneeId: "demo-user-003",
     createdBy: "demo-user-001",
     createdAt: now,
     updatedAt: now,
+    commentCount: 0,
   },
 ];

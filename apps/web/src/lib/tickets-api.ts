@@ -1,18 +1,22 @@
 import {
-  ticketPrioritySchema,
-  ticketStatusSchema,
+  ticketDetailSchema,
+  ticketListItemResponseSchema,
   type TicketPriority,
   type TicketStatus,
 } from "@ticket-flow/shared";
+import { z } from "zod";
 
-import { type TicketAssignee, type TicketListItem } from "@/types/ticket";
+import type { TicketListItem } from "@/types/ticket";
 
 import { apiClient } from "./api-client";
-import { extractData, isApiPaginatedEnvelope, isRecord } from "./api-response";
+import { extractData, extractPaginatedResponse } from "./api-response";
 
-export type { TicketAssignee, TicketListItem } from "@/types/ticket";
+export type { TicketListItem };
+export type { TicketPriority, TicketStatus };
+export type TicketDetail = z.infer<typeof ticketDetailSchema>;
 
 const MIN_PAGE = 1;
+const MAX_PAGE = 10000;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;
 
@@ -20,6 +24,10 @@ export type ListTicketsInput = Readonly<{
   organizationId: string;
   page?: number;
   perPage?: number;
+  search?: string;
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  assignee?: string;
   signal?: AbortSignal;
 }>;
 
@@ -31,29 +39,30 @@ export type ListTicketsResult = Readonly<{
   totalPages: number;
 }>;
 
-function isPositiveInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isFinite(value) &&
-    Number.isInteger(value) &&
-    value >= MIN_PAGE
-  );
-}
+export type GetTicketInput = Readonly<{
+  organizationId: string;
+  ticketId: string;
+  signal?: AbortSignal;
+}>;
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isFinite(value) &&
-    Number.isInteger(value) &&
-    value >= 0
-  );
-}
+export type CreateTicketInput = Readonly<{
+  organizationId: string;
+  title: string;
+  description?: string | null;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+  signal?: AbortSignal;
+}>;
+
+const ticketsListResponseSchema = z.object({
+  tickets: z.array(ticketListItemResponseSchema),
+});
 
 function normalizePage(value: number): number {
   if (!Number.isFinite(value)) {
     return MIN_PAGE;
   }
-  return Math.max(MIN_PAGE, Math.floor(value));
+  return Math.min(MAX_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
 }
 
 function normalizePerPage(value: number): number {
@@ -63,75 +72,21 @@ function normalizePerPage(value: number): number {
   return Math.min(MAX_PER_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
 }
 
-function isTicketStatus(value: unknown): value is TicketStatus {
-  return (
-    typeof value === "string" &&
-    (ticketStatusSchema.options as readonly string[]).includes(value)
-  );
-}
-
-function isTicketPriority(value: unknown): value is TicketPriority {
-  return (
-    typeof value === "string" &&
-    (ticketPrioritySchema.options as readonly string[]).includes(value)
-  );
-}
-
-function isTicketAssignee(value: unknown): value is TicketAssignee {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    (typeof value.name === "string" || value.name === null)
-  );
-}
-
-function isTicketListItem(value: unknown): value is TicketListItem {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.title === "string" &&
-    isTicketStatus(value.status) &&
-    isTicketPriority(value.priority) &&
-    (value.assignee === null || isTicketAssignee(value.assignee))
-  );
-}
-
-function isTicketsData(value: unknown): value is { tickets: unknown[] } {
-  return isRecord(value) && Array.isArray(value.tickets);
-}
-
-function extractTicketsData(body: unknown): { tickets: TicketListItem[] } {
-  const data = extractData(body, isTicketsData, "Invalid tickets response");
-  if (!data.tickets.every(isTicketListItem)) {
-    throw new Error("Invalid tickets response");
+function buildTicketsPath(organizationId: string): string {
+  if (organizationId.trim().length === 0) {
+    throw new Error("organizationId must not be empty");
   }
-
-  return { tickets: data.tickets };
+  return `organizations/${encodeURIComponent(organizationId)}/tickets`;
 }
 
-function extractPaginationMeta(body: unknown): {
-  page: number;
-  perPage: number;
-  total: number;
-  totalPages: number;
-} {
-  if (
-    isApiPaginatedEnvelope(body) &&
-    isPositiveInteger(body.meta.page) &&
-    isPositiveInteger(body.meta.perPage) &&
-    body.meta.perPage <= MAX_PER_PAGE &&
-    isNonNegativeInteger(body.meta.total) &&
-    isNonNegativeInteger(body.meta.totalPages)
-  ) {
-    return {
-      page: body.meta.page,
-      perPage: body.meta.perPage,
-      total: body.meta.total,
-      totalPages: body.meta.totalPages,
-    };
+function buildTicketPath(organizationId: string, ticketId: string): string {
+  if (organizationId.trim().length === 0) {
+    throw new Error("organizationId must not be empty");
   }
-
-  throw new Error("Invalid pagination meta");
+  if (ticketId.trim().length === 0) {
+    throw new Error("ticketId must not be empty");
+  }
+  return `organizations/${encodeURIComponent(organizationId)}/tickets/${encodeURIComponent(ticketId)}`;
 }
 
 export async function listTickets(
@@ -141,30 +96,91 @@ export async function listTickets(
     organizationId,
     page = MIN_PAGE,
     perPage = DEFAULT_PER_PAGE,
+    search,
+    status,
+    priority,
+    assignee,
     signal,
   } = input;
 
   const normalizedPage = normalizePage(page);
   const normalizedPerPage = normalizePerPage(perPage);
 
+  const searchParams: Record<string, string> = {
+    page: String(normalizedPage),
+    perPage: String(normalizedPerPage),
+  };
+
+  if (search !== undefined && search.trim() !== "") {
+    searchParams.search = search.trim();
+  }
+  if (status !== undefined) {
+    searchParams.status = status;
+  }
+  if (priority !== undefined) {
+    searchParams.priority = priority;
+  }
+  if (assignee !== undefined && assignee.trim() !== "") {
+    searchParams.assignee = assignee.trim();
+  }
+
   const body = await apiClient
-    .get(`organizations/${encodeURIComponent(organizationId)}/tickets`, {
-      searchParams: {
-        page: String(normalizedPage),
-        perPage: String(normalizedPerPage),
-      },
+    .get(buildTicketsPath(organizationId), {
+      searchParams,
       signal,
     })
     .json<unknown>();
 
-  const { tickets } = extractTicketsData(body);
-  const meta = extractPaginationMeta(body);
+  const { data, meta } = extractPaginatedResponse(
+    body,
+    ticketsListResponseSchema,
+    "Invalid tickets response",
+  );
 
   return {
-    tickets,
+    tickets: data.tickets,
     page: meta.page,
     perPage: meta.perPage,
     total: meta.total,
     totalPages: meta.totalPages,
   };
+}
+
+export async function getTicket(input: GetTicketInput): Promise<TicketDetail> {
+  const { organizationId, ticketId, signal } = input;
+
+  const body = await apiClient
+    .get(buildTicketPath(organizationId, ticketId), { signal })
+    .json<unknown>();
+
+  return extractData(
+    body,
+    ticketDetailSchema,
+    "Invalid ticket detail response",
+  );
+}
+
+export async function createTicket(
+  input: CreateTicketInput,
+): Promise<TicketDetail> {
+  const { organizationId, title, description, priority, assigneeId, signal } =
+    input;
+
+  const body = await apiClient
+    .post(buildTicketsPath(organizationId), {
+      json: {
+        title,
+        ...(description !== undefined && { description }),
+        ...(priority !== undefined && { priority }),
+        ...(assigneeId !== undefined && { assigneeId }),
+      },
+      signal,
+    })
+    .json<unknown>();
+
+  return extractData(
+    body,
+    ticketDetailSchema,
+    "Invalid ticket detail response",
+  );
 }

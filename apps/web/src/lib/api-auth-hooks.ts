@@ -1,8 +1,9 @@
+import { refreshTokenResponseSchema } from "@ticket-flow/shared";
 import ky, { type AfterResponseHook, type BeforeRequestHook } from "ky";
+import { z } from "zod";
 
 import { buildApiUrl } from "./api-base-url";
 import { ApiError, handleApiErrorResponse } from "./api-error";
-import { isRecord } from "./api-response";
 import {
   clearTokens,
   getAccessToken,
@@ -10,34 +11,29 @@ import {
   setTokens,
 } from "./token-storage";
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "";
-}
+const refreshTokenWrappedResponseSchema = z.object({
+  success: z.literal(true),
+  data: refreshTokenResponseSchema,
+});
+
+const refreshContextSchema = z.object({
+  authRefreshAttempted: z.literal(true),
+});
 
 function extractTokens(
   body: unknown,
 ): Readonly<{ accessToken?: string; refreshToken?: string }> {
-  if (!isRecord(body)) {
-    return {};
+  const wrappedResult = refreshTokenWrappedResponseSchema.safeParse(body);
+  if (wrappedResult.success) {
+    return wrappedResult.data.data;
   }
-  if (body.success === true && isRecord(body.data)) {
-    return {
-      accessToken: isNonEmptyString(body.data.accessToken)
-        ? body.data.accessToken
-        : undefined,
-      refreshToken: isNonEmptyString(body.data.refreshToken)
-        ? body.data.refreshToken
-        : undefined,
-    };
+
+  const directResult = refreshTokenResponseSchema.safeParse(body);
+  if (directResult.success) {
+    return directResult.data;
   }
-  return {
-    accessToken: isNonEmptyString(body.accessToken)
-      ? body.accessToken
-      : undefined,
-    refreshToken: isNonEmptyString(body.refreshToken)
-      ? body.refreshToken
-      : undefined,
-  };
+
+  return {};
 }
 
 let refreshingPromise: Promise<
@@ -103,7 +99,11 @@ function isRefreshRequest(request: Request): boolean {
 }
 
 function hasRefreshBeenAttempted(context: unknown): boolean {
-  return isRecord(context) && context.authRefreshAttempted === true;
+  return refreshContextSchema.safeParse(context).success;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
