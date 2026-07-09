@@ -101,7 +101,7 @@ describe("useTickets", () => {
 
   it("page 変更で再取得する", async () => {
     server.use(
-      createSuccessHandler({ page: 2, perPage: 20, total: 2, totalPages: 2 }),
+      createSuccessHandler({ page: 2, perPage: 20, total: 40, totalPages: 2 }),
     );
 
     const { result, rerender } = renderHook(
@@ -154,7 +154,7 @@ describe("useTickets", () => {
         return HttpResponse.json(
           createApiPaginatedSuccessResponse(
             { tickets: [validTicket] },
-            { page, perPage: 20, total: 2, totalPages: 2 },
+            { page, perPage: 20, total: 2, totalPages: 1 },
           ),
           { status: 200 },
         );
@@ -293,7 +293,7 @@ describe("useTickets", () => {
               page,
               perPage: 20,
               total: status === "closed" ? 1 : 2,
-              totalPages: status === "closed" ? 1 : 2,
+              totalPages: 1,
             },
           ),
           { status: 200 },

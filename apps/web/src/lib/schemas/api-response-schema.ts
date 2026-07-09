@@ -1,6 +1,5 @@
+import { ApiErrorCode } from "@ticket-flow/shared";
 import { z } from "zod";
-
-import { ApiErrorCode } from "../types/api-response.js";
 
 const apiErrorCodeSchema = z.enum([
   ApiErrorCode.BAD_REQUEST,
@@ -37,12 +36,29 @@ export const apiSuccessEnvelopeSchema = z.object({
   data: z.unknown(),
 });
 
-export const apiPaginationMetaSchema = z.object({
-  page: z.number().int().positive(),
-  perPage: z.number().int().positive(),
-  total: z.number().int().nonnegative(),
-  totalPages: z.number().int().nonnegative(),
-});
+const MAX_PER_PAGE = 100;
+
+export const apiPaginationMetaSchema = z
+  .object({
+    page: z.number().int().positive(),
+    perPage: z.number().int().positive().max(MAX_PER_PAGE),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  })
+  .refine(
+    (data) => {
+      if (data.total === 0) {
+        return data.totalPages === 0;
+      }
+      const expectedTotalPages = Math.floor(
+        (data.total + data.perPage - 1) / data.perPage,
+      );
+      return data.totalPages === expectedTotalPages;
+    },
+    {
+      message: "total と totalPages が一致しません",
+    },
+  );
 
 export const apiPaginatedEnvelopeSchema = apiSuccessEnvelopeSchema.extend({
   meta: apiPaginationMetaSchema,

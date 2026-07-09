@@ -34,6 +34,31 @@ describe("handleApiErrorResponse", () => {
     expect(result).toBe(response);
   });
 
+  it("details に有効・無効が混在する場合は有効なもののみ保持する", async () => {
+    const response = new Response(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "入力内容を確認してください",
+          details: [
+            { field: "email", message: "有効な詳細" },
+            { field: 123, message: "無効な詳細" },
+            "不正な要素",
+          ],
+        },
+      }),
+      { status: 400 },
+    );
+
+    await expect(
+      handleApiErrorResponse(dummyRequest, dummyOptions, response, dummyState),
+    ).rejects.toMatchObject({
+      status: 400,
+      details: [{ field: "email", message: "有効な詳細" }],
+    });
+  });
+
   it("共通エラー形式を ApiError に変換する", async () => {
     const details = [{ field: "email", message: "無効です" }];
     const response = new Response(

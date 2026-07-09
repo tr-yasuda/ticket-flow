@@ -71,6 +71,11 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
   const [retryKey, setRetryKey] = useState(0);
   const [requestedPage, setRequestedPage] = useState(page);
   const isInitialFilterRender = useRef(true);
+  const onPageChangeRef = useRef(onPageChange);
+
+  useEffect(() => {
+    onPageChangeRef.current = onPageChange;
+  }, [onPageChange]);
 
   useEffect(() => {
     setRequestedPage(page);
@@ -82,8 +87,9 @@ export function useTickets(input: UseTicketsInput): UseTicketsResult {
       return;
     }
     setRequestedPage(1);
-    onPageChange?.(1);
-  }, [organizationId, search, status, priority, assignee, onPageChange]);
+    onPageChangeRef.current?.(1);
+    // onPageChange は ref で保持するため、依存配列に含めない。
+  }, [organizationId, search, status, priority, assignee]);
 
   const requestKey = useMemo(
     () =>

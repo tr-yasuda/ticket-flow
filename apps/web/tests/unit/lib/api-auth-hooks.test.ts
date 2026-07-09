@@ -89,6 +89,41 @@ describe("handleUnauthorizedResponse", () => {
     vi.restoreAllMocks();
   });
 
+  it("401 応答で wrapped refresh レスポンスからトークンを更新する", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: { accessToken: "new-access", refreshToken: "new-refresh" },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const result = (await handleUnauthorizedResponse(
+      request,
+      createOptions(),
+      response,
+      { retryCount: 0 },
+    )) as Response;
+
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(getAccessToken()).toBe("new-access");
+    expect(getRefreshToken()).toBe("new-refresh");
+  });
+
   it("401 応答で refresh 成功後に元リクエストを再送する", async () => {
     setTokens("expired-access", "refresh-token");
     const fetchMock = vi

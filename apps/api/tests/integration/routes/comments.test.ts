@@ -555,7 +555,7 @@ describe("GET /api/organizations/:organizationId/tickets/:ticketId/comments (com
     expect(body.data.comments).toHaveLength(0);
     expect(body.meta.page).toBe(1);
     expect(body.meta.perPage).toBe(20);
-    expect(body.meta.totalPages).toBe(1);
+    expect(body.meta.totalPages).toBe(0);
   });
 
   it("Admin がコメント一覧を取得できる", async () => {

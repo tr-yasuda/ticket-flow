@@ -107,10 +107,7 @@ describe("ticket mock handlers", () => {
     expect(response.data.title).toBe("ログイン画面の UI 改善");
     expect(response.data.status).toBe("open");
     expect(response.data.priority).toBe("medium");
-    expect(response.data.assignee).toEqual({
-      id: "demo-user-001",
-      name: "山田太郎",
-    });
+    expect(response.data.assigneeId).toBe("demo-user-001");
   });
 
   it("存在しないチケットは 404", async () => {
@@ -189,9 +186,6 @@ describe("ticket mock handlers", () => {
     expect(response.success).toBe(true);
     expect(response.data.description).toBe("詳細説明");
     expect(response.data.priority).toBe("high");
-    expect(response.data.assignee).toEqual({
-      id: "demo-user-002",
-      name: "佐藤花子",
-    });
+    expect(response.data.assigneeId).toBe("demo-user-002");
   });
 });

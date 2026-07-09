@@ -102,6 +102,10 @@ function hasRefreshBeenAttempted(context: unknown): boolean {
   return refreshContextSchema.safeParse(context).success;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * @internal ky の beforeRequest hook として apiClient に登録する専用。
  *   単独で呼び出さないこと。
@@ -147,10 +151,9 @@ export const handleUnauthorizedResponse: AfterResponseHook = async (
     return response;
   }
 
-  const context =
-    options.context instanceof Object
-      ? (options.context as Record<string, unknown>)
-      : ({} as Record<string, unknown>);
+  const context = isRecord(options.context)
+    ? options.context
+    : ({} as Record<string, unknown>);
   context.authRefreshAttempted = true;
 
   let accessToken: string;

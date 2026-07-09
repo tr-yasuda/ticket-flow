@@ -9,12 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ApiError } from "@/lib/api-client";
 import { ApiResponseValidationError } from "@/lib/api-response";
-import {
-  createTicket,
-  getTicket,
-  getTickets,
-  listTickets,
-} from "@/lib/tickets-api";
+import { createTicket, getTicket, listTickets } from "@/lib/tickets-api";
 import { clearTokens, setTokens } from "@/lib/token-storage";
 import { server } from "@/mocks/server.js";
 
@@ -39,9 +34,15 @@ const validTicket = {
   priority: "medium",
   assignee: { id: "demo-user-001", name: null },
   createdBy: "demo-user-001",
+  createdAt: listTicketDates.createdAt,
+  updatedAt: listTicketDates.updatedAt,
+  commentCount: 0,
+};
+
+const parsedValidTicket = {
+  ...validTicket,
   createdAt: new Date(listTicketDates.createdAt),
   updatedAt: new Date(listTicketDates.updatedAt),
-  commentCount: 0,
 };
 
 const validMeta = {
@@ -100,7 +101,7 @@ describe("listTickets", () => {
     const result = await listTickets({ organizationId: "demo-org-001" });
 
     expect(result.tickets).toHaveLength(1);
-    expect(result.tickets[0]).toEqual(validTicket);
+    expect(result.tickets[0]).toEqual(parsedValidTicket);
     expect(result.page).toBe(1);
     expect(result.perPage).toBe(20);
     expect(result.total).toBe(1);
@@ -307,41 +308,6 @@ describe("listTickets", () => {
   });
 });
 
-describe("getTickets", () => {
-  it("listTickets のエイリアスとして動作する", async () => {
-    server.use(
-      http.get("/api/organizations/:id/tickets", () =>
-        HttpResponse.json(
-          createApiPaginatedSuccessResponse(
-            {
-              tickets: [
-                {
-                  id: validTicket.id,
-                  organizationId: validTicket.organizationId,
-                  title: validTicket.title,
-                  status: validTicket.status,
-                  priority: validTicket.priority,
-                  assignee: validTicket.assignee,
-                  createdBy: validTicket.createdBy,
-                  ...listTicketDates,
-                  commentCount: validTicket.commentCount,
-                },
-              ],
-            },
-            validMeta,
-          ),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    const result = await getTickets({ organizationId: "demo-org-001" });
-
-    expect(result.tickets).toHaveLength(1);
-    expect(result.tickets[0]).toEqual(validTicket);
-  });
-});
-
 describe("getTicket", () => {
   it("API shape（assigneeId）の正常レスポンスを parse できる", async () => {
     server.use(
@@ -366,28 +332,6 @@ describe("getTicket", () => {
     expect(result.commentCount).toBe(0);
   });
 
-  it("MSW mock shape（assignee オブジェクト）を assigneeId に統合できる", async () => {
-    server.use(
-      http.get("/api/organizations/:id/tickets/:ticketId", () =>
-        HttpResponse.json(
-          createApiSuccessResponse({
-            ...validTicketDetail,
-            assigneeId: undefined,
-            assignee: { id: "demo-user-001", name: null },
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    const result = await getTicket({
-      organizationId: "demo-org-001",
-      ticketId: "demo-ticket-001",
-    });
-
-    expect(result.assigneeId).toBe("demo-user-001");
-  });
-
   it("assigneeId: null のレスポンスを parse できる", async () => {
     server.use(
       http.get("/api/organizations/:id/tickets/:ticketId", () =>
@@ -409,29 +353,7 @@ describe("getTicket", () => {
     expect(result.assigneeId).toBeNull();
   });
 
-  it("assigneeId: null の場合は assignee オブジェクトを無視する", async () => {
-    server.use(
-      http.get("/api/organizations/:id/tickets/:ticketId", () =>
-        HttpResponse.json(
-          createApiSuccessResponse({
-            ...validTicketDetail,
-            assigneeId: null,
-            assignee: { id: "other-user", name: null },
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    const result = await getTicket({
-      organizationId: "demo-org-001",
-      ticketId: "demo-ticket-001",
-    });
-
-    expect(result.assigneeId).toBeNull();
-  });
-
-  it("assigneeId と assignee の両方が欠けている詳細レスポンスはエラー", async () => {
+  it("assigneeId が欠けている詳細レスポンスはエラー", async () => {
     server.use(
       http.get("/api/organizations/:id/tickets/:ticketId", () => {
         const responseWithoutAssignee = {
@@ -480,51 +402,6 @@ describe("getTicket", () => {
         ticketId: "demo-ticket-001",
       }),
     ).rejects.toBeInstanceOf(ApiResponseValidationError);
-  });
-
-  it("空文字 id の assignee オブジェクトはエラー", async () => {
-    server.use(
-      http.get("/api/organizations/:id/tickets/:ticketId", () =>
-        HttpResponse.json(
-          createApiSuccessResponse({
-            ...validTicketDetail,
-            assigneeId: undefined,
-            assignee: { id: "", name: null },
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    await expect(
-      getTicket({
-        organizationId: "demo-org-001",
-        ticketId: "demo-ticket-001",
-      }),
-    ).rejects.toBeInstanceOf(ApiResponseValidationError);
-  });
-
-  it("Date オブジェクトレスポンスを parse できる", async () => {
-    server.use(
-      http.get("/api/organizations/:id/tickets/:ticketId", () =>
-        HttpResponse.json(
-          createApiSuccessResponse({
-            ...validTicketDetail,
-            createdAt: new Date(validTicketDetail.createdAt),
-            updatedAt: new Date(validTicketDetail.updatedAt),
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    const result = await getTicket({
-      organizationId: "demo-org-001",
-      ticketId: "demo-ticket-001",
-    });
-
-    expect(result.createdAt).toBeInstanceOf(Date);
-    expect(result.updatedAt).toBeInstanceOf(Date);
   });
 
   it("path parameter が encode される", async () => {

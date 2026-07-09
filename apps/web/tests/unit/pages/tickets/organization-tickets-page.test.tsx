@@ -349,7 +349,7 @@ describe("OrganizationTicketsPage", () => {
         HttpResponse.json(
           createApiPaginatedSuccessResponse(
             { tickets: [] },
-            { page: 1, perPage: 20, total: 0, totalPages: 1 },
+            { page: 1, perPage: 20, total: 0, totalPages: 0 },
           ),
           { status: 200 },
         ),

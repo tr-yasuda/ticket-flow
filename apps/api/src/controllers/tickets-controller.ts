@@ -393,7 +393,7 @@ export async function getTicketHistoryController(
     entityType: AUDIT_LOG_ENTITY_TYPE_TICKET,
     entityId: ticketId,
   });
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const totalPages = Math.ceil(total / perPage);
 
   return c.json(
     createApiPaginatedSuccessResponse(

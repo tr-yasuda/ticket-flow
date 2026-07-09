@@ -1,3 +1,5 @@
+import { ApiResponseValidationError } from "./api-response";
+
 export const API_ERROR_MESSAGES = {
   default: "処理に失敗しました。時間をおいて再度お試しください。",
   network: "通信に失敗しました。ネットワーク環境を確認してください。",
@@ -20,6 +22,10 @@ function hasStatusProperty(error: unknown): error is { status: number } {
 }
 
 export function getApiErrorMessage(error: unknown): string {
+  if (error instanceof ApiResponseValidationError) {
+    return "データの形式が正しくありません。";
+  }
+
   if (error instanceof TypeError) {
     return API_ERROR_MESSAGES.network;
   }

@@ -1,6 +1,9 @@
 import {
   createTicketInputSchema,
   ticketDescriptionSchema,
+  ticketDetailResponseSchema,
+  ticketDetailSchema,
+  ticketListItemResponseSchema,
   ticketPrioritySchema,
   ticketStatusSchema,
   ticketTitleSchema,
@@ -306,5 +309,96 @@ describe("updateTicketInputSchema", () => {
         "更新する項目を指定してください",
       );
     }
+  });
+});
+
+describe("ticketListItemResponseSchema", () => {
+  const validListItem = {
+    id: "ticket-1",
+    organizationId: "org-1",
+    title: "チケットタイトル",
+    status: "open",
+    priority: "medium",
+    assignee: { id: "user-1", name: null },
+    createdBy: "user-2",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    commentCount: 0,
+  };
+
+  it("有効な一覧アイテムを受け入れて Date に変換する", () => {
+    const result = ticketListItemResponseSchema.safeParse(validListItem);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.createdAt).toBeInstanceOf(Date);
+      expect(result.data.updatedAt).toBeInstanceOf(Date);
+    }
+  });
+
+  it("空文字の ID を拒否する", () => {
+    const result = ticketListItemResponseSchema.safeParse({
+      ...validListItem,
+      id: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("Date オブジェクトを拒否する", () => {
+    const result = ticketListItemResponseSchema.safeParse({
+      ...validListItem,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ticketDetailSchema", () => {
+  const validDetail = {
+    id: "ticket-1",
+    organizationId: "org-1",
+    title: "チケットタイトル",
+    description: null,
+    status: "open",
+    priority: "medium",
+    createdBy: "user-2",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    commentCount: 0,
+    assigneeId: "user-1",
+  };
+
+  it("有効な詳細レスポンスを受け入れて Date に変換する", () => {
+    const result = ticketDetailSchema.safeParse(validDetail);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assigneeId).toBe("user-1");
+      expect(result.data.createdAt).toBeInstanceOf(Date);
+      expect(result.data.updatedAt).toBeInstanceOf(Date);
+    }
+  });
+
+  it("assigneeId: null を受け入れる", () => {
+    const result = ticketDetailSchema.safeParse({
+      ...validDetail,
+      assigneeId: null,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assigneeId).toBeNull();
+    }
+  });
+
+  it("assigneeId が欠けている詳細レスポンスを拒否する", () => {
+    const { assigneeId: _, ...withoutAssigneeId } = validDetail;
+    const result = ticketDetailResponseSchema.safeParse(withoutAssigneeId);
+    expect(result.success).toBe(false);
+  });
+
+  it("空文字の assigneeId を拒否する", () => {
+    const result = ticketDetailSchema.safeParse({
+      ...validDetail,
+      assigneeId: "",
+    });
+    expect(result.success).toBe(false);
   });
 });

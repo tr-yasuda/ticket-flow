@@ -113,62 +113,57 @@ export const ticketAssigneeSchema = z.union([
   z.null(),
 ]);
 
-const dateOrIsoStringSchema = z.union([z.string().datetime(), z.date()]);
+const isoDateTimeStringSchema = z.string().datetime();
 
 export const ticketListItemResponseSchema = z
   .object({
-    id: z.string(),
-    organizationId: z.string(),
-    title: z.string(),
+    id: z.string().min(1, "チケットIDは空文字でない文字列である必要があります"),
+    organizationId: z
+      .string()
+      .min(1, "組織IDは空文字でない文字列である必要があります"),
+    title: z
+      .string()
+      .min(1, "タイトルは空文字でない文字列である必要があります"),
     status: ticketStatusSchema,
     priority: ticketPrioritySchema,
     assignee: ticketAssigneeSchema,
-    createdBy: z.string(),
-    createdAt: dateOrIsoStringSchema,
-    updatedAt: dateOrIsoStringSchema,
+    createdBy: z
+      .string()
+      .min(1, "作成者IDは空文字でない文字列である必要があります"),
+    createdAt: isoDateTimeStringSchema,
+    updatedAt: isoDateTimeStringSchema,
     commentCount: z.number().int().nonnegative(),
   })
   .transform((data) => ({
     ...data,
-    createdAt:
-      data.createdAt instanceof Date
-        ? data.createdAt
-        : new Date(data.createdAt),
-    updatedAt:
-      data.updatedAt instanceof Date
-        ? data.updatedAt
-        : new Date(data.updatedAt),
+    createdAt: new Date(data.createdAt),
+    updatedAt: new Date(data.updatedAt),
   }));
 
 export type TicketListItemResponse = z.infer<
   typeof ticketListItemResponseSchema
 >;
 
-export const ticketDetailResponseSchema = z
-  .object({
-    id: z.string(),
-    organizationId: z.string(),
-    title: z.string(),
-    description: z.string().nullable(),
-    status: ticketStatusSchema,
-    priority: ticketPrioritySchema,
-    createdBy: z.string(),
-    createdAt: dateOrIsoStringSchema,
-    updatedAt: dateOrIsoStringSchema,
-    commentCount: z.number().int().nonnegative(),
-    assigneeId: z
-      .string()
-      .min(1, "担当者IDは空文字でない文字列である必要があります")
-      .nullable()
-      .optional(),
-    assignee: ticketAssigneeSchema.optional(),
-  })
-  .refine(
-    (data) => data.assigneeId !== undefined || data.assignee !== undefined,
-    {
-      message: "assigneeId または assignee が必要です",
-    },
-  );
+export const ticketDetailResponseSchema = z.object({
+  id: z.string().min(1, "チケットIDは空文字でない文字列である必要があります"),
+  organizationId: z
+    .string()
+    .min(1, "組織IDは空文字でない文字列である必要があります"),
+  title: z.string().min(1, "タイトルは空文字でない文字列である必要があります"),
+  description: z.string().nullable(),
+  status: ticketStatusSchema,
+  priority: ticketPrioritySchema,
+  createdBy: z
+    .string()
+    .min(1, "作成者IDは空文字でない文字列である必要があります"),
+  createdAt: isoDateTimeStringSchema,
+  updatedAt: isoDateTimeStringSchema,
+  commentCount: z.number().int().nonnegative(),
+  assigneeId: z
+    .string()
+    .min(1, "担当者IDは空文字でない文字列である必要があります")
+    .nullable(),
+});
 
 export type TicketDetailResponse = z.infer<typeof ticketDetailResponseSchema>;
 
@@ -180,21 +175,10 @@ export const ticketDetailSchema = ticketDetailResponseSchema.transform(
     description: data.description,
     status: data.status,
     priority: data.priority,
-    assigneeId:
-      data.assigneeId !== undefined
-        ? data.assigneeId
-        : data.assignee !== undefined && data.assignee !== null
-          ? data.assignee.id
-          : null,
+    assigneeId: data.assigneeId,
     createdBy: data.createdBy,
-    createdAt:
-      data.createdAt instanceof Date
-        ? data.createdAt
-        : new Date(data.createdAt),
-    updatedAt:
-      data.updatedAt instanceof Date
-        ? data.updatedAt
-        : new Date(data.updatedAt),
+    createdAt: new Date(data.createdAt),
+    updatedAt: new Date(data.updatedAt),
     commentCount: data.commentCount,
   }),
 );

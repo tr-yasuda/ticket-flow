@@ -1,22 +1,16 @@
 import {
   type ApiErrorResponse,
-  apiErrorDetailSchema,
   type ApiValidationErrorDetail,
 } from "@ticket-flow/shared";
 import { type AfterResponseHook } from "ky";
-import { z } from "zod";
+
+import {
+  apiErrorDetailSchema,
+  apiErrorResponseSchema,
+} from "@/lib/schemas/api-response-schema";
 
 export type ApiErrorDetail = ApiValidationErrorDetail;
 export type ApiErrorSource = "client" | "server";
-
-const apiErrorResponseLikeSchema = z.object({
-  success: z.literal(false),
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-    details: z.unknown().optional(),
-  }),
-});
 
 function parseApiErrorDetails(
   value: unknown,
@@ -49,7 +43,7 @@ export class ApiError extends Error {
 }
 
 function isApiErrorResponseLike(body: unknown): body is ApiErrorResponse {
-  return apiErrorResponseLikeSchema.safeParse(body).success;
+  return apiErrorResponseSchema.safeParse(body).success;
 }
 
 export const handleApiErrorResponse: AfterResponseHook = async (

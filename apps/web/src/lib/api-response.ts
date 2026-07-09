@@ -1,9 +1,10 @@
+import { type ZodType, type z } from "zod";
+
 import {
   apiPaginatedEnvelopeSchema,
   apiPaginationMetaSchema,
   apiSuccessEnvelopeSchema,
-} from "@ticket-flow/shared";
-import { type ZodType, type z } from "zod";
+} from "@/lib/schemas/api-response-schema";
 
 export class ApiResponseValidationError extends Error {
   constructor(
@@ -22,7 +23,10 @@ export function extractData<T>(
 ): T {
   const envelopeResult = apiSuccessEnvelopeSchema.safeParse(body);
   if (!envelopeResult.success) {
-    throw new ApiResponseValidationError(`${message}: invalid envelope`, body);
+    throw new ApiResponseValidationError(
+      `${message}: invalid envelope`,
+      envelopeResult.error,
+    );
   }
 
   const dataResult = schema.safeParse(envelopeResult.data.data);
@@ -36,15 +40,6 @@ export function extractData<T>(
   return dataResult.data;
 }
 
-export function extractPaginatedData<T>(
-  body: unknown,
-  schema: ZodType<T>,
-  message = "Invalid response",
-): T {
-  const { data } = extractPaginatedResponse(body, schema, message);
-  return data;
-}
-
 export function extractPaginatedResponse<T>(
   body: unknown,
   schema: ZodType<T>,
@@ -52,7 +47,10 @@ export function extractPaginatedResponse<T>(
 ): { data: T; meta: z.infer<typeof apiPaginationMetaSchema> } {
   const envelopeResult = apiPaginatedEnvelopeSchema.safeParse(body);
   if (!envelopeResult.success) {
-    throw new ApiResponseValidationError(`${message}: invalid envelope`, body);
+    throw new ApiResponseValidationError(
+      `${message}: invalid envelope`,
+      envelopeResult.error,
+    );
   }
 
   const dataResult = schema.safeParse(envelopeResult.data.data);
@@ -65,5 +63,3 @@ export function extractPaginatedResponse<T>(
 
   return { data: dataResult.data, meta: envelopeResult.data.meta };
 }
-
-export type { z };

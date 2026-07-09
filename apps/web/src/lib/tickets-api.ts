@@ -6,14 +6,17 @@ import {
 } from "@ticket-flow/shared";
 import { z } from "zod";
 
+import type { TicketListItem } from "@/types/ticket";
+
 import { apiClient } from "./api-client";
 import { extractData, extractPaginatedResponse } from "./api-response";
 
+export type { TicketListItem };
 export type { TicketPriority, TicketStatus };
-export type TicketListItem = z.infer<typeof ticketListItemResponseSchema>;
 export type TicketDetail = z.infer<typeof ticketDetailSchema>;
 
 const MIN_PAGE = 1;
+const MAX_PAGE = 10000;
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 100;
 
@@ -59,7 +62,7 @@ function normalizePage(value: number): number {
   if (!Number.isFinite(value)) {
     return MIN_PAGE;
   }
-  return Math.max(MIN_PAGE, Math.floor(value));
+  return Math.min(MAX_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
 }
 
 function normalizePerPage(value: number): number {
@@ -111,11 +114,11 @@ export async function listTickets(
   if (search !== undefined && search.trim() !== "") {
     searchParams.search = search.trim();
   }
-  if (status !== undefined && status.trim() !== "") {
-    searchParams.status = status.trim();
+  if (status !== undefined) {
+    searchParams.status = status;
   }
-  if (priority !== undefined && priority.trim() !== "") {
-    searchParams.priority = priority.trim();
+  if (priority !== undefined) {
+    searchParams.priority = priority;
   }
   if (assignee !== undefined && assignee.trim() !== "") {
     searchParams.assignee = assignee.trim();
@@ -142,8 +145,6 @@ export async function listTickets(
     totalPages: meta.totalPages,
   };
 }
-
-export const getTickets = listTickets;
 
 export async function getTicket(input: GetTicketInput): Promise<TicketDetail> {
   const { organizationId, ticketId, signal } = input;
