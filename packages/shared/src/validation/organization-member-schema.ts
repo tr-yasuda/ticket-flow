@@ -18,7 +18,7 @@ export const organizationMemberListItemResponseSchema = z
     joinedAt: new Date(data.joinedAt),
   }));
 
-export type OrganizationMemberListItem = z.infer<
+export type OrganizationMemberListItemResponse = z.infer<
   typeof organizationMemberListItemResponseSchema
 >;
 

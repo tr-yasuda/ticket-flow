@@ -1,6 +1,6 @@
 import {
   organizationMembersListResponseSchema,
-  type OrganizationMemberListItem,
+  type OrganizationMemberListItemResponse,
 } from "@ticket-flow/shared";
 
 import { apiClient } from "./api-client";
@@ -12,7 +12,7 @@ import {
   normalizePerPage,
 } from "./pagination";
 
-export type { OrganizationMemberListItem };
+export type OrganizationMemberListItem = OrganizationMemberListItemResponse;
 
 export type ListOrganizationMembersInput = Readonly<{
   organizationId: string;
@@ -41,7 +41,7 @@ function buildOrganizationMembersPath(organizationId: string): string {
   if (isUnsafePathSegment(trimmed)) {
     throw new Error("organizationId must not be a relative path segment");
   }
-  return `organizations/${encodeURIComponent(organizationId)}/members`;
+  return `organizations/${encodeURIComponent(trimmed)}/members`;
 }
 
 export async function getOrganizationMembers(

@@ -42,6 +42,45 @@ let refreshingPromise: Promise<
   Readonly<{ accessToken: string; refreshToken: string }>
 > | null = null;
 
+function isCallerAbort(
+  error: unknown,
+  signal: AbortSignal | undefined,
+): boolean {
+  return (
+    error instanceof DOMException &&
+    error.name === "AbortError" &&
+    signal?.aborted === true
+  );
+}
+
+function raceWithSignal<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const handler = () => {
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", handler, { once: true });
+
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", handler);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", handler);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * リフレッシュトークンを使って新しいアクセストークンを取得する。
  *
@@ -103,24 +142,11 @@ async function performRefresh(
     })();
   }
 
-  if (signal?.aborted) {
-    throw new DOMException("Aborted", "AbortError");
-  }
-
   if (signal === undefined) {
     return refreshingPromise;
   }
 
-  return Promise.race([
-    refreshingPromise,
-    new Promise<never>((_, reject) => {
-      signal.addEventListener(
-        "abort",
-        () => reject(new DOMException("Aborted", "AbortError")),
-        { once: true },
-      );
-    }),
-  ]);
+  return raceWithSignal(refreshingPromise, signal);
 }
 
 function isRefreshRequest(request: Request): boolean {
@@ -190,12 +216,15 @@ export const handleUnauthorizedResponse: AfterResponseHook = async (
 
   let accessToken: string;
   let newRefreshToken: string;
+  const callerSignal = options.signal ?? undefined;
   try {
-    const tokens = await performRefresh(options.signal ?? undefined);
+    const tokens = await performRefresh(callerSignal);
     accessToken = tokens.accessToken;
     newRefreshToken = tokens.refreshToken;
   } catch (error) {
-    clearTokens();
+    if (!isCallerAbort(error, callerSignal)) {
+      clearTokens();
+    }
     throw error;
   }
 
