@@ -5,6 +5,7 @@ export * from "./validation/auth-schema.js";
 export * from "./validation/comment-schema.js";
 export * from "./validation/invitation-schema.js";
 export * from "./validation/member-role-schema.js";
+export * from "./validation/organization-member-schema.js";
 export * from "./validation/organization-schema.js";
 export * from "./validation/ticket-schema.js";
 export * from "./validation/zod-error.js";

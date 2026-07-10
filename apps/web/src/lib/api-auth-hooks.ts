@@ -36,9 +36,50 @@ function extractTokens(
   return {};
 }
 
+const REFRESH_TIMEOUT_MS = 30_000;
+
 let refreshingPromise: Promise<
   Readonly<{ accessToken: string; refreshToken: string }>
 > | null = null;
+
+function isCallerAbort(
+  error: unknown,
+  signal: AbortSignal | undefined,
+): boolean {
+  return (
+    error instanceof DOMException &&
+    error.name === "AbortError" &&
+    signal?.aborted === true
+  );
+}
+
+function raceWithSignal<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const handler = () => {
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", handler, { once: true });
+
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", handler);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", handler);
+        reject(error);
+      },
+    );
+  });
+}
 
 /**
  * リフレッシュトークンを使って新しいアクセストークンを取得する。
@@ -46,10 +87,15 @@ let refreshingPromise: Promise<
  * このリクエストは ky / apiClient を使わず、グローバルの fetch を直接使う。
  * ky 経由で送ると beforeRequest / afterResponse フックが再帰的に
  * 発火し、401 応答で無限にリフレッシュを繰り返す可能性があるため。
+ *
+ * 同一時刻に複数の 401 が発生した場合、リフレッシュは 1 回に集約される。
+ * そのためリフレッシュ fetch 自体は呼び出し元の AbortSignal とは別に
+ * タイムアウト制御され、呼び出し元は集約された Promise の待機を
+ * 個別にキャンセルできる。
  */
-async function performRefresh(): Promise<
-  Readonly<{ accessToken: string; refreshToken: string }>
-> {
+async function performRefresh(
+  signal?: AbortSignal,
+): Promise<Readonly<{ accessToken: string; refreshToken: string }>> {
   const token = getRefreshToken();
   if (token === null || token.trim() === "") {
     throw new ApiError("Refresh token is missing", 401);
@@ -57,10 +103,17 @@ async function performRefresh(): Promise<
 
   if (refreshingPromise === null) {
     refreshingPromise = (async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        REFRESH_TIMEOUT_MS,
+      );
+
       try {
         const response = await fetch(buildApiUrl("/auth/refresh"), {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -78,17 +131,21 @@ async function performRefresh(): Promise<
         if (accessToken === undefined || accessToken.trim() === "") {
           throw new ApiError("Invalid refresh response", 500);
         }
-        return {
-          accessToken,
-          refreshToken: refreshToken ?? token,
-        };
+        const newRefreshToken = refreshToken ?? token;
+        setTokens(accessToken, newRefreshToken);
+        return { accessToken, refreshToken: newRefreshToken };
       } finally {
         refreshingPromise = null;
+        clearTimeout(timeoutId);
       }
     })();
   }
 
-  return refreshingPromise;
+  if (signal === undefined) {
+    return refreshingPromise;
+  }
+
+  return raceWithSignal(refreshingPromise, signal);
 }
 
 function isRefreshRequest(request: Request): boolean {
@@ -151,23 +208,20 @@ export const handleUnauthorizedResponse: AfterResponseHook = async (
     return response;
   }
 
-  const context = isRecord(options.context)
-    ? options.context
-    : ({} as Record<string, unknown>);
-  context.authRefreshAttempted = true;
+  if (!isRecord(options.context)) {
+    options.context = {} as Record<string, unknown>;
+  }
+  (options.context as Record<string, unknown>).authRefreshAttempted = true;
 
-  let accessToken: string;
-  let newRefreshToken: string;
+  const callerSignal = options.signal ?? undefined;
   try {
-    const tokens = await performRefresh();
-    accessToken = tokens.accessToken;
-    newRefreshToken = tokens.refreshToken;
+    await performRefresh(callerSignal);
   } catch (error) {
-    clearTokens();
+    if (!isCallerAbort(error, callerSignal)) {
+      clearTokens();
+    }
     throw error;
   }
-
-  setTokens(accessToken, newRefreshToken);
 
   const headers = new Headers(request.headers);
   // 古い Authorization を削除し、addAuthHeader 経由で新しいトークンを付与する。
