@@ -36,6 +36,8 @@ function extractTokens(
   return {};
 }
 
+const REFRESH_TIMEOUT_MS = 30_000;
+
 let refreshingPromise: Promise<
   Readonly<{ accessToken: string; refreshToken: string }>
 > | null = null;
@@ -46,10 +48,15 @@ let refreshingPromise: Promise<
  * このリクエストは ky / apiClient を使わず、グローバルの fetch を直接使う。
  * ky 経由で送ると beforeRequest / afterResponse フックが再帰的に
  * 発火し、401 応答で無限にリフレッシュを繰り返す可能性があるため。
+ *
+ * 同一時刻に複数の 401 が発生した場合、リフレッシュは 1 回に集約される。
+ * そのためリフレッシュ fetch 自体は呼び出し元の AbortSignal とは別に
+ * タイムアウト制御され、呼び出し元は集約された Promise の待機を
+ * 個別にキャンセルできる。
  */
-async function performRefresh(): Promise<
-  Readonly<{ accessToken: string; refreshToken: string }>
-> {
+async function performRefresh(
+  signal?: AbortSignal,
+): Promise<Readonly<{ accessToken: string; refreshToken: string }>> {
   const token = getRefreshToken();
   if (token === null || token.trim() === "") {
     throw new ApiError("Refresh token is missing", 401);
@@ -57,10 +64,17 @@ async function performRefresh(): Promise<
 
   if (refreshingPromise === null) {
     refreshingPromise = (async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        REFRESH_TIMEOUT_MS,
+      );
+
       try {
         const response = await fetch(buildApiUrl("/auth/refresh"), {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -84,11 +98,29 @@ async function performRefresh(): Promise<
         };
       } finally {
         refreshingPromise = null;
+        clearTimeout(timeoutId);
       }
     })();
   }
 
-  return refreshingPromise;
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+
+  if (signal === undefined) {
+    return refreshingPromise;
+  }
+
+  return Promise.race([
+    refreshingPromise,
+    new Promise<never>((_, reject) => {
+      signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true },
+      );
+    }),
+  ]);
 }
 
 function isRefreshRequest(request: Request): boolean {
@@ -159,7 +191,7 @@ export const handleUnauthorizedResponse: AfterResponseHook = async (
   let accessToken: string;
   let newRefreshToken: string;
   try {
-    const tokens = await performRefresh();
+    const tokens = await performRefresh(options.signal ?? undefined);
     accessToken = tokens.accessToken;
     newRefreshToken = tokens.refreshToken;
   } catch (error) {

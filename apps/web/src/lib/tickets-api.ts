@@ -10,15 +10,16 @@ import type { TicketListItem } from "@/types/ticket";
 
 import { apiClient } from "./api-client";
 import { extractData, extractPaginatedResponse } from "./api-response";
+import {
+  DEFAULT_PER_PAGE,
+  MIN_PAGE,
+  normalizePage,
+  normalizePerPage,
+} from "./pagination";
 
 export type { TicketListItem };
 export type { TicketPriority, TicketStatus };
 export type TicketDetail = z.infer<typeof ticketDetailSchema>;
-
-const MIN_PAGE = 1;
-const MAX_PAGE = 10000;
-const DEFAULT_PER_PAGE = 20;
-const MAX_PER_PAGE = 100;
 
 export type ListTicketsInput = Readonly<{
   organizationId: string;
@@ -57,20 +58,6 @@ export type CreateTicketInput = Readonly<{
 const ticketsListResponseSchema = z.object({
   tickets: z.array(ticketListItemResponseSchema),
 });
-
-function normalizePage(value: number): number {
-  if (!Number.isFinite(value)) {
-    return MIN_PAGE;
-  }
-  return Math.min(MAX_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
-}
-
-function normalizePerPage(value: number): number {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_PER_PAGE;
-  }
-  return Math.min(MAX_PER_PAGE, Math.max(MIN_PAGE, Math.floor(value)));
-}
 
 function buildTicketsPath(organizationId: string): string {
   if (organizationId.trim().length === 0) {
