@@ -30,6 +30,7 @@ export function useValidatedForm<TValues extends Record<string, unknown>>({
     onSubmit: async ({ value, formApi }) => {
       try {
         await onSubmit(value);
+        await formApi.reset();
       } catch (error) {
         const fields = mapApiErrorToFields(error);
         if (Object.keys(fields).length === 0) {
