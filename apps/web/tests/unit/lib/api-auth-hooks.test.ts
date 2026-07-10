@@ -284,4 +284,79 @@ describe("handleUnauthorizedResponse", () => {
     expect(result.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("caller abort 後も refresh 完了時にトークンが保存される", async () => {
+    setTokens("expired-access", "refresh-token");
+    let resolveRefresh: (value: Response) => void;
+    const refreshPromise = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const fetchMock = vi.fn().mockImplementationOnce(() => refreshPromise);
+    mockFetch(fetchMock);
+
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const controller = new AbortController();
+    const options = createOptions();
+    options.signal = controller.signal;
+
+    const promise = handleUnauthorizedResponse(request, options, response, {
+      retryCount: 0,
+    });
+
+    controller.abort();
+
+    await expect(promise).rejects.toBeInstanceOf(DOMException);
+
+    resolveRefresh!(
+      new Response(
+        JSON.stringify({
+          accessToken: "new-access",
+          refreshToken: "new-refresh",
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await vi.waitFor(() => {
+      expect(getAccessToken()).toBe("new-access");
+      expect(getRefreshToken()).toBe("new-refresh");
+    });
+  });
+
+  it("options.context が undefined の場合も authRefreshAttempted が設定される", async () => {
+    setTokens("expired-access", "refresh-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            accessToken: "new-access",
+            refreshToken: "new-refresh",
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+    mockFetch(fetchMock);
+
+    const request = new Request("http://localhost/api/protected");
+    const response = new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+    const options = {} as Parameters<typeof handleUnauthorizedResponse>[1];
+
+    await handleUnauthorizedResponse(request, options, response, {
+      retryCount: 0,
+    });
+
+    expect(
+      (options.context as Record<string, unknown>).authRefreshAttempted,
+    ).toBe(true);
+    expect(getAccessToken()).toBe("new-access");
+  });
 });

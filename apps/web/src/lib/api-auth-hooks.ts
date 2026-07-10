@@ -131,10 +131,9 @@ async function performRefresh(
         if (accessToken === undefined || accessToken.trim() === "") {
           throw new ApiError("Invalid refresh response", 500);
         }
-        return {
-          accessToken,
-          refreshToken: refreshToken ?? token,
-        };
+        const newRefreshToken = refreshToken ?? token;
+        setTokens(accessToken, newRefreshToken);
+        return { accessToken, refreshToken: newRefreshToken };
       } finally {
         refreshingPromise = null;
         clearTimeout(timeoutId);
@@ -209,26 +208,20 @@ export const handleUnauthorizedResponse: AfterResponseHook = async (
     return response;
   }
 
-  const context = isRecord(options.context)
-    ? options.context
-    : ({} as Record<string, unknown>);
-  context.authRefreshAttempted = true;
+  if (!isRecord(options.context)) {
+    options.context = {} as Record<string, unknown>;
+  }
+  (options.context as Record<string, unknown>).authRefreshAttempted = true;
 
-  let accessToken: string;
-  let newRefreshToken: string;
   const callerSignal = options.signal ?? undefined;
   try {
-    const tokens = await performRefresh(callerSignal);
-    accessToken = tokens.accessToken;
-    newRefreshToken = tokens.refreshToken;
+    await performRefresh(callerSignal);
   } catch (error) {
     if (!isCallerAbort(error, callerSignal)) {
       clearTokens();
     }
     throw error;
   }
-
-  setTokens(accessToken, newRefreshToken);
 
   const headers = new Headers(request.headers);
   // 古い Authorization を削除し、addAuthHeader 経由で新しいトークンを付与する。
