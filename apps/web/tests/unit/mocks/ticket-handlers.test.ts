@@ -161,14 +161,39 @@ describe("ticket mock handlers", () => {
     });
   });
 
-  it("作成時に status を送信すると 400", async () => {
+  it("作成時に無効な status を送信すると 400", async () => {
+    await expect(
+      apiClient
+        .post("organizations/demo-org-001/tickets", {
+          json: { title: "New Ticket", status: "invalid" },
+        })
+        .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "status" }),
+      ]),
+    });
+  });
+
+  it("作成時に closed を送信すると 400", async () => {
     await expect(
       apiClient
         .post("organizations/demo-org-001/tickets", {
           json: { title: "New Ticket", status: "closed" },
         })
         .json(),
-    ).rejects.toMatchObject({ status: 400 });
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "作成時に指定できるステータスは open, in-progress のみです",
+      details: [
+        {
+          field: "status",
+          message: "作成時に指定できるステータスは open, in-progress のみです",
+        },
+      ],
+    });
   });
 
   it("説明と担当者を反映して作成できる", async () => {

@@ -529,6 +529,7 @@ describe("createTicket", () => {
       http.post("/api/organizations/:id/tickets", async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         expect(body.description).toBe("詳細");
+        expect(body.status).toBe("in-progress");
         expect(body.priority).toBe("high");
         expect(body.assigneeId).toBe("demo-user-001");
 
@@ -536,6 +537,7 @@ describe("createTicket", () => {
           createApiSuccessResponse({
             ...validTicketDetail,
             description: "詳細",
+            status: "in-progress",
             priority: "high",
             assigneeId: "demo-user-001",
           }),
@@ -548,6 +550,7 @@ describe("createTicket", () => {
       organizationId: "demo-org-001",
       title: "新規チケット",
       description: "詳細",
+      status: "in-progress",
       priority: "high",
       assigneeId: "demo-user-001",
     });

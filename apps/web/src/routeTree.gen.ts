@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as OnboardingOrganizationRouteImport } from './routes/onboarding/organization'
 import { Route as AppOrganizationIdTicketsRouteRouteImport } from './routes/app/$organizationId/tickets/route'
 import { Route as AppOrganizationIdTicketsIndexRouteImport } from './routes/app/$organizationId/tickets/index'
+import { Route as AppOrganizationIdTicketsNewRouteImport } from './routes/app/$organizationId/tickets/new'
 import { Route as AppOrganizationIdTicketsTicketIdRouteImport } from './routes/app/$organizationId/tickets/$ticketId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -61,6 +62,12 @@ const AppOrganizationIdTicketsIndexRoute =
     path: '/',
     getParentRoute: () => AppOrganizationIdTicketsRouteRoute,
   } as any)
+const AppOrganizationIdTicketsNewRoute =
+  AppOrganizationIdTicketsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AppOrganizationIdTicketsRouteRoute,
+  } as any)
 const AppOrganizationIdTicketsTicketIdRoute =
   AppOrganizationIdTicketsTicketIdRouteImport.update({
     id: '/$ticketId',
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/$organizationId/tickets': typeof AppOrganizationIdTicketsRouteRouteWithChildren
   '/app/$organizationId/tickets/$ticketId': typeof AppOrganizationIdTicketsTicketIdRoute
+  '/app/$organizationId/tickets/new': typeof AppOrganizationIdTicketsNewRoute
   '/app/$organizationId/tickets/': typeof AppOrganizationIdTicketsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -86,6 +94,7 @@ export interface FileRoutesByTo {
   '/onboarding/organization': typeof OnboardingOrganizationRoute
   '/app': typeof AppIndexRoute
   '/app/$organizationId/tickets/$ticketId': typeof AppOrganizationIdTicketsTicketIdRoute
+  '/app/$organizationId/tickets/new': typeof AppOrganizationIdTicketsNewRoute
   '/app/$organizationId/tickets': typeof AppOrganizationIdTicketsIndexRoute
 }
 export interface FileRoutesById {
@@ -98,6 +107,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/$organizationId/tickets': typeof AppOrganizationIdTicketsRouteRouteWithChildren
   '/app/$organizationId/tickets/$ticketId': typeof AppOrganizationIdTicketsTicketIdRoute
+  '/app/$organizationId/tickets/new': typeof AppOrganizationIdTicketsNewRoute
   '/app/$organizationId/tickets/': typeof AppOrganizationIdTicketsIndexRoute
 }
 export interface FileRouteTypes {
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/$organizationId/tickets'
     | '/app/$organizationId/tickets/$ticketId'
+    | '/app/$organizationId/tickets/new'
     | '/app/$organizationId/tickets/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/onboarding/organization'
     | '/app'
     | '/app/$organizationId/tickets/$ticketId'
+    | '/app/$organizationId/tickets/new'
     | '/app/$organizationId/tickets'
   id:
     | '__root__'
@@ -131,6 +143,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/$organizationId/tickets'
     | '/app/$organizationId/tickets/$ticketId'
+    | '/app/$organizationId/tickets/new'
     | '/app/$organizationId/tickets/'
   fileRoutesById: FileRoutesById
 }
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrganizationIdTicketsIndexRouteImport
       parentRoute: typeof AppOrganizationIdTicketsRouteRoute
     }
+    '/app/$organizationId/tickets/new': {
+      id: '/app/$organizationId/tickets/new'
+      path: '/new'
+      fullPath: '/app/$organizationId/tickets/new'
+      preLoaderRoute: typeof AppOrganizationIdTicketsNewRouteImport
+      parentRoute: typeof AppOrganizationIdTicketsRouteRoute
+    }
     '/app/$organizationId/tickets/$ticketId': {
       id: '/app/$organizationId/tickets/$ticketId'
       path: '/$ticketId'
@@ -212,6 +232,7 @@ declare module '@tanstack/react-router' {
 
 interface AppOrganizationIdTicketsRouteRouteChildren {
   AppOrganizationIdTicketsTicketIdRoute: typeof AppOrganizationIdTicketsTicketIdRoute
+  AppOrganizationIdTicketsNewRoute: typeof AppOrganizationIdTicketsNewRoute
   AppOrganizationIdTicketsIndexRoute: typeof AppOrganizationIdTicketsIndexRoute
 }
 
@@ -219,6 +240,7 @@ const AppOrganizationIdTicketsRouteRouteChildren: AppOrganizationIdTicketsRouteR
   {
     AppOrganizationIdTicketsTicketIdRoute:
       AppOrganizationIdTicketsTicketIdRoute,
+    AppOrganizationIdTicketsNewRoute: AppOrganizationIdTicketsNewRoute,
     AppOrganizationIdTicketsIndexRoute: AppOrganizationIdTicketsIndexRoute,
   }
 

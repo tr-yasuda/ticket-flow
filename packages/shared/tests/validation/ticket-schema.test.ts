@@ -149,10 +149,24 @@ describe("createTicketInputSchema", () => {
       organizationId: "org-1",
       createdBy: "user-1",
       description: "説明文",
+      status: "in-progress",
       priority: "high",
       assigneeId: "user-2",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("無効なステータスを拒否する", () => {
+    const result = createTicketInputSchema.safeParse({
+      title: "新規チケット",
+      organizationId: "org-1",
+      createdBy: "user-1",
+      status: "invalid",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path[0]).toBe("status");
+    }
   });
 
   it("タイトルがない場合は拒否する", () => {

@@ -50,6 +50,7 @@ export type CreateTicketInput = Readonly<{
   organizationId: string;
   title: string;
   description?: string | null;
+  status?: TicketStatus;
   priority?: TicketPriority;
   assigneeId?: string | null;
   signal?: AbortSignal;
@@ -150,14 +151,22 @@ export async function getTicket(input: GetTicketInput): Promise<TicketDetail> {
 export async function createTicket(
   input: CreateTicketInput,
 ): Promise<TicketDetail> {
-  const { organizationId, title, description, priority, assigneeId, signal } =
-    input;
+  const {
+    organizationId,
+    title,
+    description,
+    status,
+    priority,
+    assigneeId,
+    signal,
+  } = input;
 
   const body = await apiClient
     .post(buildTicketsPath(organizationId), {
       json: {
         title,
         ...(description !== undefined && { description }),
+        ...(status !== undefined && { status }),
         ...(priority !== undefined && { priority }),
         ...(assigneeId !== undefined && { assigneeId }),
       },

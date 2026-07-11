@@ -140,12 +140,26 @@ describe("OrganizationTicketsPageView", () => {
     expect(screen.queryByText("1 / 1")).not.toBeInTheDocument();
   });
 
-  it("空状態を表示する", () => {
-    render(<OrganizationTicketsPageView organizationId="org-1" tickets={[]} />);
-    expect(screen.getByTestId("empty-state")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "新規作成" }),
-    ).toBeInTheDocument();
+  it("空状態を表示する", async () => {
+    const rootRoute = createRootRoute({
+      component: () => (
+        <OrganizationTicketsPageView organizationId="org-1" tickets={[]} />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+      defaultPendingMinMs: 0,
+    });
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("empty-state")).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: "新規作成" });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/app/org-1/tickets/new");
   });
 
   it("データあり状態を表示する", () => {

@@ -168,6 +168,9 @@ apps/api/prisma/e2e-test.db-*
 .claude/
 .worktrees/
 
+# Temporary working files
+.tmp/
+
 # Playwright
 /test-results/
 /playwright-report/

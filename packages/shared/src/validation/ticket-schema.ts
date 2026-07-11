@@ -68,6 +68,7 @@ export const createTicketInputSchema = z.object({
   organizationId: ticketOrganizationIdSchema,
   createdBy: ticketCreatedBySchema,
   description: ticketDescriptionSchema,
+  status: ticketStatusSchema.optional(),
   priority: ticketPrioritySchema.optional(),
   assigneeId: ticketAssigneeIdSchema,
 });

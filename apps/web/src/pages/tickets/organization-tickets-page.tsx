@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useCallback, useState, type ReactElement } from "react";
 
 import { TicketTable } from "@/components/tickets/ticket-table";
@@ -44,8 +45,13 @@ export function OrganizationTicketsPageView({
         onRetry={onRetry}
         getRowHref={getRowHref}
         emptyAction={
-          <Button type="button" className="mt-2">
-            新規作成
+          <Button className="mt-2" asChild>
+            <Link
+              to="/app/$organizationId/tickets/new"
+              params={{ organizationId }}
+            >
+              新規作成
+            </Link>
           </Button>
         }
       />

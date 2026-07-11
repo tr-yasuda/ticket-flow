@@ -202,7 +202,20 @@ export const ticketHandlers = [
       );
     }
 
-    const { title, description, priority, assigneeId } = parseResult.data;
+    const { title, description, status, priority, assigneeId } =
+      parseResult.data;
+
+    if (status === "closed") {
+      const message =
+        "作成時に指定できるステータスは open, in-progress のみです";
+      return HttpResponse.json(
+        createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, message, [
+          { field: "status", message },
+        ]),
+        { status: 400 },
+      );
+    }
+
     const now = new Date().toISOString();
 
     return HttpResponse.json(
@@ -211,7 +224,7 @@ export const ticketHandlers = [
         organizationId: id,
         title,
         description: description ?? null,
-        status: "open",
+        status: status ?? "open",
         priority: priority ?? "medium",
         assigneeId: assigneeId ?? null,
         createdBy: "mock-user-id",

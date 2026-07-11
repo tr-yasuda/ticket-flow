@@ -21,6 +21,7 @@ const MAX_FILTER_ARRAY_LENGTH = 10;
 export const createTicketBodySchema = z.object({
   title: ticketTitleSchema,
   description: ticketDescriptionSchema,
+  status: ticketStatusSchema.optional(),
   priority: ticketPrioritySchema.optional(),
   assigneeId: z
     .string()

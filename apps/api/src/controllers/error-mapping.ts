@@ -15,5 +15,5 @@ export type ErrorMapping = Readonly<{
     | typeof HttpStatus.CONFLICT
     | typeof HttpStatus.INTERNAL_SERVER_ERROR;
   message: string;
-  details?: ApiValidationErrorDetail[];
+  details?: readonly ApiValidationErrorDetail[];
 }>;

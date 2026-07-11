@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { ApiValidationErrorDetail } from "@ticket-flow/shared";
 import {
   createTicketInputSchema,
   ticketAssigneeIdSchema,
@@ -109,9 +110,17 @@ export type TicketListItem = Readonly<{
 }>;
 
 export class TicketValidationError extends Error {
-  constructor(message: string) {
+  readonly details?: readonly ApiValidationErrorDetail[];
+
+  constructor(
+    message: string,
+    options?: {
+      details?: readonly ApiValidationErrorDetail[];
+    },
+  ) {
     super(message);
     this.name = "TicketValidationError";
+    this.details = options?.details;
   }
 }
 
@@ -165,13 +174,37 @@ export type CreateTicketInput = Readonly<{
   organizationId: string;
   title: string;
   description?: string;
+  status?: TicketStatus;
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
 }>;
 
+const allowedCreationStatuses: readonly TicketStatus[] = [
+  TicketStatus.Open,
+  TicketStatus.InProgress,
+];
+
 export function createTicket(input: CreateTicketInput): Ticket {
   const parsed = parseWith(createTicketInputSchema, input);
+
+  if (
+    parsed.status !== undefined &&
+    !allowedCreationStatuses.includes(parsed.status)
+  ) {
+    throw new TicketValidationError(
+      `作成時に指定できるステータスは ${allowedCreationStatuses.join(", ")} のみです`,
+      {
+        details: [
+          {
+            field: "status",
+            message: `作成時に指定できるステータスは ${allowedCreationStatuses.join(", ")} のみです`,
+          },
+        ],
+      },
+    );
+  }
+
   const now = new Date();
 
   return parseWith(ticketSchema, {
@@ -179,7 +212,7 @@ export function createTicket(input: CreateTicketInput): Ticket {
     organizationId: parsed.organizationId,
     title: parsed.title,
     description: parsed.description ?? null,
-    status: TicketStatus.Open,
+    status: parsed.status ?? TicketStatus.Open,
     priority: parsed.priority ?? TicketPriority.Medium,
     assigneeId: parsed.assigneeId ?? null,
     createdBy: parsed.createdBy,
