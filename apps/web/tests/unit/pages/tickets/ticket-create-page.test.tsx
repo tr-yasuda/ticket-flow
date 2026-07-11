@@ -32,8 +32,8 @@ vi.mock("@/lib/tickets-api", () => ({
   createTicket: vi.fn(),
 }));
 
-import { createTicket } from "@/lib/tickets-api";
 import { useOrganizationMembers } from "@/hooks/use-organization-members";
+import { createTicket } from "@/lib/tickets-api";
 
 function mockUseOrganizationMembers(
   overrides: Partial<ReturnType<typeof useOrganizationMembers>> = {},

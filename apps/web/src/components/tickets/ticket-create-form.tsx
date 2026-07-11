@@ -14,7 +14,10 @@ import { TextField } from "@/components/form/text-field";
 import { TextareaField } from "@/components/form/textarea-field";
 import { Button } from "@/components/ui/button";
 import { useValidatedForm } from "@/hooks/use-validated-form";
-import { getTicketPriorityConfig, getTicketStatusConfig } from "@/lib/badge-mapping";
+import {
+  getTicketPriorityConfig,
+  getTicketStatusConfig,
+} from "@/lib/badge-mapping";
 
 const UNASSIGNED_VALUE = "__UNASSIGNED__";
 const TITLE_MAX_LENGTH = 200;

@@ -6,11 +6,13 @@ import {
   type OrganizationMemberListItem,
 } from "@/lib/organization-members-api";
 
-export type UseOrganizationMembersInput =
-  Omit<ListOrganizationMembersInput, "signal"> &
-    Readonly<{
-      enabled?: boolean;
-    }>;
+export type UseOrganizationMembersInput = Omit<
+  ListOrganizationMembersInput,
+  "signal"
+> &
+  Readonly<{
+    enabled?: boolean;
+  }>;
 
 export type UseOrganizationMembersResult = Readonly<{
   members: readonly OrganizationMemberListItem[];
@@ -26,9 +28,8 @@ export function useOrganizationMembers(
 ): UseOrganizationMembersResult {
   const { organizationId, enabled = true } = input;
 
-  const [members, setMembers] = useState<readonly OrganizationMemberListItem[]>(
-    emptyMembers,
-  );
+  const [members, setMembers] =
+    useState<readonly OrganizationMemberListItem[]>(emptyMembers);
   const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [retryKey, setRetryKey] = useState(0);
