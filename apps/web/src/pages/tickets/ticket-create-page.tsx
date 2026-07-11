@@ -1,6 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { TicketPriority, TicketStatus } from "@ticket-flow/shared";
-import { useCallback, useMemo, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactElement,
+} from "react";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingSpinner } from "@/components/feedback/loading-spinner";
@@ -20,6 +26,7 @@ export function TicketCreatePage({
   const { notifySuccess } = useToast();
   const { members, isLoading, error, refetch } = useOrganizationMembers({
     organizationId,
+    perPage: 100,
     enabled: organizationId !== "",
   });
 
@@ -32,6 +39,14 @@ export function TicketCreatePage({
     [members],
   );
 
+  const submitControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      submitControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleSubmit = useCallback(
     async (values: {
       title: string;
@@ -40,29 +55,51 @@ export function TicketCreatePage({
       priority?: TicketPriority;
       assigneeId: string | null;
     }) => {
-      const created = await createTicket({
-        organizationId,
-        title: values.title,
-        description: values.description,
-        status: values.status,
-        priority: values.priority,
-        assigneeId: values.assigneeId,
-      });
+      submitControllerRef.current?.abort();
+      const controller = new AbortController();
+      submitControllerRef.current = controller;
 
-      notifySuccess(`チケットを作成しました: ${created.title}`);
+      try {
+        const created = await createTicket({
+          organizationId,
+          title: values.title,
+          description: values.description,
+          status: values.status,
+          priority: values.priority,
+          assigneeId: values.assigneeId,
+          signal: controller.signal,
+        });
 
-      await navigate({
-        to: "/app/$organizationId/tickets/$ticketId",
-        params: { organizationId, ticketId: created.id },
-      });
+        await navigate({
+          to: "/app/$organizationId/tickets/$ticketId",
+          params: { organizationId, ticketId: created.id },
+        });
+
+        notifySuccess(`チケットを作成しました: ${created.title}`);
+      } finally {
+        if (submitControllerRef.current === controller) {
+          submitControllerRef.current = null;
+        }
+      }
     },
     [navigate, organizationId, notifySuccess],
   );
 
+  if (organizationId.trim() === "") {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">チケット作成</h1>
+        <ErrorState
+          title="組織IDが指定されていません"
+          message="正しい組織を選択してください。"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">チケット作成</h1>
-      <p data-testid="organization-id">{organizationId}</p>
       {isLoading ? (
         <LoadingSpinner />
       ) : error !== null ? (

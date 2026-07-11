@@ -74,13 +74,12 @@ describe("TicketCreatePage", () => {
     navigateMock.mockResolvedValue(undefined);
   });
 
-  it("organizationId を表示し、フォームを表示する", () => {
+  it("フォームを表示する", () => {
     mockUseOrganizationMembers();
 
     render(<TicketCreatePage organizationId="org-1" />);
 
     expect(screen.getByText("チケット作成")).toBeInTheDocument();
-    expect(screen.getByTestId("organization-id")).toHaveTextContent("org-1");
     expect(screen.getByLabelText("タイトル")).toBeInTheDocument();
   });
 
@@ -133,14 +132,17 @@ describe("TicketCreatePage", () => {
     await user.click(screen.getByRole("button", { name: "作成" }));
 
     await waitFor(() => {
-      expect(createTicket).toHaveBeenCalledWith({
-        organizationId: "org-1",
-        title: "New ticket",
-        description: null,
-        status: undefined,
-        priority: undefined,
-        assigneeId: null,
-      });
+      expect(createTicket).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          title: "New ticket",
+          description: null,
+          status: undefined,
+          priority: undefined,
+          assigneeId: null,
+          signal: expect.any(AbortSignal),
+        }),
+      );
     });
 
     await waitFor(() => {
