@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { ApiValidationErrorDetail } from "@ticket-flow/shared";
 import {
   createTicketInputSchema,
   ticketAssigneeIdSchema,
@@ -108,18 +109,13 @@ export type TicketListItem = Readonly<{
   commentCount: number;
 }>;
 
-export type TicketValidationErrorDetail = Readonly<{
-  field: string;
-  message: string;
-}>;
-
 export class TicketValidationError extends Error {
-  readonly details?: readonly TicketValidationErrorDetail[];
+  readonly details?: readonly ApiValidationErrorDetail[];
 
   constructor(
     message: string,
     options?: {
-      details?: readonly TicketValidationErrorDetail[];
+      details?: readonly ApiValidationErrorDetail[];
     },
   ) {
     super(message);

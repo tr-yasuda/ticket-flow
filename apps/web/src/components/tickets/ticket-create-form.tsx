@@ -64,10 +64,7 @@ export type TicketCreateFormProps = {
   }) => Promise<void>;
 };
 
-const CREATABLE_STATUSES = [
-  "open",
-  "in-progress",
-] as const satisfies readonly TicketStatus[];
+const CREATABLE_STATUSES = creatableTicketStatusSchema.options;
 
 const statusOptions: SelectOption[] = CREATABLE_STATUSES.map((status) => ({
   value: status,
