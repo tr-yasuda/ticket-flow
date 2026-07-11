@@ -54,6 +54,27 @@ describe("チケット作成", () => {
     expect(ticket.assigneeId).toBe("user-2");
   });
 
+  it("status を指定できる", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグを修正する",
+      status: TicketStatus.InProgress,
+      createdBy: "user-1",
+    });
+
+    expect(ticket.status).toBe(TicketStatus.InProgress);
+  });
+
+  it("status を省略すると open になる", () => {
+    const ticket = createTicket({
+      organizationId: "org-1",
+      title: "バグを修正する",
+      createdBy: "user-1",
+    });
+
+    expect(ticket.status).toBe(TicketStatus.Open);
+  });
+
   it("タイトルの前後の空白は削除される", () => {
     const ticket = createTicket({
       organizationId: "org-1",

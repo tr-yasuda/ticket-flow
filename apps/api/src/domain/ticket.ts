@@ -165,6 +165,7 @@ export type CreateTicketInput = Readonly<{
   organizationId: string;
   title: string;
   description?: string;
+  status?: TicketStatus;
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
@@ -179,7 +180,7 @@ export function createTicket(input: CreateTicketInput): Ticket {
     organizationId: parsed.organizationId,
     title: parsed.title,
     description: parsed.description ?? null,
-    status: TicketStatus.Open,
+    status: parsed.status ?? TicketStatus.Open,
     priority: parsed.priority ?? TicketPriority.Medium,
     assigneeId: parsed.assigneeId ?? null,
     createdBy: parsed.createdBy,
