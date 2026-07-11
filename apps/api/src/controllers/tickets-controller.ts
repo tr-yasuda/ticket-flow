@@ -238,6 +238,7 @@ export async function createTicketController(c: CreateTicketControllerContext) {
     organizationId,
     title: data.title,
     description: data.description ?? undefined,
+    status: data.status,
     priority: data.priority,
     assigneeId: data.assigneeId ?? null,
     createdBy,
