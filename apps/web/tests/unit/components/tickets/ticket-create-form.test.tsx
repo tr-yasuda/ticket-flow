@@ -253,9 +253,11 @@ describe("TicketCreateForm", () => {
   });
 
   it("submit 中に submit button が disabled になり二重送信しない", async () => {
-    const onSubmit = vi.fn(
-      () => new Promise<void>((resolve) => setTimeout(resolve, 500)),
-    );
+    let resolveSubmit: () => void;
+    const submitPromise = new Promise<void>((resolve) => {
+      resolveSubmit = resolve;
+    });
+    const onSubmit = vi.fn(() => submitPromise);
     renderForm({ onSubmit });
     const user = userEvent.setup();
 
@@ -268,6 +270,11 @@ describe("TicketCreateForm", () => {
       await screen.findByRole("button", { name: "作成中..." }),
     ).toBeDisabled();
     expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    resolveSubmit!();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "作成" })).toBeEnabled();
+    });
   });
 
   it("送信成功後にフォームがリセットされる", async () => {

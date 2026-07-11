@@ -18,13 +18,19 @@ const UNASSIGNED_VALUE = "__UNASSIGNED__";
 const TITLE_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 10000;
 
+function trim(value: string): string {
+  return value.trim();
+}
+
 const ticketCreateFormSchema = z.object({
   title: ticketTitleSchema,
   description: z
     .string()
-    .max(DESCRIPTION_MAX_LENGTH, {
-      message: `説明は${DESCRIPTION_MAX_LENGTH}文字以内で入力してください`,
-    })
+    .transform(trim)
+    .refine(
+      (value) => value.length <= DESCRIPTION_MAX_LENGTH,
+      `説明は${DESCRIPTION_MAX_LENGTH}文字以内で入力してください`,
+    )
     .optional(),
   priority: ticketPrioritySchema.optional(),
   assigneeId: z
