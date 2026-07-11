@@ -186,10 +186,13 @@ describe("ticket mock handlers", () => {
         .json(),
     ).rejects.toMatchObject({
       status: 400,
-      message: "入力内容を確認してください",
-      details: expect.arrayContaining([
-        expect.objectContaining({ field: "status" }),
-      ]),
+      message: "作成時に指定できるステータスは open, in-progress のみです",
+      details: [
+        {
+          field: "status",
+          message: "作成時に指定できるステータスは open, in-progress のみです",
+        },
+      ],
     });
   });
 

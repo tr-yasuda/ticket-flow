@@ -206,18 +206,12 @@ export const ticketHandlers = [
       parseResult.data;
 
     if (status === "closed") {
+      const message =
+        "作成時に指定できるステータスは open, in-progress のみです";
       return HttpResponse.json(
-        createApiErrorResponse(
-          ApiErrorCode.VALIDATION_ERROR,
-          "入力内容を確認してください",
-          [
-            {
-              field: "status",
-              message:
-                "作成時に指定できるステータスは open, in-progress のみです",
-            },
-          ],
-        ),
+        createApiErrorResponse(ApiErrorCode.VALIDATION_ERROR, message, [
+          { field: "status", message },
+        ]),
         { status: 400 },
       );
     }

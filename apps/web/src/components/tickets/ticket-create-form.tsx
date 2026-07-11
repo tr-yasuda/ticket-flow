@@ -1,6 +1,5 @@
 import {
   ticketPrioritySchema,
-  ticketStatusSchema,
   ticketTitleSchema,
   type TicketPriority,
   type TicketStatus,
@@ -27,6 +26,10 @@ function trim(value: string): string {
   return value.trim();
 }
 
+const creatableTicketStatusSchema = z.enum(["open", "in-progress"], {
+  message: "作成時に指定できないステータスです",
+});
+
 const ticketCreateFormSchema = z.object({
   title: ticketTitleSchema,
   description: z
@@ -37,7 +40,7 @@ const ticketCreateFormSchema = z.object({
       `説明は${DESCRIPTION_MAX_LENGTH}文字以内で入力してください`,
     )
     .optional(),
-  status: ticketStatusSchema.optional(),
+  status: creatableTicketStatusSchema.optional(),
   priority: ticketPrioritySchema.optional(),
   assigneeId: z
     .string()
@@ -188,7 +191,7 @@ export function TicketCreateForm({
                       field.handleChange(undefined);
                       return;
                     }
-                    const parsed = ticketStatusSchema.safeParse(value);
+                    const parsed = creatableTicketStatusSchema.safeParse(value);
                     if (parsed.success) {
                       field.handleChange(parsed.data);
                     }
