@@ -26,7 +26,7 @@ const emptyMembers: readonly OrganizationMemberListItem[] = [];
 export function useOrganizationMembers(
   input: UseOrganizationMembersInput,
 ): UseOrganizationMembersResult {
-  const { organizationId, enabled = true } = input;
+  const { organizationId, page, perPage, enabled = true } = input;
 
   const [members, setMembers] =
     useState<readonly OrganizationMemberListItem[]>(emptyMembers);
@@ -57,6 +57,8 @@ export function useOrganizationMembers(
 
     void getOrganizationMembers({
       organizationId,
+      page,
+      perPage,
       signal: controller.signal,
     })
       .then((result) => {
@@ -78,7 +80,7 @@ export function useOrganizationMembers(
     return () => {
       controller.abort();
     };
-  }, [enabled, organizationId, retryKey]);
+  }, [enabled, organizationId, page, perPage, retryKey]);
 
   const refetch = useCallback(() => {
     setRetryKey((previous) => previous + 1);

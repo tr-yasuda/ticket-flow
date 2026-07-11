@@ -45,7 +45,7 @@ export function OrganizationTicketsPageView({
         onRetry={onRetry}
         getRowHref={getRowHref}
         emptyAction={
-          <Button type="button" className="mt-2" asChild>
+          <Button className="mt-2" asChild>
             <Link
               to="/app/$organizationId/tickets/new"
               params={{ organizationId }}
