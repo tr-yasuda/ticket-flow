@@ -133,6 +133,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: null,
+        priority: undefined,
         assigneeId: null,
       });
     });
@@ -150,6 +151,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: null,
+        priority: undefined,
         assigneeId: null,
       });
     });

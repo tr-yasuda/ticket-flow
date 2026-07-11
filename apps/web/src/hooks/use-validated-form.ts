@@ -9,12 +9,14 @@ type UseValidatedFormOptions<TValues extends Record<string, unknown>> =
     schema: ZodType<TValues>;
     defaultValues: TValues;
     onSubmit: (values: TValues) => Promise<void>;
+    resetOnSuccess?: boolean;
   }>;
 
 export function useValidatedForm<TValues extends Record<string, unknown>>({
   schema,
   defaultValues,
   onSubmit,
+  resetOnSuccess = false,
 }: UseValidatedFormOptions<TValues>) {
   return useForm({
     defaultValues,
@@ -30,7 +32,9 @@ export function useValidatedForm<TValues extends Record<string, unknown>>({
     onSubmit: async ({ value, formApi }) => {
       try {
         await onSubmit(value);
-        await formApi.reset();
+        if (resetOnSuccess) {
+          await formApi.reset();
+        }
       } catch (error) {
         const fields = mapApiErrorToFields(error);
         if (Object.keys(fields).length === 0) {

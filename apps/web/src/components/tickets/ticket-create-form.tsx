@@ -94,6 +94,7 @@ export function TicketCreateForm({
       priority: undefined,
       assigneeId: undefined,
     },
+    resetOnSuccess: true,
     onSubmit: async (values: TicketCreateFormValues) => {
       await onSubmit({
         title: values.title.trim(),
