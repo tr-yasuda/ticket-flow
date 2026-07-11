@@ -75,6 +75,17 @@ describe("チケット作成", () => {
     expect(ticket.status).toBe(TicketStatus.Open);
   });
 
+  it("作成時に closed は指定できない", () => {
+    expect(() =>
+      createTicket({
+        organizationId: "org-1",
+        title: "バグを修正する",
+        status: TicketStatus.Closed,
+        createdBy: "user-1",
+      }),
+    ).toThrow(TicketValidationError);
+  });
+
   it("タイトルの前後の空白は削除される", () => {
     const ticket = createTicket({
       organizationId: "org-1",

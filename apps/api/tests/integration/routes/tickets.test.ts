@@ -293,6 +293,35 @@ describe("POST /api/organizations/:organizationId/tickets (ticket.create)", () =
     expect(body.data.status).toBe("open");
   });
 
+  it("作成時に closed を指定すると 400 Bad Request になる", async () => {
+    const { accessToken: ownerToken } = await registerUser(
+      app,
+      uniqueEmail("owner"),
+      "password123",
+    );
+    const organizationId = await createOrganization(
+      app,
+      ownerToken,
+      "Acme Inc.",
+      "acme-inc",
+    );
+
+    const response = await createTicketRequest(
+      app,
+      ownerToken,
+      organizationId,
+      {
+        title: "closed on creation",
+        status: "closed",
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("priority を省略すると medium がデフォルトになる", async () => {
     const { accessToken: ownerToken } = await registerUser(
       app,

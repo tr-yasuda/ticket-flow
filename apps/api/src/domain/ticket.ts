@@ -171,8 +171,23 @@ export type CreateTicketInput = Readonly<{
   createdBy: string;
 }>;
 
+const allowedCreationStatuses: readonly TicketStatus[] = [
+  TicketStatus.Open,
+  TicketStatus.InProgress,
+];
+
 export function createTicket(input: CreateTicketInput): Ticket {
   const parsed = parseWith(createTicketInputSchema, input);
+
+  if (
+    parsed.status !== undefined &&
+    !allowedCreationStatuses.includes(parsed.status)
+  ) {
+    throw new TicketValidationError(
+      `作成時に指定できるステータスは ${allowedCreationStatuses.join(", ")} のみです`,
+    );
+  }
+
   const now = new Date();
 
   return parseWith(ticketSchema, {
