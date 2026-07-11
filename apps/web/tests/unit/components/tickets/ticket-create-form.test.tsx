@@ -246,6 +246,18 @@ describe("TicketCreateForm", () => {
     });
   });
 
+  it("ステータス選択肢に closed（完了）は含まれない", () => {
+    renderForm();
+
+    fireEvent.click(screen.getByLabelText("ステータス"));
+
+    expect(
+      screen.queryByRole("option", { name: "完了" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "未対応" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "対応中" })).toBeInTheDocument();
+  });
+
   it("未割当を選択して submit すると assigneeId: null になる", async () => {
     const { onSubmit } = renderForm();
     const user = userEvent.setup();

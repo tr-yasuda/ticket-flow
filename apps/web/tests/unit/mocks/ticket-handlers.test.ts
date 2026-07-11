@@ -177,6 +177,22 @@ describe("ticket mock handlers", () => {
     });
   });
 
+  it("作成時に closed を送信すると 400", async () => {
+    await expect(
+      apiClient
+        .post("organizations/demo-org-001/tickets", {
+          json: { title: "New Ticket", status: "closed" },
+        })
+        .json(),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "入力内容を確認してください",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "status" }),
+      ]),
+    });
+  });
+
   it("説明と担当者を反映して作成できる", async () => {
     const response = await apiClient
       .post("organizations/demo-org-001/tickets", {

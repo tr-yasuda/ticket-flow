@@ -27,7 +27,7 @@ export function TicketCreatePage({
   const { members, isLoading, error, refetch } = useOrganizationMembers({
     organizationId,
     perPage: 100,
-    enabled: organizationId !== "",
+    enabled: organizationId.trim() !== "",
   });
 
   const assigneeOptions = useMemo(

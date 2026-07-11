@@ -61,12 +61,15 @@ export type TicketCreateFormProps = {
   }) => Promise<void>;
 };
 
-const statusOptions: SelectOption[] = ticketStatusSchema.options.map(
-  (status) => ({
-    value: status,
-    label: getTicketStatusConfig(status).label,
-  }),
-);
+const CREATABLE_STATUSES = [
+  "open",
+  "in-progress",
+] as const satisfies readonly TicketStatus[];
+
+const statusOptions: SelectOption[] = CREATABLE_STATUSES.map((status) => ({
+  value: status,
+  label: getTicketStatusConfig(status).label,
+}));
 
 const priorityOptions: SelectOption[] = (
   [
