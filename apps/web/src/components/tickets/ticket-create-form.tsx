@@ -1,7 +1,9 @@
 import {
   ticketPrioritySchema,
+  ticketStatusSchema,
   ticketTitleSchema,
   type TicketPriority,
+  type TicketStatus,
 } from "@ticket-flow/shared";
 import { useMemo, type ReactElement } from "react";
 import { z } from "zod";
@@ -12,7 +14,7 @@ import { TextField } from "@/components/form/text-field";
 import { TextareaField } from "@/components/form/textarea-field";
 import { Button } from "@/components/ui/button";
 import { useValidatedForm } from "@/hooks/use-validated-form";
-import { getTicketPriorityConfig } from "@/lib/badge-mapping";
+import { getTicketPriorityConfig, getTicketStatusConfig } from "@/lib/badge-mapping";
 
 const UNASSIGNED_VALUE = "__UNASSIGNED__";
 const TITLE_MAX_LENGTH = 200;
@@ -32,6 +34,7 @@ const ticketCreateFormSchema = z.object({
       `説明は${DESCRIPTION_MAX_LENGTH}文字以内で入力してください`,
     )
     .optional(),
+  status: ticketStatusSchema.optional(),
   priority: ticketPrioritySchema.optional(),
   assigneeId: z
     .string()
@@ -49,10 +52,18 @@ export type TicketCreateFormProps = {
   onSubmit: (values: {
     title: string;
     description: string | null;
+    status?: TicketStatus;
     priority?: TicketPriority;
     assigneeId: string | null;
   }) => Promise<void>;
 };
+
+const statusOptions: SelectOption[] = (
+  ["open", "in-progress", "closed"] as const satisfies readonly TicketStatus[]
+).map((status) => ({
+  value: status,
+  label: getTicketStatusConfig(status).label,
+}));
 
 const priorityOptions: SelectOption[] = (
   [
@@ -91,6 +102,7 @@ export function TicketCreateForm({
     defaultValues: {
       title: "",
       description: "",
+      status: undefined,
       priority: undefined,
       assigneeId: undefined,
     },
@@ -99,6 +111,7 @@ export function TicketCreateForm({
       await onSubmit({
         title: values.title.trim(),
         description: normalizeDescription(values.description),
+        status: values.status,
         priority: values.priority,
         assigneeId: values.assigneeId ?? null,
       });
@@ -151,6 +164,36 @@ export function TicketCreateForm({
                   error={formatFieldErrors(field.state.meta.errors)}
                   disabled={isSubmitting}
                   maxLength={DESCRIPTION_MAX_LENGTH}
+                />
+              )}
+            />
+            <form.Field
+              name="status"
+              children={(field) => (
+                <SelectField
+                  id="status"
+                  name="status"
+                  label="ステータス"
+                  placeholder="ステータスを選択"
+                  options={statusOptions}
+                  value={field.state.value ?? ""}
+                  onValueChange={(value) => {
+                    if (value === "") {
+                      field.handleChange(undefined);
+                      return;
+                    }
+                    const parsed = ticketStatusSchema.safeParse(value);
+                    if (parsed.success) {
+                      field.handleChange(parsed.data);
+                    }
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      field.handleBlur();
+                    }
+                  }}
+                  error={formatFieldErrors(field.state.meta.errors)}
+                  disabled={isSubmitting}
                 />
               )}
             />

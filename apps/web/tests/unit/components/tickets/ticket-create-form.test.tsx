@@ -36,19 +36,14 @@ function renderForm({
 }
 
 describe("TicketCreateForm", () => {
-  it("タイトル、説明、優先度、担当者の入力欄を表示する", () => {
+  it("タイトル、説明、ステータス、優先度、担当者の入力欄を表示する", () => {
     renderForm();
 
     expect(screen.getByLabelText("タイトル")).toBeInTheDocument();
     expect(screen.getByLabelText("説明")).toBeInTheDocument();
+    expect(screen.getByLabelText("ステータス")).toBeInTheDocument();
     expect(screen.getByLabelText("優先度")).toBeInTheDocument();
     expect(screen.getByLabelText("担当者")).toBeInTheDocument();
-  });
-
-  it("ステータス選択欄が存在しない", () => {
-    renderForm();
-
-    expect(screen.queryByLabelText("ステータス")).not.toBeInTheDocument();
   });
 
   it("タイトルが未入力のとき validation エラーを表示し onSubmit を呼ばない", async () => {
@@ -133,6 +128,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: null,
+        status: undefined,
         priority: undefined,
         assigneeId: null,
       });
@@ -151,6 +147,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: null,
+        status: undefined,
         priority: undefined,
         assigneeId: null,
       });
@@ -186,6 +183,17 @@ describe("TicketCreateForm", () => {
     });
   });
 
+  it("ステータスを選択できる", async () => {
+    renderForm();
+
+    fireEvent.click(screen.getByLabelText("ステータス"));
+    fireEvent.click(screen.getByRole("option", { name: "対応中" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("ステータス")).toHaveTextContent("対応中");
+    });
+  });
+
   it("担当者 options を props で受け取り、未割当も選択できる", async () => {
     renderForm();
 
@@ -210,6 +218,11 @@ describe("TicketCreateForm", () => {
 
     await user.type(screen.getByLabelText("タイトル"), "New ticket");
     await user.type(screen.getByLabelText("説明"), "Description text");
+    fireEvent.click(screen.getByLabelText("ステータス"));
+    fireEvent.click(screen.getByRole("option", { name: "対応中" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("ステータス")).toHaveTextContent("対応中");
+    });
     fireEvent.click(screen.getByLabelText("優先度"));
     fireEvent.click(screen.getByRole("option", { name: "高" }));
     await waitFor(() => {
@@ -226,6 +239,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: "Description text",
+        status: "in-progress",
         priority: "high",
         assigneeId: assigneeOptions[1].value,
       });
@@ -248,6 +262,7 @@ describe("TicketCreateForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         title: "New ticket",
         description: null,
+        status: undefined,
         priority: undefined,
         assigneeId: null,
       });
