@@ -39,6 +39,7 @@ export type CreateTicketServiceInput = Readonly<{
   organizationId: string;
   title: string;
   description?: string;
+  status?: TicketStatus;
   priority?: TicketPriority;
   assigneeId?: string | null;
   createdBy: string;
@@ -63,6 +64,7 @@ export async function createTicket(
       organizationId: input.organizationId,
       title: input.title,
       description: input.description,
+      status: input.status,
       priority: input.priority,
       assigneeId:
         input.assigneeId === undefined || input.assigneeId === null

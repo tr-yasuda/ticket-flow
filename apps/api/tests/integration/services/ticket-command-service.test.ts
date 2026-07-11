@@ -201,6 +201,35 @@ describe("ticket-command-service 統合テスト", () => {
       const data = expectSuccess(result);
       expect(data.ticket.priority).toBe("medium");
     });
+
+    it("status を指定できる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      const result = await createTicket({
+        organizationId,
+        title: "status specified",
+        status: "in-progress",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.status).toBe("in-progress");
+    });
+
+    it("status を省略すると open がデフォルトになる", async () => {
+      const { organizationId, ownerId } = await seedOrganization();
+
+      const result = await createTicket({
+        organizationId,
+        title: "default status",
+        assigneeId: null,
+        createdBy: ownerId,
+      });
+
+      const data = expectSuccess(result);
+      expect(data.ticket.status).toBe("open");
+    });
   });
 
   describe("updateTicket", () => {
