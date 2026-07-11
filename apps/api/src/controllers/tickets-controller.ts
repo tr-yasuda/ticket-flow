@@ -158,6 +158,7 @@ function mapCreateTicketError(error: TicketServiceError): ErrorMapping {
         code: ApiErrorCode.VALIDATION_ERROR,
         status: HttpStatus.BAD_REQUEST,
         message: error.message,
+        details: error.details,
       };
     case "user-not-organization-member":
       // organizationScopeMiddleware already verifies the creator's membership,

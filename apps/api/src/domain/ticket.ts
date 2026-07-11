@@ -108,10 +108,23 @@ export type TicketListItem = Readonly<{
   commentCount: number;
 }>;
 
+export type TicketValidationErrorDetail = Readonly<{
+  field: string;
+  message: string;
+}>;
+
 export class TicketValidationError extends Error {
-  constructor(message: string) {
+  readonly details?: readonly TicketValidationErrorDetail[];
+
+  constructor(
+    message: string,
+    options?: {
+      details?: readonly TicketValidationErrorDetail[];
+    },
+  ) {
     super(message);
     this.name = "TicketValidationError";
+    this.details = options?.details;
   }
 }
 
@@ -185,6 +198,14 @@ export function createTicket(input: CreateTicketInput): Ticket {
   ) {
     throw new TicketValidationError(
       `作成時に指定できるステータスは ${allowedCreationStatuses.join(", ")} のみです`,
+      {
+        details: [
+          {
+            field: "status",
+            message: `作成時に指定できるステータスは ${allowedCreationStatuses.join(", ")} のみです`,
+          },
+        ],
+      },
     );
   }
 

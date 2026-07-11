@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import type { ApiValidationErrorDetail } from "@ticket-flow/shared";
 
 import { UserNotOrganizationMemberError } from "../domain/organization-member.js";
 import {
@@ -26,7 +27,11 @@ export type TicketServiceError = Readonly<
   | { type: "ticket-not-found"; message: string }
   | { type: "ticket-conflict"; message: string }
   | { type: "user-not-organization-member"; message: string }
-  | { type: "validation-error"; message: string }
+  | {
+      type: "validation-error";
+      message: string;
+      details?: readonly ApiValidationErrorDetail[];
+    }
   | { type: "unknown-error"; message: string }
 >;
 
@@ -58,7 +63,11 @@ export function mapServiceError(error: unknown): {
   if (error instanceof TicketValidationError) {
     return {
       success: false,
-      error: { type: "validation-error", message: error.message },
+      error: {
+        type: "validation-error",
+        message: error.message,
+        details: error.details,
+      },
     };
   }
 

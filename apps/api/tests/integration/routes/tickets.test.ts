@@ -320,6 +320,15 @@ describe("POST /api/organizations/:organizationId/tickets (ticket.create)", () =
     const body = await response.json();
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.message).toBe(
+      "作成時に指定できるステータスは open, in-progress のみです",
+    );
+    expect(body.error.details).toEqual([
+      {
+        field: "status",
+        message: "作成時に指定できるステータスは open, in-progress のみです",
+      },
+    ]);
   });
 
   it("priority を省略すると medium がデフォルトになる", async () => {
